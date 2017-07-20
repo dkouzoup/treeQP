@@ -1,0 +1,20 @@
+
+#C
+*.o
+*.exe
+*.out
+*.a
+
+#MAC
+*.DS_Store
+
+#EDITORS
+*.dSYM/
+*settings.json
+*launch.json
+*c_cpp_properties.json
+*.lnt
+
+#TMP FILES
+tmp/
+examples/data_spring_mass/*.txt
