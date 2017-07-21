@@ -35,8 +35,6 @@
 // - not varying nx, nu
 // - no arbitrary trees
 
-// TODO(dimitris): valgrind code
-
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/flags.h"
@@ -296,7 +294,7 @@ int main() {
     treeqp_workspace work;
 
     int_t treeqp_work_size = treeqp_calculate_workspace_size(Nn, Ns, Nh, Nr, NX, NU, tree);
-    void *allocated_memory = malloc(treeqp_work_size);
+    void *allocated_memory = calloc(treeqp_work_size, sizeof(char));
 
     treeqp_create_workspace(Nn, Ns, Nr, &qp_in, &opts, &work, allocated_memory);
 
