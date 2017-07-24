@@ -32,23 +32,25 @@
 extern "C" {
 #endif
 
+#include "treeqp/utils/types.h"
+
 struct node {
-    int *kids;   // 64 bits
-    int idx;     // 32 bits
-    int dad;     // 32 bits
-    int nkids;   // 32 bits
-    int stage;   // 32 bits
-    int real;    // 32 bits
-    int idxkid;  // 32 bits
+    int_t *kids;   // 64 bits
+    int_t idx;     // 32 bits
+    int_t dad;     // 32 bits
+    int_t nkids;   // 32 bits
+    int_t stage;   // 32 bits
+    int_t real;    // 32 bits
+    int_t idxkid;  // 32 bits
     // total       256 bits
 };
 
-int calculate_number_of_nodes(int md, int Nr, int Nh);
-int get_number_of_parent_nodes(int Nn, struct node *tree);
-int get_robust_horizon(int Nn, struct node *tree);
-void print_node(struct node *tree);
-void setup_tree(int md, int Nr, int Nh, int Nn, struct node *tree);
-void free_tree(int md, int Nr, int Nh, int Nn, struct node *tree);
+int_t calculate_number_of_nodes(int_t md, int_t Nr, int_t Nh);
+int_t get_number_of_parent_nodes(int_t Nn, struct node *tree);
+int_t get_robust_horizon(int_t Nn, struct node *tree);
+void print_t_node(struct node *tree);
+void setup_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
+void free_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
 
 
 #ifdef __cplusplus

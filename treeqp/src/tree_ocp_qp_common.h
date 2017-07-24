@@ -64,6 +64,12 @@ typedef struct {
     const struct node *tree;
 } tree_ocp_qp_in;
 
+int_t tree_ocp_qp_in_workspace_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree);
+void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_in *qp_in,
+    struct node *tree, void *ptr);
+void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, double *q, double *P,
+    double *p, double *R, double *r, double *xmin, double *xmax, double *umin, double *umax,
+    double *x0, tree_ocp_qp_in *qp_in);
 
 // output of solver
 typedef struct {
