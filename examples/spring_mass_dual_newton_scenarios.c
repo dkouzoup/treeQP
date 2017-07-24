@@ -326,11 +326,10 @@ int main() {
         #endif
     }  // end NRUNS
 
-    // d_print_strvec(NU, &work.su[0][3], 0);
-
-    d_print_strvec(10*(NX+NU), &qp_out.x[0], 0);
-
     write_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
+
+    real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
+    printf("\nMaximum violation of dynamic constraints: %2.2e\n", err);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);

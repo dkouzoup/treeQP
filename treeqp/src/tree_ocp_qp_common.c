@@ -36,6 +36,7 @@
 #include "blasfeo/include/blasfeo_common.h"
 #include "blasfeo/include/blasfeo_d_aux.h"
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
+#include "blasfeo/include/blasfeo_d_blas.h"
 
 
 int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in) {
@@ -66,6 +67,48 @@ void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp
         init_strvec(qp_in->nx[kk], &qp_out->x[kk], &c_ptr);
         init_strvec(qp_in->nu[kk], &qp_out->u[kk], &c_ptr);
     }
+}
+
+
+real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) {
+    // calculate maximum state dimension
+    int_t nxMax = 0;
+    for (int ii = 1; ii < qp_in->N; ii++)
+        nxMax = MAX(nxMax, qp_in->nx[ii]);
+
+    // allocate vector of size nxMax for intermediate result
+    struct d_strvec tmp;
+    d_allocate_strvec(nxMax, &tmp);
+
+    // calculate maximum error
+    int_t idx, idxp;
+    real_t error = -1.0;
+
+    for (int ii = 1; ii < qp_in->N; ii++) {
+        idx = ii;
+        idxp = qp_in->tree[idx].dad;
+        // tmp = A[idx-1]*x[p(idx)] + b[idx-1]
+        dgemv_n_libstr(qp_in->nx[idx], qp_in->nx[idxp], 1.0, (struct d_strmat*) &qp_in->A[idx-1],
+            0, 0, &qp_out->x[idxp], 0, 1.0, (struct d_strvec*) &qp_in->b[idx-1], 0, &tmp, 0);
+        // tmp = tmp + B[idx-1]*u[p(idx)]
+        dgemv_n_libstr(qp_in->nx[idx], qp_in->nu[idxp], 1.0, (struct d_strmat*)&qp_in->B[idx-1],
+            0, 0, &qp_out->u[idxp], 0, 1.0, &tmp, 0, &tmp, 0);
+
+        // d_print_tran_strvec(qp_in->nx[idx], &tmp, 0);
+        // d_print_tran_strvec(qp_in->nx[idx], &qp_out->x[idx], 0);
+
+        // tmp = tmp - x[idx], aka error
+        daxpy_libstr(qp_in->nx[idx], -1.0, &qp_out->x[idx], 0, &tmp, 0, &tmp, 0);
+
+        // printf("error at node %d:\n", ii);
+        // d_print_e_tran_strvec(qp_in->nx[idx], &tmp, 0);
+
+        for (int_t jj = 0; jj < qp_in->nx[idx]; jj++)
+            error = MAX(error, ABS(DVECEL_LIBSTR(&tmp, jj)));
+    }
+
+    d_free_strvec(&tmp);
+    return error;
 }
 
 

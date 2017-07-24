@@ -75,6 +75,8 @@ typedef struct {
 int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in);
 void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, void *ptr);
 
+real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 
 #ifdef __cplusplus
