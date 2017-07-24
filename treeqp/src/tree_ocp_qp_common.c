@@ -28,12 +28,45 @@
 #include <stdio.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/utils/blasfeo_utils.h"
 #include "treeqp/utils/tree_utils.h"
 #include "treeqp/utils/types.h"
 
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
+#include "blasfeo/include/blasfeo_d_aux.h"
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
+
+
+int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in) {
+    int_t Nn = qp_in->N;
+    int_t bytes = 2*Nn*sizeof(struct d_strvec);  // x, u
+
+    // TODO(dimitris): think again about convention of N and N+1
+    for (int_t kk = 0; kk < Nn; kk++) {
+        bytes += d_size_strvec(qp_in->nx[kk]);
+        bytes += d_size_strvec(qp_in->nu[kk]);
+    }
+
+    return bytes;
+}
+
+
+void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, void *ptr) {
+    int_t Nn = qp_in->N;
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    qp_out->x = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    qp_out->u = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    for (int_t kk = 0; kk < Nn; kk++) {
+        init_strvec(qp_in->nx[kk], &qp_out->x[kk], &c_ptr);
+        init_strvec(qp_in->nu[kk], &qp_out->u[kk], &c_ptr);
+    }
+}
 
 
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {

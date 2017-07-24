@@ -35,12 +35,17 @@ extern "C" {
 #include "treeqp/flags.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/types.h"
-#include "treeqp/utils/tree_utils.h"  // TODO(dimitris): problaby TEMP
+#include "treeqp/utils/tree_utils.h"
 
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
-typedef struct workspace_ {
+typedef struct treeqp_dune_scenarios_workspace_ {
+    int_t Ns;  // number of scenarios
+    int_t Nh;  // prediction horizon
+    int_t Nr;  // robust horizon
+    int_t md;  // number of realizations
+
     int_t **nodeIdx;  // tree index of scenario nodes [Ns*(Nh+1)]
     int_t **boundsRemoved;  // flag to check if bounds of subsystem are removed
     #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -94,7 +99,7 @@ typedef struct workspace_ {
     struct d_strvec **suasPrev;
     struct d_strmat **sTmpLambdaD;
     #endif
-} treeqp_workspace;
+} treeqp_dune_scenarios_workspace;
 
 
 // Options of QP solver
@@ -117,29 +122,23 @@ typedef struct {
     // line search options
     real_t lineSearchGamma;
     real_t lineSearchBeta;
-} scen_options_t;
+} treeqp_dune_options_t;
 
 
-// info returned by solver
-typedef struct {
-    int_t NewtonIter;
-} treeqp_info_t;
+int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in);
 
-int_t treeqp_calculate_workspace_size(int_t Nn, int_t Ns, int_t Nh, int_t Nr, int_t nx, int_t nu,
-    struct node *tree);
+void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+    treeqp_dune_scenarios_workspace *work, void *ptr_allocated_memory);
 
-void treeqp_create_workspace(int_t Nn, int_t Ns, int_t Nr, tree_ocp_qp_in *qp_in,
-    scen_options_t *opts, treeqp_workspace *work, void *ptr_allocated_memory);
+int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work);
 
-int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_ocp_qp_in *qp_in,
-    scen_options_t *opts, treeqp_info_t *info, treeqp_workspace *work);
-
-int_t get_dimension_of_lambda(int_t Nr, int_t md, int_t nu);
+int_t calculate_dimension_of_lambda(int_t Nr, int_t md, int_t nu);
 
 void check_compiler_flags();
 
 void write_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
-    int_t NewtonIter, treeqp_workspace *work);
+    int_t NewtonIter, treeqp_dune_scenarios_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

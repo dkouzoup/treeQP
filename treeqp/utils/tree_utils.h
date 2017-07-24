@@ -43,8 +43,9 @@ struct node {
     // total       256 bits
 };
 
-int get_number_of_nodes(int md, int Nr, int Nh);
+int calculate_number_of_nodes(int md, int Nr, int Nh);
 int get_number_of_parent_nodes(int Nn, struct node *tree);
+int get_robust_horizon(int Nn, struct node *tree);
 void print_node(struct node *tree);
 void setup_tree(int md, int Nr, int Nh, int Nn, struct node *tree);
 void free_tree(int md, int Nr, int Nh, int Nn, struct node *tree);

@@ -54,8 +54,8 @@
 
 #include "examples/data_spring_mass/data.c"
 
-scen_options_t set_default_options(void) {
-    scen_options_t opts;
+treeqp_dune_options_t set_default_options(void) {
+    treeqp_dune_options_t opts;
     termination_t cond = TREEQP_INFNORM;
 
     opts.maxIter = 100;
@@ -75,7 +75,7 @@ scen_options_t set_default_options(void) {
 
 
 void write_dual_initial_point_to_workspace(int_t Ns, int_t Nh, real_t *lambda, real_t *mu,
-    treeqp_workspace *work) {
+    treeqp_dune_scenarios_workspace *work) {
 
     int_t ii, kk, indx;
     int_t nu = work->su[0][0].m;
@@ -102,12 +102,11 @@ int main() {
     int_t real;
     return_t status;
 
-    int_t nl = get_dimension_of_lambda(Nr, md, NU);
-    int_t Nn = get_number_of_nodes(md, Nr, Nh);
+    int_t nl = calculate_dimension_of_lambda(Nr, md, NU);
+    int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
     int_t Ns = ipow(md, Nr);
 
-    scen_options_t opts = set_default_options();
-    treeqp_info_t info;
+    treeqp_dune_options_t opts = set_default_options();
 
     check_compiler_flags();
 
@@ -146,6 +145,7 @@ int main() {
     setup_tree(md, Nr, Nh, Nn, tree);
 
     tree_ocp_qp_in qp_in;
+    tree_ocp_qp_out qp_out;
 
     d_allocate_strvec(NX, &sQ);
     d_cvt_vec2strvec(NX, dQ, &sQ, 0);
@@ -291,15 +291,18 @@ int main() {
 
     // create workspace of QP solver
 
-    treeqp_workspace work;
+    treeqp_dune_scenarios_workspace work;
 
-    int_t treeqp_work_size = treeqp_calculate_workspace_size(Nn, Ns, Nh, Nr, NX, NU, tree);
-    void *allocated_memory = calloc(treeqp_work_size, sizeof(char));
+    int_t treeqp_work_size = treeqp_dune_scenarios_workspace_size(&qp_in);
+    void *qp_solver_memory = calloc(treeqp_work_size, sizeof(char));
+    treeqp_dune_scenarios_create_workspace(&qp_in, &opts, &work, qp_solver_memory);
 
-    treeqp_create_workspace(Nn, Ns, Nr, &qp_in, &opts, &work, allocated_memory);
+    int_t qp_out_work_size = tree_ocp_qp_out_workspace_size(&qp_in);
+    void *qp_out_memory = calloc(qp_out_work_size, sizeof(char));
+    tree_ocp_qp_out_create_workspace(&qp_in, &qp_out, qp_out_memory);
 
     #if PRINT_LEVEL > 0
-    printf("\n-------- treeQP workspace size: %d bytes \n", treeqp_work_size);
+    printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_work_size);
     #endif
 
     #if PROFILE > 0
@@ -313,7 +316,7 @@ int main() {
         treeqp_tic(&tot_tmr);
         #endif
 
-        status = treeqp_dual_newton_scenarios(Ns, Nh, Nr, md, &qp_in, &opts, &info, &work);
+        status = treeqp_dune_scenarios_solve(&qp_in, &qp_out, &opts, &work);
 
         // printf("QP solver status at run %d: %d\n", jj, status);
 
@@ -325,10 +328,12 @@ int main() {
 
     // d_print_strvec(NU, &work.su[0][3], 0);
 
-    write_solution_to_txt(Ns, Nh, Nr, md, NX, NU, info.NewtonIter, &work);
+    d_print_strvec(10*(NX+NU), &qp_out.x[0], 0);
+
+    write_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(info.NewtonIter);
+    print_timers(qp_out.info.iter);
     #endif
 
     // Free allocated memory
@@ -372,7 +377,8 @@ int main() {
     free(humin);
     free(humax);
 
-    free(allocated_memory);
+    free(qp_solver_memory);
+    free(qp_out_memory);
 
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);

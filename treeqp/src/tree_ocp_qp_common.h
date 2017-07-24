@@ -37,6 +37,13 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
+// info returned by solver
+typedef struct {
+    int_t iter;
+} treeqp_info_t;
+
+
+// input to solver
 typedef struct {
     int_t N;
     const int_t *nx;
@@ -56,6 +63,17 @@ typedef struct {
     const struct d_strvec *umax;
     const struct node *tree;
 } tree_ocp_qp_in;
+
+
+// output of solver
+typedef struct {
+    treeqp_info_t info;
+    struct d_strvec *x;
+    struct d_strvec *u;
+} tree_ocp_qp_out;
+
+int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in);
+void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, void *ptr);
 
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 

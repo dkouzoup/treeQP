@@ -31,7 +31,7 @@
 #include "treeqp/utils/tree_utils.h"
 #include "treeqp/utils/utils.h"
 
-int get_number_of_nodes(int md, int Nr, int Nh) {
+int calculate_number_of_nodes(int md, int Nr, int Nh) {
     int n_nodes;
     if (md == 1)  // i.e. standard block-banded structure
         n_nodes = Nh+1;
@@ -49,6 +49,22 @@ int get_number_of_parent_nodes(int Nn, struct node *tree) {
         if (tree[kk].nkids > 0) Np++;
     }
     return Np;
+}
+
+
+int get_robust_horizon(int Nn, struct node *tree) {
+    int kk;
+    int Nr = 0;
+
+    for (kk = 0; kk < Nn; kk++) {
+        if (tree[kk].nkids > 1) {
+            Nr = tree[kk].stage+1;
+        } else {
+            break;
+        }
+    }
+
+    return Nr;
 }
 
 

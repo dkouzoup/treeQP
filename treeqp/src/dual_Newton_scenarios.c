@@ -79,7 +79,7 @@ void check_compiler_flags() {
 }
 
 
-int_t get_dimension_of_lambda(int_t Nr, int_t md, int_t nu) {
+int_t calculate_dimension_of_lambda(int_t Nr, int_t md, int_t nu) {
     int_t Ns = ipow(md, Nr);
 
     if (Ns == 1) {
@@ -125,11 +125,13 @@ int_t get_size_of_JayL(int_t Ns, int_t nu, int_t *commonNodes) {
 }
 
 
-void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_workspace *work) {
+void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md,
+    treeqp_dune_scenarios_workspace *work) {
+
     int_t ii, kk;
     int_t nu = work->su[0][0].m;
     int_t nx = work->sx[0][0].m;
-    int_t nl = get_dimension_of_lambda(Nr, md, nu);
+    int_t nl = calculate_dimension_of_lambda(Nr, md, nu);
     real_t residuals_k[Ns*Nh*nx], residual[nl], xit[Ns*Nh*nx], uit[Ns*Nh*nu];
     real_t QinvCal_k[Ns*Nh*nx], RinvCal_k[Ns*Nh*nu];
     real_t LambdaD[Ns*Nh*nx*nx], LambdaL[Ns*(Nh-1)*nx*nx];
@@ -184,7 +186,7 @@ void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_workspac
 
 
 void write_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
-    int_t NewtonIter, treeqp_workspace *work) {
+    int_t NewtonIter, treeqp_dune_scenarios_workspace *work) {
 
     int ii, kk;
 
@@ -194,7 +196,7 @@ void write_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int
     int_t indx = 0;
     int_t indu = 0;
     int_t indLambda = 0;
-    int_t nl = get_dimension_of_lambda(Nr, md, nu);
+    int_t nl = calculate_dimension_of_lambda(Nr, md, nu);
     real_t *muIter = malloc(Ns*Nh*nx*sizeof(real_t));
     real_t *xIter = malloc(Ns*Nh*nx*sizeof(real_t));
     real_t *uIter = malloc(Ns*Nh*nu*sizeof(real_t));
@@ -293,7 +295,7 @@ int_t compare_with_previous_active_set(int_t n, struct d_strvec *asNow, struct d
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
 static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_qp_in *qp_in,
-    treeqp_workspace *work) {
+    treeqp_dune_scenarios_workspace *work) {
 
     int_t ii, kk, idx, idxp1, idxm1;
     int_t nu = work->su[0][0].m;
@@ -498,7 +500,9 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
 }
 
 
-static void calculate_residuals(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_workspace *work) {
+static void calculate_residuals(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in,
+    treeqp_dune_scenarios_workspace *work) {
+
     int_t ii, kk, idx0, idxm1;
     int_t nu = work->su[0][0].m;
     int_t nx = work->sx[0][0].m;
@@ -535,7 +539,7 @@ static void calculate_residuals(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeq
 }
 
 
-static void calculate_last_residual(int_t Ns, int_t Nh, treeqp_workspace *work) {
+static void calculate_last_residual(int_t Ns, int_t Nh, treeqp_dune_scenarios_workspace *work) {
     int_t ii, kk;
     int_t acc = 0;
     int_t nu = work->su[0][0].m;
@@ -574,7 +578,7 @@ static void calculate_last_residual(int_t Ns, int_t Nh, treeqp_workspace *work) 
 
 
 static void factorize_with_reg_opts(struct d_strmat *M, struct d_strmat *CholM,
-    struct d_strvec *regMat, scen_options_t *opts) {
+    struct d_strvec *regMat, treeqp_dune_options_t *opts) {
 
     int_t jj;
 
@@ -607,7 +611,7 @@ static void factorize_with_reg_opts(struct d_strmat *M, struct d_strmat *CholM,
 #ifdef _CHECK_LAST_ACTIVE_SET_
 
 static void find_starting_point_of_factorization(int_t Ns, int_t Nh, int_t *idxStart,
-    treeqp_workspace *work) {
+    treeqp_dune_scenarios_workspace *work) {
 
     int_t ii, kk;
 
@@ -629,7 +633,7 @@ static void find_starting_point_of_factorization(int_t Ns, int_t Nh, int_t *idxS
 
 #endif
 
-static void factorize_Lambda(int_t Ns, int_t Nh, scen_options_t *opts, treeqp_workspace *work) {
+static void factorize_Lambda(int_t Ns, int_t Nh, treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
 
@@ -741,7 +745,7 @@ static void factorize_Lambda(int_t Ns, int_t Nh, scen_options_t *opts, treeqp_wo
 }
 
 
-void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_workspace *work) {
+void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work) {
     int_t ii, jj, kk;
     int_t indZ, indRinvCal;
     int_t nx = work->sx[0][0].m;
@@ -817,7 +821,7 @@ void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_workspace *work) {
 }
 
 
-void form_and_factorize_Jay(int_t Ns, int_t nu, scen_options_t *opts, treeqp_workspace *work) {
+void form_and_factorize_Jay(int_t Ns, int_t nu, treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
     int_t ii, dim, dimNxt;
     int_t *commonNodes = work->commonNodes;
 
@@ -895,7 +899,7 @@ void form_and_factorize_Jay(int_t Ns, int_t nu, scen_options_t *opts, treeqp_wor
 }
 
 
-void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_workspace *work) {
+void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_dune_scenarios_workspace *work) {
     // NOTE: RHS has the opposite sign (corected when solving for Deltalambda later)
 
     int_t ii, jj, kk;
@@ -909,7 +913,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
 
     #if DEBUG == 1
     int_t ind = 0;
-    int_t nl = get_dimension_of_lambda(Nr, md, nu);
+    int_t nl = calculate_dimension_of_lambda(Nr, md, nu);
     real_t *rhsNonAnticip = malloc(nl*sizeof(real_t));
     #endif
 
@@ -1025,7 +1029,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
 
 
 
-void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_workspace *work) {
+void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_dune_scenarios_workspace *work) {
     int_t ii, dim, dimNxt;
     int_t *commonNodes = work->commonNodes;
     int_t nu = work->su[0][0].m;
@@ -1037,7 +1041,7 @@ void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_workspace *work
 
     #if DEBUG == 1
     int_t ind = 0;
-    int_t nl = get_dimension_of_lambda(Nr, md, nu);
+    int_t nl = calculate_dimension_of_lambda(Nr, md, nu);
     real_t Deltalambda[nl];
     #endif
 
@@ -1098,7 +1102,7 @@ void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_workspace *work
 }
 
 
-void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_workspace *work) {
+void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
     int_t nu = work->su[0][0].m;
@@ -1226,7 +1230,7 @@ void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_workspace *work) {
 }
 
 
-real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_workspace *work) {
+real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_dune_scenarios_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
     real_t ans = 0;
@@ -1247,7 +1251,7 @@ real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_workspace *work
 }
 
 
-real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_workspace *work) {
+real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_dune_scenarios_workspace *work) {
     int_t *commonNodes = work->commonNodes;
     real_t *fvals = work->fvals;
 
@@ -1403,8 +1407,8 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
 }
 
 
-int_t line_search(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, scen_options_t *opts,
-    treeqp_workspace *work) {
+int_t line_search(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+    treeqp_dune_scenarios_workspace *work) {
 
     int_t ii, jj, kk;
     real_t dotProduct, fval, fval0;
@@ -1471,7 +1475,7 @@ int_t line_search(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, scen_options_t *opt
 
 // TODO(dimitris): time and see if it's worth to parallelize
 real_t calculate_error_in_residuals(int_t Ns, int_t Nh, termination_t condition,
-    treeqp_workspace *work) {
+    treeqp_dune_scenarios_workspace *work) {
 
     int_t ii, jj, kk;
     real_t error = 0;
@@ -1512,12 +1516,21 @@ real_t calculate_error_in_residuals(int_t Ns, int_t Nh, termination_t condition,
 }
 
 
-int_t treeqp_calculate_workspace_size(int_t Nn, int_t Ns, int_t Nh, int_t Nr, int_t nx, int_t nu,
-    struct node *tree) {
+int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in) {
+    struct node *tree = (struct node *) qp_in->tree;
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
+    int_t Nn = qp_in->N;
+    int_t Nh = tree[Nn-1].stage;
+    int_t Np = get_number_of_parent_nodes(Nn, tree);
+    int_t Ns = Nn - Np;
+    int_t Nr = get_robust_horizon(Nn, tree);
 
     int_t ii, commonNodes, commonNodesNxt, maxTmpDim;
     int_t commonNodesMax = 0;
     int_t bytes = 0;
+
+    // TODO(dimitris): run consistency checks on tree to see if compatible with algorithm
 
     bytes += 2*Ns*sizeof(int_t*);  // **nodeIdx, **boundsRemoved
     bytes += 2*Ns*(Nh+1)*sizeof(int_t);
@@ -1563,8 +1576,6 @@ int_t treeqp_calculate_workspace_size(int_t Nn, int_t Ns, int_t Nh, int_t Nr, in
     bytes += Ns*Nh*d_size_strvec(nu);  // uasPrev
     #endif
 
-    // TODO(dimitris): check with Gianluca if d_size_strmat contains size of struct itself or not
-
     // struct pointers
     bytes += 2*(Ns-1)*sizeof(struct d_strmat);  // JayD, CholJayD
     bytes += 2*(Ns-2)*sizeof(struct d_strmat);  // JayL, CholJayL
@@ -1601,19 +1612,30 @@ int_t treeqp_calculate_workspace_size(int_t Nn, int_t Ns, int_t Nh, int_t Nr, in
 }
 
 
-void treeqp_create_workspace(int_t Nn, int_t Ns, int_t Nr, tree_ocp_qp_in *qp_in,
-    scen_options_t *opts, treeqp_workspace *work, void *ptr_allocated_memory) {
+void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+    treeqp_dune_scenarios_workspace *work, void *ptr_allocated_memory) {
+
+    struct node *tree = (struct node *) qp_in->tree;
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
+    int_t Nn = qp_in->N;
+    int_t Nh = tree[Nn-1].stage;
+    int_t Np = get_number_of_parent_nodes(Nn, tree);
+    int_t Ns = Nn - Np;
+    int_t Nr = get_robust_horizon(Nn, tree);
 
     int_t ii, kk, maxTmpDim, node, ans;
     int_t *commonNodes;
-    struct node *tree = (struct node*) qp_in->tree;
-    int_t nx = qp_in->Q[0].m;
-    int_t nu = qp_in->R[0].m;
-    int_t Nh = tree[Nn-1].stage;
 
     // TODO(dimitris): move to workspace
     int_t *processedNodes = malloc(Nn*sizeof(int_t));
     int_t idx = 0;
+
+    // store some dimensions in workspace
+    work->Nr = Nr;
+    work->Ns = Ns;
+    work->Nh = Nh;
+    work->md = tree[0].nkids;
 
     // char pointer
     char *c_ptr = (char *) ptr_allocated_memory;
@@ -1784,25 +1806,31 @@ void treeqp_create_workspace(int_t Nn, int_t Ns, int_t Nr, tree_ocp_qp_in *qp_in
 }
 
 
-int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_ocp_qp_in *qp_in,
-    scen_options_t *opts, treeqp_info_t *info, treeqp_workspace *work) {
+int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
 
-    int_t ii, jj, lsIter;
+    int_t NewtonIter, lsIter;
     real_t error;
-    int_t nu = work->su[0][0].m;
+    int_t nu = qp_in->nu[0];
+    int_t nx = qp_in->nx[1];
     return_t status = TREEQP_ERR_UNKNOWN_ERROR;
+
+    int_t Nh = work->Nh;
+    int_t Ns = work->Ns;
+    int_t Nr = work->Nr;
+    int_t md = work->md;
 
     struct d_strmat *sJayD = work->sJayD;
     struct d_strmat *sJayL = work->sJayL;
 
     // ------ dual Newton iterations
     // NOTE(dimitris): at first iteration some matrices are initialized for _CHECK_LAST_ACTIVE_SET_
-    for (jj = 0; jj < opts->maxIter; jj++) {
+    for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
         #endif
         #if PROFILE > 3
-        reset_accumulative_timers(jj);
+        reset_accumulative_timers(NewtonIter);
         #endif
 
         // ------ solve stage QPs
@@ -1813,9 +1841,9 @@ int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(Ns, Nh, jj, qp_in, work);
+        solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work);
         #if PROFILE > 2
-        stage_qps_times[jj] = treeqp_toc(&tmr);
+        stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // ------ calculate dual gradient
@@ -1834,7 +1862,7 @@ int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_
 
         error = calculate_error_in_residuals(Ns, Nh, opts->termCondition, work);
 
-        // printf("\n-------- qpdunes iteration %d, error %f \n\n", jj+1, error);
+        // printf("\n-------- qpdunes iteration %d, error %f \n\n", NewtonIter+1, error);
         if (error < opts->stationarityTolerance) {
             // printf("optimal solution found (error = %5.2e)\n", error);
             status = TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
@@ -1844,7 +1872,7 @@ int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_
         // NOTE(dimitris): inaccurate since part of dual Hessian is calculated while solving
         // the stage QPs
         #if PROFILE > 2
-        build_dual_times[jj] = treeqp_toc(&tmr);
+        build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         #if PROFILE > 2
@@ -1864,7 +1892,7 @@ int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
-        newton_direction_times[jj] = treeqp_toc(&tmr);
+        newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // ------ line search
@@ -1875,29 +1903,41 @@ int_t treeqp_dual_newton_scenarios(int_t Ns, int_t Nh, int_t Nr, int_t md, tree_
         lsIter = line_search(Ns, Nh, qp_in, opts, work);
 
         #if PROFILE > 2
-        line_search_times[jj] = treeqp_toc(&tmr);
+        line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // ------ reset data for next iteration
         // TODO(dimitris): check if it's worth parallelizing!
-        for (ii = 0; ii < Ns-1; ii++) {
+        for (int_t ii = 0; ii < Ns-1; ii++) {
             dgese_libstr(sJayD[ii].m, sJayD[ii].n, 0.0, &sJayD[ii], 0, 0);
         }
-        for (ii = 0; ii < Ns-2; ii++) {
+        for (int_t ii = 0; ii < Ns-2; ii++) {
             dgese_libstr(sJayL[ii].m, sJayL[ii].n, 0.0, &sJayL[ii], 0, 0);
         }
         #if PRINT_LEVEL > 1
-        printf("iteration #%d: %d ls iterations \t\t(error %5.2e)\n", jj, lsIter, error);
+        printf("iteration #%d: %d ls iterations \t\t(error %5.2e)\n", NewtonIter, lsIter, error);
         #endif
         #if PROFILE > 1
-        iter_times[jj] = treeqp_toc(&iter_tmr);
-        ls_iters[jj] = lsIter;
+        iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
+        ls_iters[NewtonIter] = lsIter;
         #endif
     }
 
-    info->NewtonIter = jj;
+    for (int_t ii = 0; ii < Ns; ii++) {
+        for (int_t kk = 0; kk < Nh; kk++) {
+            if (work->boundsRemoved[ii][kk+1] == 0) {
+                // printf("saving node (%d, %d) to node %d\n", ii, kk+1, work->nodeIdx[ii][kk+1]);
+                dveccp_libstr(nx, 1.0, &work->sx[ii][kk], 0, &qp_out->x[work->nodeIdx[ii][kk+1]], 0);
+            }
+            if (work->boundsRemoved[ii][kk] == 0) {
+                dveccp_libstr(nu, 1.0, &work->su[ii][kk], 0, &qp_out->u[work->nodeIdx[ii][kk]], 0);
+            }
+        }
+    }
 
-    if (info->NewtonIter == opts->maxIter)
+    qp_out->info.iter = NewtonIter;
+
+    if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
 
     return status;
