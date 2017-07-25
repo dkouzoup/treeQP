@@ -286,7 +286,7 @@ int_t compare_with_previous_active_set(int_t n, struct d_strvec *asNow, struct d
             break;
         }
     }
-    dveccp_libstr(n, 1.0, asNow, 0, asBefore, 0);
+    dveccp_libstr(n, asNow, 0, asBefore, 0);
     return changed;
 }
 
@@ -338,11 +338,17 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
             if (kk < Nh-1) {
                 // x[k+1] = mu[k+1] - A[k+1]' * mu[k+2]
                 idxp1 = work->nodeIdx[ii][kk+2];
+                // d_print_strmat(nx, nx, &sA[idxp1-1], 0, 0);
+                // d_print_tran_strvec(nx, &work->sx[ii][kk], 0);
+                // d_print_tran_strvec(nx, &work->smu[ii][kk], 0);
+                // d_print_tran_strvec(nx, &work->smu[ii][kk+1], 0);
+                // printf("ii = %d, kk = %d, idxp1=%d\n", ii, kk, idxp1);
                 dgemv_t_libstr(nx, nx, -1.0, &sA[idxp1-1], 0, 0, &work->smu[ii][kk+1],
                     0, 1.0, &work->smu[ii][kk], 0, &work->sx[ii][kk], 0);
+                // printf("ok\n");
             } else {
                 // x[Nh] = mu[Nh]
-                dveccp_libstr(nx, 1.0, &work->smu[ii][kk], 0, &work->sx[ii][kk], 0);
+                dveccp_libstr(nx, &work->smu[ii][kk], 0, &work->sx[ii][kk], 0);
             }
             // x[k+1] = x[k+1] - q[k+1]
             daxpy_libstr(nx, -1.0, &sq[idx], 0, &work->sx[ii][kk], 0, &work->sx[ii][kk], 0);
@@ -455,7 +461,7 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
                 // NOTE(dimitris): calculate LambdaL[k]' instead (aka upper triangular block)
 
                 // LambdaL[k]' = A[k]'
-                dgetr_libstr(nx, nx, 1.0, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
+                dgetr_libstr(nx, nx, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
 
                 // LambdaL[k]' = -QinvCal[k]*A[k]'
                 dgemm_l_diag_libstr(nx, nx, -1.0, &work->sQinvCal[ii][kk-1], 0,
@@ -482,10 +488,9 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
 
             #ifdef _CHECK_LAST_ACTIVE_SET_
             // save diagonal block that will be overwritten in factorization
-            dgecp_libstr(nx, nx, 1.0, &work->sLambdaD[ii][kk], 0, 0,
-                &work->sTmpLambdaD[ii][kk], 0, 0);
+            dgecp_libstr(nx, nx, &work->sLambdaD[ii][kk], 0, 0, &work->sTmpLambdaD[ii][kk], 0, 0);
             } else {
-                dgecp_libstr(nx, nx, 1.0, &work->sTmpLambdaD[ii][kk], 0, 0,
+                dgecp_libstr(nx, nx, &work->sTmpLambdaD[ii][kk], 0, 0,
                     &work->sLambdaD[ii][kk], 0, 0);
             }
             #endif
@@ -767,7 +772,7 @@ void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work)
         // ----- form U[i]'
         for (jj = 0; jj < Nr; jj++) {
             // transpose Zbar[k]
-            dgetr_libstr(nx, nu, 1.0, &work->sZbar[ii][jj], 0, 0, &sTmpMats[ii], 0, 0);
+            dgetr_libstr(nx, nu, &work->sZbar[ii][jj], 0, 0, &sTmpMats[ii], 0, 0);
             #ifdef REV_CHOL
             for (kk = jj; kk >= 0; kk--) {
             #else
@@ -803,7 +808,7 @@ void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work)
             &sK[ii], 0, 0, &sK[ii], 0, 0);
 
         // mirror result to upper diagonal part (needed to form J properly)
-        dtrtr_l_libstr(sK[ii].m, 1.0, &sK[ii], 0, 0, &sK[ii], 0, 0);
+        dtrtr_l_libstr(sK[ii].m, &sK[ii], 0, 0, &sK[ii], 0, 0);
 
         for (kk = 0; kk < Nr; kk++) {
             ddiaad_libstr(nu, 1.0, &work->sRinvCal[ii][kk], 0, &sK[ii], kk*nu, kk*nu);
@@ -923,7 +928,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
     for (ii = 0; ii < Ns; ii++) {
         #ifdef REV_CHOL
         // tmp = res[Nh]
-        dveccp_libstr(nx, 1.0, &work->sresk[ii][Nh-1] , 0, &sTmpVecs[ii], 0);
+        dveccp_libstr(nx, &work->sresk[ii][Nh-1] , 0, &sTmpVecs[ii], 0);
 
         // backward substitution
         for (kk = Nh; kk > 1; kk--) {
@@ -954,7 +959,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
             &work->sreskMod[ii][Nh-1], 0, &work->sreskMod[ii][Nh-1], 0);
         #else
         // tmp = res[1]
-        dveccp_libstr(nx, 1.0, &work->sresk[ii][0] , 0, &sTmpVecs[ii], 0);
+        dveccp_libstr(nx, &work->sresk[ii][0] , 0, &sTmpVecs[ii], 0);
 
         // forward substitution
         for (kk = 0; kk < Nh-1; kk++) {
@@ -987,7 +992,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
     }
 
     // for ii == 0
-    dveccp_libstr(sResNonAnticip[0].m, 1.0, &sResNonAnticip[0], 0, &sRhsNonAnticip[0], 0);
+    dveccp_libstr(sResNonAnticip[0].m, &sResNonAnticip[0], 0, &sRhsNonAnticip[0], 0);
     for (kk = 0; kk < commonNodes[0]; kk++) {
         dgemv_t_libstr(nx, nu, -1.0, &work->sZbar[0][kk], 0, 0,
             &work->sreskMod[0][kk], 0, 1.0, &sRhsNonAnticip[0], kk*nu,
@@ -995,7 +1000,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
     }
 
     for (ii = 1; ii < Ns-1; ii++) {
-        dveccp_libstr(sResNonAnticip[ii].m, 1.0, &sResNonAnticip[ii], 0, &sRhsNonAnticip[ii], 0);
+        dveccp_libstr(sResNonAnticip[ii].m, &sResNonAnticip[ii], 0, &sRhsNonAnticip[ii], 0);
         for (kk = 0; kk < commonNodes[ii-1]; kk++) {
             dgemv_t_libstr(nx, nu, 1.0, &work->sZbar[ii][kk], 0, 0,
                 &work->sreskMod[ii][kk], 0, 1.0, &sRhsNonAnticip[ii-1], kk*nu,
@@ -1056,7 +1061,8 @@ void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_dune_scenarios_
         dimNxt = nu*commonNodes[ii+1];
 
         // flip sign of residual
-        dveccp_libstr(dim, -1.0, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
+        dveccp_libstr(dim, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
+        dvecsc_libstr(dim, -1.0, &sDeltalambda[ii], 0);
 
         // substitution
         dtrsv_lnn_libstr(dim, &sCholJayD[ii], 0, 0, &sDeltalambda[ii], 0,
@@ -1067,7 +1073,8 @@ void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_dune_scenarios_
             &sRhsNonAnticip[ii+1], 0, &sRhsNonAnticip[ii+1], 0);
     }
     // ii = Ns-2 (last part of the loop without the update)
-    dveccp_libstr(dimNxt, -1.0, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
+    dveccp_libstr(dimNxt, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
+    dvecsc_libstr(dimNxt, -1.0, &sDeltalambda[ii], 0);
 
     dtrsv_lnn_libstr(dimNxt, &sCholJayD[ii], 0, 0, &sDeltalambda[ii], 0,
         &sRhsNonAnticip[ii], 0);
@@ -1139,7 +1146,7 @@ void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_work
                 dgemv_n_libstr(nx, nu, 1.0, &work->sZbar[ii][kk], 0, 0,
                 &work->sreskMod[ii][kk], 0, -1.0, &work->sresk[ii][kk], 0,
                     &sTmpVecs[ii], 0);
-                dveccp_libstr(nx, 1.0, &sTmpVecs[ii], 0, &work->sreskMod[ii][kk], 0);
+                dveccp_libstr(nx, &sTmpVecs[ii], 0, &work->sreskMod[ii][kk], 0);
             } else {
                 daxpy_libstr(nx, -1.0, &work->sresk[ii][kk], 0, &work->sreskMod[ii][kk], 0,
                     &work->sreskMod[ii][kk], 0);
@@ -1303,7 +1310,7 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
                 dgemv_t_libstr(nx, nx, -1.0, &sA[idxp1-1], 0, 0, &work->smu[ii][kk+1],
                     0, 1.0, &work->smu[ii][kk], 0, &work->sxUnc[ii][kk], 0);
             } else {
-                dveccp_libstr(nx, 1.0, &work->smu[ii][kk], 0, &work->sxUnc[ii][kk], 0);
+                dveccp_libstr(nx, &work->smu[ii][kk], 0, &work->sxUnc[ii][kk], 0);
             }
             daxpy_libstr(nx, -1.0, &sq[idx], 0, &work->sxUnc[ii][kk], 0, &work->sxUnc[ii][kk], 0);
 
@@ -1313,7 +1320,7 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
                 dveccl_libstr(nx, &sxmin[idx], 0, &work->sxUnc[ii][kk], 0,
                     &sxmax[idx], 0, &work->sx[ii][kk], 0);
             } else {
-                dveccp_libstr(nx, 1.0, &work->sxUnc[ii][kk], 0, &work->sx[ii][kk], 0);
+                dveccp_libstr(nx, &work->sxUnc[ii][kk], 0, &work->sx[ii][kk], 0);
             }
 
             // --- calculate u_opt
@@ -1335,7 +1342,7 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
                 dveccl_libstr(nu, &sumin[idxm1], 0, &work->suUnc[ii][kk], 0,
                     &sumax[idxm1], 0, &work->su[ii][kk], 0);
             } else {
-                dveccp_libstr(nu, 1.0, &work->suUnc[ii][kk], 0, &work->su[ii][kk], 0);
+                dveccp_libstr(nu, &work->suUnc[ii][kk], 0, &work->su[ii][kk], 0);
             }
 
             #ifndef NEW_FVAL
@@ -1778,9 +1785,9 @@ void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_o
             init_strvec(nx, &work->sQinvCal[ii][kk], &c_ptr);
             init_strvec(nu, &work->sRinvCal[ii][kk], &c_ptr);
             // NOTE(dimitris): all states are shifted by one after eliminating x0
-            dveccp_libstr(nx, 1.0, (struct d_strvec*)&qp_in->Qinv[work->nodeIdx[ii][kk+1]], 0,
+            dveccp_libstr(nx, (struct d_strvec*)&qp_in->Qinv[work->nodeIdx[ii][kk+1]], 0,
                 &work->sQinvCal[ii][kk], 0);
-            dveccp_libstr(nu, 1.0, (struct d_strvec*)&qp_in->Rinv[work->nodeIdx[ii][kk]], 0,
+            dveccp_libstr(nu, (struct d_strvec*)&qp_in->Rinv[work->nodeIdx[ii][kk]], 0,
                 &work->sRinvCal[ii][kk], 0);
 
             init_strvec(nx, &work->smu[ii][kk], &c_ptr);
@@ -1927,10 +1934,10 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         for (int_t kk = 0; kk < Nh; kk++) {
             if (work->boundsRemoved[ii][kk+1] == 0) {
                 // printf("saving node (%d, %d) to node %d\n", ii, kk+1, work->nodeIdx[ii][kk+1]);
-                dveccp_libstr(nx, 1.0, &work->sx[ii][kk], 0, &qp_out->x[work->nodeIdx[ii][kk+1]], 0);
+                dveccp_libstr(nx, &work->sx[ii][kk], 0, &qp_out->x[work->nodeIdx[ii][kk+1]], 0);
             }
             if (work->boundsRemoved[ii][kk] == 0) {
-                dveccp_libstr(nu, 1.0, &work->su[ii][kk], 0, &qp_out->u[work->nodeIdx[ii][kk]], 0);
+                dveccp_libstr(nu, &work->su[ii][kk], 0, &qp_out->u[work->nodeIdx[ii][kk]], 0);
             }
         }
     }
