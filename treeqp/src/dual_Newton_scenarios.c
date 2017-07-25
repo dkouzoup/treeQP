@@ -774,8 +774,15 @@ void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work)
             #endif
                 // matrix substitution
                 // D <= B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
+                #ifdef LA_HIGH_PERFORMANCE
+                // NOTE(dimitris): writing directly on sub-block NIY for BLASFEO_HP
+                dtrsm_rltn_libstr(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                    &sTmpMats[ii], 0, 0, &sTmpMats[ii], 0, 0);
+                dgecp_libstr(nu, nx, &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                #else
                 dtrsm_rltn_libstr(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
                     &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                #endif
 
                 // update
                 #ifdef REV_CHOL
