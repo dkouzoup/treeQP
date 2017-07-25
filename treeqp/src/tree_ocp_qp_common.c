@@ -67,6 +67,10 @@ int_t tree_ocp_qp_in_workspace_size(int_t Nn, int_t *nx, int_t *nu, struct node 
         bytes += 2*d_size_strvec(nx[idx]);  // xmin, xmax
         bytes += 2*d_size_strvec(nu[idx]);  // umin, umax
     }
+
+    bytes += (bytes + 63)/64*64;
+    bytes += 64;
+
     return bytes;
 }
 
@@ -123,6 +127,11 @@ void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp
     c_ptr += Nn*sizeof(struct d_strvec);
     qp_in->umax = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
+
+    // align pointer
+    long long l_ptr = (long long) c_ptr;
+	l_ptr = (l_ptr+63)/64*64;
+	c_ptr = (char *) l_ptr;
 
     int_t idx, idxp;
     for (int_t ii = 0; ii < Nn; ii++) {
@@ -225,6 +234,9 @@ int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in) {
         bytes += d_size_strvec(qp_in->nu[kk]);
     }
 
+    bytes += (bytes + 63)/64*64;
+    bytes += 64;
+
     return bytes;
 }
 
@@ -238,6 +250,10 @@ void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp
     c_ptr += Nn*sizeof(struct d_strvec);
     qp_out->u = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
+
+    long long l_ptr = (long long) c_ptr;
+	l_ptr = (l_ptr+63)/64*64;
+	c_ptr = (char *) l_ptr;
 
     for (int_t kk = 0; kk < Nn; kk++) {
         init_strvec(qp_in->nx[kk], &qp_out->x[kk], &c_ptr);

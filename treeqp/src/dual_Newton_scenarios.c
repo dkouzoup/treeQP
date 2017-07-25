@@ -338,14 +338,8 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
             if (kk < Nh-1) {
                 // x[k+1] = mu[k+1] - A[k+1]' * mu[k+2]
                 idxp1 = work->nodeIdx[ii][kk+2];
-                // d_print_strmat(nx, nx, &sA[idxp1-1], 0, 0);
-                // d_print_tran_strvec(nx, &work->sx[ii][kk], 0);
-                // d_print_tran_strvec(nx, &work->smu[ii][kk], 0);
-                // d_print_tran_strvec(nx, &work->smu[ii][kk+1], 0);
-                // printf("ii = %d, kk = %d, idxp1=%d\n", ii, kk, idxp1);
                 dgemv_t_libstr(nx, nx, -1.0, &sA[idxp1-1], 0, 0, &work->smu[ii][kk+1],
                     0, 1.0, &work->smu[ii][kk], 0, &work->sx[ii][kk], 0);
-                // printf("ok\n");
             } else {
                 // x[Nh] = mu[Nh]
                 dveccp_libstr(nx, &work->smu[ii][kk], 0, &work->sx[ii][kk], 0);
@@ -1615,6 +1609,9 @@ int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in) {
     bytes += Ns*d_size_strmat(nu*Nr, Nh*nx);  // Ut
     bytes += Ns*d_size_strmat(nu*Nr, nu*Nr);  // K
 
+    bytes += (bytes + 63)/64*64;  // make multiple of typical cache line size
+    bytes += 64;  // align to typical cache line size
+
     return bytes;
 }
 
@@ -1722,28 +1719,6 @@ void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_o
     work->sTmpVecs = (struct d_strvec *) c_ptr;
     c_ptr += Ns*sizeof(struct d_strvec);
 
-    init_strvec(maxTmpDim, work->regMat, &c_ptr);
-    dvecse_libstr(maxTmpDim, opts->regValue, work->regMat, 0);
-
-    for (ii = 0; ii < Ns; ii++) {
-        init_strmat(nu*Nr, Nh*nx, &work->sUt[ii], &c_ptr);
-        init_strmat(nu*Nr, nu*Nr, &work->sK[ii], &c_ptr);
-        init_strvec(maxTmpDim, &work->sTmpVecs[ii], &c_ptr);
-        init_strmat(nu, nx, &work->sTmpMats[ii], &c_ptr);
-        if (ii < Ns-1) {
-            init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sJayD[ii], &c_ptr);
-            init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sCholJayD[ii], &c_ptr);
-            init_strvec(nu*commonNodes[ii], &work->sResNonAnticip[ii], &c_ptr);
-            init_strvec(nu*commonNodes[ii], &work->sRhsNonAnticip[ii], &c_ptr);
-
-            init_strvec(nu*commonNodes[ii], &work->slambda[ii], &c_ptr);
-            init_strvec(nu*commonNodes[ii], &work->sDeltalambda[ii], &c_ptr);
-        }
-        if (ii < Ns-2) {
-            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sJayL[ii], &c_ptr);
-            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sCholJayL[ii], &c_ptr);
-        }
-    }
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     create_double_ptr_int(&work->xasChanged, Ns, Nh+1, &c_ptr);
@@ -1772,6 +1747,34 @@ void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_o
     create_double_ptr_strvec(&work->sxasPrev, Ns, Nh, &c_ptr);
     create_double_ptr_strvec(&work->suasPrev, Ns, Nh, &c_ptr);
     #endif
+
+    // move pointer for proper alignment of blasfeo matrices and vectors
+    long long l_ptr = (long long) c_ptr;
+	l_ptr = (l_ptr+63)/64*64;
+	c_ptr = (char *) l_ptr;
+
+    init_strvec(maxTmpDim, work->regMat, &c_ptr);
+    dvecse_libstr(maxTmpDim, opts->regValue, work->regMat, 0);
+
+    for (ii = 0; ii < Ns; ii++) {
+        init_strmat(nu*Nr, Nh*nx, &work->sUt[ii], &c_ptr);
+        init_strmat(nu*Nr, nu*Nr, &work->sK[ii], &c_ptr);
+        init_strvec(maxTmpDim, &work->sTmpVecs[ii], &c_ptr);
+        init_strmat(nu, nx, &work->sTmpMats[ii], &c_ptr);
+        if (ii < Ns-1) {
+            init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sJayD[ii], &c_ptr);
+            init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sCholJayD[ii], &c_ptr);
+            init_strvec(nu*commonNodes[ii], &work->sResNonAnticip[ii], &c_ptr);
+            init_strvec(nu*commonNodes[ii], &work->sRhsNonAnticip[ii], &c_ptr);
+
+            init_strvec(nu*commonNodes[ii], &work->slambda[ii], &c_ptr);
+            init_strvec(nu*commonNodes[ii], &work->sDeltalambda[ii], &c_ptr);
+        }
+        if (ii < Ns-2) {
+            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sJayL[ii], &c_ptr);
+            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sCholJayL[ii], &c_ptr);
+        }
+    }
 
     for (ii = 0; ii < Ns; ii++) {
         for (kk = 0; kk < Nh; kk++) {
