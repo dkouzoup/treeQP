@@ -364,7 +364,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
         if (ii > 0) {
             // TODO(dimitris): check that .m/.n of structs coincide with nx/nu
             jj = qp_in->tree[ii].dad;
-            printf("A[%d] = \n", ii-1, qp_in->A[ii-1]);
+            printf("A[%d] = \n", ii-1);
             d_print_strmat(qp_in->nx[ii], qp_in->nx[jj], (struct d_strmat*) &qp_in->A[ii-1], 0, 0);
             printf("B[%d] = \n", ii-1);
             d_print_strmat(qp_in->nx[ii], qp_in->nu[jj], (struct d_strmat *) &qp_in->B[ii-1], 0, 0);
