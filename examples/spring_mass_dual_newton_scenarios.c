@@ -127,7 +127,7 @@ int main() {
     struct node *tree = malloc(Nn*sizeof(struct node));
     setup_tree(md, Nr, Nh, Nn, tree);
 
-    // setup QP input
+    // setup QP
     tree_ocp_qp_in qp_in;
 
     int_t *nx = malloc(Nn*sizeof(int_t));
@@ -148,9 +148,10 @@ int main() {
         }
     }
 
-    int_t qp_in_work_size = tree_ocp_qp_in_workspace_size(Nn, nx, nu, tree);
-    void *qp_in_memory = calloc(qp_in_work_size, sizeof(char));
-    tree_ocp_qp_in_create_workspace(Nn, nx, nu, &qp_in, tree, qp_in_memory);
+    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
+    void *qp_in_memory = malloc(qp_in_size);
+    create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
+
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r, xmin, xmax,
         umin, umax, x0, &qp_in);
@@ -161,19 +162,19 @@ int main() {
     // setup QP solver
     treeqp_dune_scenarios_workspace work;
 
-    int_t treeqp_work_size = treeqp_dune_scenarios_workspace_size(&qp_in);
-    void *qp_solver_memory = calloc(treeqp_work_size, sizeof(char));
-    treeqp_dune_scenarios_create_workspace(&qp_in, &opts, &work, qp_solver_memory);
+    int_t treeqp_size = treeqp_dune_scenarios_calculate_size(&qp_in);
+    void *qp_solver_memory = malloc(treeqp_size);
+    create_treeqp_dune_scenarios(&qp_in, &opts, &work, qp_solver_memory);
 
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
-    int_t qp_out_work_size = tree_ocp_qp_out_workspace_size(&qp_in);
-    void *qp_out_memory = calloc(qp_out_work_size, sizeof(char));
-    tree_ocp_qp_out_create_workspace(&qp_in, &qp_out, qp_out_memory);
+    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
+    void *qp_out_memory = malloc(qp_out_size);
+    create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
 
     #if PRINT_LEVEL > 0
-    printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_work_size);
+    printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
     #if PROFILE > 0

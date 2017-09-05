@@ -30,7 +30,7 @@ include ../Makefile.rule
 OBJS = spring_mass_dual_newton_scenarios.o
 
 obj: $(OBJS)
-	$(CC) -o test.out $(OBJS) -ltreeqp -lblasfeo $(CFLAGS) $(LDFLAGS)
+	$(CC) -o test.out $(OBJS) -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f *.o *.exe *.out

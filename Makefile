@@ -37,10 +37,10 @@ static_library:
 	@echo
 	@echo " libtreeqp.a static library build complete."
 	@echo
-	make -C examples obj # shouldn't be here
 
-examples:
-	./examples/test.exe
+examples: static_library
+	make -C examples obj
+	#./examples/test.out
 
 clean:
 	make -C treeqp/src clean
@@ -48,8 +48,10 @@ clean:
 	make -C examples clean
 	rm -f *.exe *.o *.a
 
-lint:
-	# Generate list of files: skip catch subdirectory, ignore some files, save to project.lnt
-	find . \( -not -path "./tmp/*" \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) ! -name "*blasfeo_d_aux_tmp.h" ! -name  "dims.h" ! -name  "old_*.h" ! -name  "timing.h" ! -name "*data.c" \) > project.lnt
+lint: # TODO(dimitris): fix for Linux, currently works only on mac 
+	# Generate list of files and pass them to lint
+	find . \( -not -path "./tmp/*" -not -path "./external/*" \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) ! -name "*blasfeo_d_aux_tmp.h" ! -name  "dims.h" ! -name  "old_*.h" ! -name  "timing.h" ! -name "*data.c" \) > project.lnt
 	./cpplint.py --filter=-legal/copyright,-readability/casting --counting=detailed --linelength=100 --extensions=c,h,cpp $$(<project.lnt)
 	rm project.lnt
+
+.PHONY: all static_library examples clean lint

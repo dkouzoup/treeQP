@@ -125,10 +125,10 @@ typedef struct {
 } treeqp_dune_options_t;
 
 
-int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in);
+int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);
 
-void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
-    treeqp_dune_scenarios_workspace *work, void *ptr_allocated_memory);
+void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+    treeqp_dune_scenarios_workspace *work, void *ptr);
 
 int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work);

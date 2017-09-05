@@ -77,30 +77,8 @@ void clean_blasfeo_memory(char **ptr) {
 }
 
 
-void wrapper_mat_to_strmat(int_t rows, int_t cols, real_t *A, struct d_strmat *sA, char **ptr) {
-    init_strmat(rows, cols, sA, ptr);
-    d_cvt_mat2strmat(rows, cols, A, rows, sA, 0, 0);
-}
-
-
-void wrapper_vec_to_strvec(int_t rows, real_t *V, struct d_strvec *sV, char **ptr) {
-    init_strvec(rows, sV, ptr);
-    d_cvt_vec2strvec(rows, V, sV, 0);
-}
-
-
-void init_strmat(int_t rows, int_t cols, struct d_strmat *sA, char **ptr) {
-#ifdef __DEBUG__
-    d_allocate_strmat(rows, cols, sA);
-    printf(" -- using dynamically allocated memory for debugging --\n");
-#else
-    d_create_strmat(rows, cols, sA, *ptr);
-    *ptr += sA->memory_size;
-#endif
-}
-
-
-void init_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
+// wrappers to blasfeo create or allocate functions
+static void create_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
 #ifdef __DEBUG__
     d_allocate_strvec(rows, sV);
     printf(" -- using dynamically allocated memory for debugging --\n");
@@ -111,6 +89,44 @@ void init_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
 }
 
 
+static void create_strmat(int_t rows, int_t cols, struct d_strmat *sA, char **ptr) {
+    #ifdef __DEBUG__
+        d_allocate_strmat(rows, cols, sA);
+        printf(" -- using dynamically allocated memory for debugging --\n");
+    #else
+        d_create_strmat(rows, cols, sA, *ptr);
+        *ptr += sA->memory_size;
+    #endif
+}
+
+
+// create and initialize to input data
+void wrapper_vec_to_strvec(int_t rows, real_t *V, struct d_strvec *sV, char **ptr) {
+    create_strvec(rows, sV, ptr);
+    d_cvt_vec2strvec(rows, V, sV, 0);
+}
+
+
+void wrapper_mat_to_strmat(int_t rows, int_t cols, real_t *A, struct d_strmat *sA, char **ptr) {
+    create_strmat(rows, cols, sA, ptr);
+    d_cvt_mat2strmat(rows, cols, A, rows, sA, 0, 0);
+}
+
+
+// create and initialize to zero
+void init_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
+    create_strvec(rows, sV, ptr);
+    dvecse_libstr(rows, 0.0, sV, 0);
+}
+
+
+void init_strmat(int_t rows, int_t cols, struct d_strmat *sA, char **ptr) {
+    create_strmat(rows, cols, sA, ptr);
+    dgese_libstr(rows, cols, 0.0, sA, 0, 0);
+}
+
+
+// allocate and free double pointers
 void malloc_double_ptr_strmat(struct d_strmat ***arr, int_t m, int_t n) {
     int_t ii;
 
@@ -179,15 +195,18 @@ void create_double_ptr_strvec(struct d_strvec ***arr, int_t m, int_t n, char **p
 }
 
 
+// TODO(dimitris): this function is not blasfeo related, rename to e.g. memory_utils?
 void create_double_ptr_int(int_t ***arr, int_t m, int_t n, char **ptr) {
-    int_t ii;
-
     *arr = (int_t **) *ptr;
     *ptr += m*sizeof(int_t*);
 
-    for (ii = 0; ii < m; ii++) {
+    for (int_t ii = 0; ii < m; ii++) {
         (*arr)[ii] = (int_t *) *ptr;
         *ptr += n*sizeof(int_t);
+        // initialize to zero
+        for (int_t jj = 0; jj < n; jj++) {
+            (*arr)[ii][jj] = 0;
+        }
     }
 }
 
