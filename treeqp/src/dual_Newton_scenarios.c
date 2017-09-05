@@ -76,6 +76,7 @@ void check_compiler_flags() {
     #if PRINT_LEVEL == 2 && PROFILE > 0
     printf("\nWarning! Printing hinders timings\n");
     #endif
+    // TODO(dimitris): no DEBUG if CHECK_ACTIVE_SET (not implemented yet)
 }
 
 
