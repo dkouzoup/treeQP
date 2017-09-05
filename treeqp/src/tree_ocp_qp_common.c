@@ -40,7 +40,7 @@
 #include "blasfeo/include/blasfeo_d_blas.h"
 
 
-int_t tree_ocp_qp_in_workspace_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree) {
+int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree) {
     int_t bytes = 0;
 
     bytes += 2*Nn*sizeof(int_t);  // nx, nu
@@ -75,8 +75,8 @@ int_t tree_ocp_qp_in_workspace_size(int_t Nn, int_t *nx, int_t *nu, struct node 
 }
 
 
-void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_in *qp_in,
-    struct node *tree, void *ptr) {
+void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tree_ocp_qp_in *qp_in,
+    void *ptr) {
 
     qp_in->N = Nn;
     qp_in->tree = tree;
@@ -84,16 +84,19 @@ void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp
     // char pointer
     char *c_ptr = (char *) ptr;
 
-    // copy dimensions to workspace
-    for (int_t ii = 0; ii < Nn; ii++)
-        c_ptr[ii*sizeof(int_t)] = nx[ii];
-    for (int_t ii = 0; ii < Nn; ii++)
-        c_ptr[(ii + Nn)*sizeof(int_t)] = nu[ii];
-
+    // copy dimensions to allocated memory
     qp_in->nx = (int_t *) c_ptr;
     c_ptr += Nn*sizeof(int_t);
     qp_in->nu = (int_t *) c_ptr;
     c_ptr += Nn*sizeof(int_t);
+
+    int_t *hnx = (int_t *)qp_in->nx;
+    int_t *hnu = (int_t *)qp_in->nu;
+
+    for (int_t ii = 0; ii < Nn; ii++)
+        hnx[ii] = nx[ii];
+    for (int_t ii = 0; ii < Nn; ii++)
+        hnu[ii] = nu[ii];
 
     // for (int_t ii = 0; ii < Nn; ii++)
     //     printf("NODE %d: NX = %d NU = %d\n", ii, qp_in->nx[ii], qp_in->nu[ii]);
@@ -154,6 +157,7 @@ void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->umin[idx], &c_ptr);
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->umax[idx], &c_ptr);
     }
+    // TODO(dimitris): add assert
 }
 
 
@@ -224,14 +228,14 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
 }
 
 
-int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in) {
-    int_t Nn = qp_in->N;
+int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu) {
+
     int_t bytes = 2*Nn*sizeof(struct d_strvec);  // x, u
 
     // TODO(dimitris): think again about convention of N and N+1
     for (int_t kk = 0; kk < Nn; kk++) {
-        bytes += d_size_strvec(qp_in->nx[kk]);
-        bytes += d_size_strvec(qp_in->nu[kk]);
+        bytes += d_size_strvec(nx[kk]);
+        bytes += d_size_strvec(nu[kk]);
     }
 
     bytes += (bytes + 63)/64*64;
@@ -241,8 +245,8 @@ int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in) {
 }
 
 
-void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, void *ptr) {
-    int_t Nn = qp_in->N;
+void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_out, void *ptr) {
+
     // char pointer
     char *c_ptr = (char *) ptr;
 
@@ -256,8 +260,8 @@ void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp
 	c_ptr = (char *) l_ptr;
 
     for (int_t kk = 0; kk < Nn; kk++) {
-        init_strvec(qp_in->nx[kk], &qp_out->x[kk], &c_ptr);
-        init_strvec(qp_in->nu[kk], &qp_out->u[kk], &c_ptr);
+        init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);
+        init_strvec(nu[kk], &qp_out->u[kk], &c_ptr);
     }
 }
 

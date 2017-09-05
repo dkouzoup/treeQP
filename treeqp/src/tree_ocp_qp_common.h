@@ -64,9 +64,10 @@ typedef struct {
     const struct node *tree;
 } tree_ocp_qp_in;
 
-int_t tree_ocp_qp_in_workspace_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree);
-void tree_ocp_qp_in_create_workspace(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_in *qp_in,
-    struct node *tree, void *ptr);
+int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree);
+void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tree_ocp_qp_in *qp_in,
+    void *ptr);
+
 void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, double *q, double *P,
     double *p, double *R, double *r, double *xmin, double *xmax, double *umin, double *umax,
     double *x0, tree_ocp_qp_in *qp_in);
@@ -78,8 +79,8 @@ typedef struct {
     struct d_strvec *u;
 } tree_ocp_qp_out;
 
-int_t tree_ocp_qp_out_workspace_size(tree_ocp_qp_in *qp_in);
-void tree_ocp_qp_out_create_workspace(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, void *ptr);
+int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);
+void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_out, void *ptr);
 
 real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 

@@ -1524,7 +1524,7 @@ real_t calculate_error_in_residuals(int_t Ns, int_t Nh, termination_t condition,
 }
 
 
-int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in) {
+int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     struct node *tree = (struct node *) qp_in->tree;
     int_t nx = qp_in->nx[1];
     int_t nu = qp_in->nu[0];
@@ -1623,7 +1623,7 @@ int_t treeqp_dune_scenarios_workspace_size(tree_ocp_qp_in *qp_in) {
 }
 
 
-void treeqp_dune_scenarios_create_workspace(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
     treeqp_dune_scenarios_workspace *work, void *ptr_allocated_memory) {
 
     struct node *tree = (struct node *) qp_in->tree;
