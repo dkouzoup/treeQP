@@ -28,6 +28,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef RUNTIME_CHECKS
+#include <assert.h>
+#endif
+
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/blasfeo_utils.h"
 #include "treeqp/utils/tree_utils.h"
@@ -157,7 +161,16 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->umin[idx], &c_ptr);
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->umax[idx], &c_ptr);
     }
-    // TODO(dimitris): add assert
+#ifdef  RUNTIME_CHECKS
+    char *ptrStart = (char *) ptr;
+    char *ptrEnd = c_ptr;
+    int_t bytes = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
+    assert(ptrEnd <= ptrStart + bytes);
+    // TODO(dimitris): Check that the number of bytes lost due to alignment is reasonable
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    // exit(1);
+#endif
 }
 
 
@@ -263,6 +276,15 @@ void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_
         init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->u[kk], &c_ptr);
     }
+#ifdef  RUNTIME_CHECKS
+    char *ptrStart = (char *) ptr;
+    char *ptrEnd = c_ptr;
+    int_t bytes = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
+    assert(ptrEnd <= ptrStart + bytes);
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    // exit(1);
+#endif
 }
 
 

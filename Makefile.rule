@@ -20,6 +20,7 @@ endif
 CFLAGS=
 
 CFLAGS+=-DALG=$(ALG)
+# CFLAGS+=-DRUNTIME_CHECKS
 
 # Enable/disable openmp
 # NOTE(dimitris): to define maximum number of threads type in terminal:

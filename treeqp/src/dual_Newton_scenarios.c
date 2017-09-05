@@ -29,6 +29,10 @@
 #include <stdlib.h>
 #include <math.h>  // for sqrt in 2-norm
 
+#ifdef RUNTIME_CHECKS
+#include <assert.h>
+#endif
+
 // TODO(dimitris): Check if merging all loops wrt scenarios improves openmp siginficantly
 
 #ifdef PARALLEL
@@ -1624,7 +1628,7 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
 
 
 void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
-    treeqp_dune_scenarios_workspace *work, void *ptr_allocated_memory) {
+    treeqp_dune_scenarios_workspace *work, void *ptr) {
 
     struct node *tree = (struct node *) qp_in->tree;
     int_t nx = qp_in->nx[1];
@@ -1649,7 +1653,7 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     work->md = tree[0].nkids;
 
     // char pointer
-    char *c_ptr = (char *) ptr_allocated_memory;
+    char *c_ptr = (char *) ptr;
 
     // calculate number of common nodes between neighboring scenarios
     work->commonNodes = (int_t*) c_ptr;
@@ -1820,6 +1824,16 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
         }
     }
     free(processedNodes);
+
+#ifdef  RUNTIME_CHECKS
+    char *ptrStart = (char *) ptr;
+    char *ptrEnd = c_ptr;
+    int_t bytes = treeqp_dune_scenarios_calculate_size(qp_in);
+    assert(ptrEnd <= ptrStart + bytes);
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    // exit(1);
+#endif
 }
 
 
