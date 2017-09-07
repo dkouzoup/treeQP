@@ -46,7 +46,9 @@ typedef struct treeqp_tdunes_workspace_ {
 
     int_t *npar;  // number of parallel factorizations per stage
 
-    struct d_strmat *sW;
+    struct d_strvec *regMat;  // 1 x 1
+    struct d_strmat *sW;  // 1 x Np
+
 } treeqp_tdunes_workspace;
 
 // Options of QP solver
