@@ -122,7 +122,7 @@ typedef struct {
     // line search options
     real_t lineSearchGamma;
     real_t lineSearchBeta;
-} treeqp_dune_options_t;
+} treeqp_dune_options_t;  // TODO(dimitris): rename to treeqp_sdunes_options_t
 
 
 int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);

@@ -869,8 +869,8 @@ void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, stage_QP *QP, dual_bl
     free(lambda);
 }
 
-int_t treeqp_tdunes_solve(int_t Nn, int_t Np, int_t *npar, struct d_strvec *regMat, stage_QP *stage_QPs,
-    dual_block *dual, tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
+int_t treeqp_tdunes_solve(struct d_strvec *regMat, stage_QP *stage_QPs, dual_block *dual,
+    tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
     int status;
     int idxFactorStart;
@@ -879,6 +879,17 @@ int_t treeqp_tdunes_solve(int_t Nn, int_t Np, int_t *npar, struct d_strvec *regM
     int_t NewtonIter;
 
     struct node *tree = (struct node *)qp_in->tree;
+
+    int_t Nn = work->Nn;
+    int_t Np = work->Np;
+    int_t *npar = work->npar;
+
+    // TEMP!!
+    for (int_t ii = 0; ii < Nn; ii++) {
+        if (ii < Np) {
+            dual[ii].W = &work->sW[ii];
+        }
+    }
 
     // dual Newton iterations
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
@@ -949,6 +960,82 @@ int_t treeqp_tdunes_solve(int_t Nn, int_t Np, int_t *npar, struct d_strvec *regM
 }
 
 
+int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
+    struct node *tree = (struct node *) qp_in->tree;
+    int_t Nn = qp_in->N;
+    int_t Nh = tree[Nn-1].stage;
+    int_t Np = get_number_of_parent_nodes(Nn, tree);
+    int_t bytes = 0;
+    int_t dim;
+
+    int_t nx = qp_in->nx[0];
+
+    bytes += Nh*sizeof(int);  // npar
+
+    // struct pointers
+    bytes += Np*sizeof(struct d_strmat);
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+
+        if (ii < Np) {
+            dim = tree[ii].nkids*nx;
+            #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+            bytes += d_size_strmat(dim + 1, dim);  // W
+            #else
+            bytes += d_size_strmat(dim, dim);  // W
+            #endif
+        }
+    }
+
+    bytes += (bytes + 63)/64*64;
+    bytes += 64;
+
+    return bytes;
+}
+
+
+void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
+    treeqp_tdunes_workspace *work, void *ptr) {
+
+    struct node *tree = (struct node *) qp_in->tree;
+    int_t Nn = qp_in->N;
+    int_t Nh = tree[Nn-1].stage;
+    int_t Np = get_number_of_parent_nodes(Nn, tree);
+    int_t dim;
+
+    // save some useful dimensions to workspace
+    work->Nn = Nn;
+    work->Np = Np;
+
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    // pointers
+    work->npar = (int_t *) c_ptr;
+    c_ptr += Nh*sizeof(int_t);
+    setup_npar(Nh, Nn, tree, work->npar);
+
+    work->sW = (struct d_strmat *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strmat);
+
+    // move pointer for proper alignment of blasfeo matrices and vectors
+    long long l_ptr = (long long) c_ptr;
+    l_ptr = (l_ptr+63)/64*64;
+    c_ptr = (char *) l_ptr;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        if (ii < Np) {
+            dim = tree[ii].nkids*nx;
+            #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+            init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
+            #else
+            init_strmat(dim, dim, &work->sW[ii], &c_ptr);
+            #endif
+        }
+    }
+}
+
+
 int main(int argc, char const *argv[]) {
 
     int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
@@ -963,20 +1050,42 @@ int main(int argc, char const *argv[]) {
     struct node *tree = malloc(Nn*sizeof(struct node));
     setup_tree(md, Nr, Nh, Nn, tree);
 
-    // setup input-output
+    // setup QP
     tree_ocp_qp_in qp_in;
-    tree_ocp_qp_out qp_out;
 
-    // TODO(dimitris):temp
-    qp_in.tree = tree;
-    // ...
+    int_t *nxVec = malloc(Nn*sizeof(int_t));
+    int_t *nuVec = malloc(Nn*sizeof(int_t));
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        // state and input dimensions on each node (only different at root/leaves)
+        if (ii > 0) {
+            nxVec[ii] = nx;
+        } else {
+            // TODO(dimitris): support both with and without eliminating x0
+            nxVec[ii] = nx;
+        }
+
+        if (tree[ii].nkids > 0) {  // not a leaf
+            nuVec[ii] = nu;
+        } else {
+            nuVec[ii] = 0;
+        }
+    }
+
+    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nxVec, nuVec, tree);
+    void *qp_in_memory = malloc(qp_in_size);
+    create_tree_ocp_qp_in(Nn, nxVec, nuVec, tree, &qp_in, qp_in_memory);
+    free(nxVec); free(nuVec);
+
+    // setup output
+    tree_ocp_qp_out qp_out;
 
     // setup QP solver
     treeqp_tdunes_workspace work;
 
-    int_t treeqp_size = 100;  // treeqp_tdunes_calculate_size(&qp_in);
+    int_t treeqp_size = treeqp_tdunes_calculate_size(&qp_in);
     void *qp_solver_memory = malloc(treeqp_size);
-    // create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
+    create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
 
     int_t ii, jj, kk, ll, status_OLD, real, dim, indlam, lsIter, idxFactorStart;
     real_t prob;
@@ -1053,6 +1162,9 @@ int main(int argc, char const *argv[]) {
     int_t memorySize = calculate_blasfeo_memory_size_tree(Nh, Nr, md, nx, nu, tree);
     #if PRINT_LEVEL > 0
     printf("\n-------- Blasfeo requires %d bytes of memory\n\n", memorySize);
+    #endif
+    #if PRINT_LEVEL > 0
+    printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
     void *tmpBlasfeoPtr;
@@ -1246,7 +1358,7 @@ int main(int argc, char const *argv[]) {
         treeqp_tic(&tot_tmr);
         #endif
 
-        treeqp_tdunes_solve(Nn, Np, npar, &regMat, stage_QPs, dual, &qp_in, &qp_out, &opts, &work);
+        treeqp_tdunes_solve(&regMat, stage_QPs, dual, &qp_in, &qp_out, &opts, &work);
 
         #if PROFILE > 0
         total_time = treeqp_toc(&tot_tmr);

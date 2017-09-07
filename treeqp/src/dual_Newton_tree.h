@@ -41,7 +41,12 @@ extern "C" {
 // #include "blasfeo/include/blasfeo_common.h"
 
 typedef struct treeqp_tdunes_workspace_ {
-    int_t dummy;
+    int_t Nn;
+    int_t Np;
+
+    int_t *npar;  // number of parallel factorizations per stage
+
+    struct d_strmat *sW;
 } treeqp_tdunes_workspace;
 
 // Options of QP solver
