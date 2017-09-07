@@ -233,7 +233,7 @@ void print_timers(int_t newtonIter) {
     printf("> > > instead of:\t\t\t %10.4f ms\n", sum_stage_qps_times*1e3);
     printf("\n");
     #endif
-    #ifdef QPDUNES_TREE
+    #if ALG == TREEQP_DUAL_NEWTON_TREE
     printf("PROFILE > 2 not implemented yet.\n");
     #endif
     #endif
@@ -242,12 +242,7 @@ void print_timers(int_t newtonIter) {
 
 void write_timers_to_txt(void) {
     char fname[256];
-    #ifdef QPDUNES_TREE
-    char prefix[] = "data_tree";
-    #endif
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
     char prefix[] = "examples/data_spring_mass";
-    #endif
 
     #if PROFILE > 1
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");

@@ -27,10 +27,11 @@
 
 include ../Makefile.rule
 
-OBJS = spring_mass_dual_newton_scenarios.o
+OBJS = spring_mass_dual_newton_scenarios.o spring_mass_dual_newton_tree.o
 
 obj: $(OBJS)
-	$(CC) -o test.out $(OBJS) -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
+	$(CC) -o mass_spring_sdunes.out spring_mass_dual_newton_scenarios.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
+	$(CC) -o mass_spring_tdunes.out spring_mass_dual_newton_tree.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f *.o *.exe *.out
