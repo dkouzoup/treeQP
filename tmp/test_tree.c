@@ -149,10 +149,11 @@ static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, in
 }
 
 
-static void solve_stage_problems(int_t Nn, stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
+static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
 
     struct d_strvec *slambda = work->slambda;
+    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
 
     #if DEBUG == 1
     int_t indh, indx, indu;
@@ -197,7 +198,7 @@ static void solve_stage_problems(int_t Nn, stage_QP *QP, struct node *tree, tree
                  QP[kk].qmod, 0, QP[kk].qmod, 0);
             if (tree[kk].nkids > 0) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, QP[idxkid].B, 0, 0, &slambda[idxdad], idxpos, 1.0,
+                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                     QP[kk].rmod, 0, QP[kk].rmod, 0);
             }
         }
@@ -334,16 +335,23 @@ static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdune
 }
 
 
-static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
-    struct d_strvec *regMat, int_t *idxFactorStart, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
+static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
+    int_t *idxFactorStart, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
     int_t ii, kk, idxdad, idxpos, idxsib, ns, isLeaf, asDadChanged;
     real_t error;
+
+    int_t Nn = work->Nn;
+    int_t Np = work->Np;
+
+    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strmat *sW = work->sW;
     struct d_strmat *sUt = work->sUt;
     struct d_strvec *sres = work->sres;
     struct d_strvec *sresMod = work->sresMod;
+    struct d_strvec *regMat = work->regMat;
 
     *idxFactorStart = -1;
 
@@ -391,7 +399,7 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, struct node
             idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
-        dgemv_n_libstr(nx, nu, 1.0, QP[kk].B, 0, 0, QP[idxdad].u, 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, QP[idxdad].u, 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // resMod[k] = res[k]
@@ -448,11 +456,11 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, struct node
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nu, 1.0,  QP[kk].B, 0, 0, QP[idxdad].RinvCal, 0, 0.0,
+        dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, QP[idxdad].RinvCal, 0, 0.0,
             QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
-        dsyrk_ln_libstr(nx, nu, 1.0, QP[kk].B, 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
@@ -485,11 +493,11 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, struct node
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
 
             // M = B[idxsib]*Rinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nu, 1.0,  QP[idxsib].B, 0, 0, QP[idxdad].RinvCal, 0, 0.0,
+            dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, QP[idxdad].RinvCal, 0, 0.0,
                 QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
-            dgemm_nt_libstr(nx, nx, nu, 1.0, QP[kk].B, 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
+            dgemm_nt_libstr(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
         }
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -697,9 +705,15 @@ static real_t gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
 }
 
 
-static real_t evaluate_dual_function(int_t Nn, int_t Np, stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
+static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxpos, idxdad;
     real_t fval = 0;
+
+    int_t Nn = work->Nn;
+    int_t Np = work->Np;
+
+    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strvec *slambda = work->slambda;
     #ifdef PARALLEL
@@ -747,7 +761,7 @@ static real_t evaluate_dual_function(int_t Nn, int_t Np, stage_QP *QP, struct no
                  QP[kk].qmod, 0, QP[kk].qmod, 0);
             if (kk < Np) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, QP[idxkid].B, 0, 0, &slambda[idxdad], idxpos, 1.0,
+                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                     QP[kk].rmod, 0, QP[kk].rmod, 0);
             }
         }
@@ -789,7 +803,7 @@ static real_t evaluate_dual_function(int_t Nn, int_t Np, stage_QP *QP, struct no
 }
 
 
-static int_t line_search(int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
+static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
     int_t jj, kk;
 
@@ -806,7 +820,7 @@ static int_t line_search(int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
     real_t tauPrev = 0;
 
     dotProduct = gradient_trans_times_direction(work);
-    fval0 = evaluate_dual_function(Nn, Np, QP, tree, work);
+    fval0 = evaluate_dual_function(qp_in, QP, work);
     // printf(" dot_product = %f\n", dotProduct);
     // printf(" dual_function = %f\n", fval0);
 
@@ -821,7 +835,7 @@ static int_t line_search(int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
         }
 
         // evaluate dual function
-        fval = evaluate_dual_function(Nn, Np, QP, tree, work);
+        fval = evaluate_dual_function(qp_in, QP, work);
         // printf("LS iteration #%d (fval = %f <? %f )\n", jj, fval, fval0 + opts->lineSearchGamma*tau*dotProduct);
 
         // check condition
@@ -928,7 +942,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(Nn, stage_QPs, tree, work);
+        solve_stage_problems(qp_in, Nn, stage_QPs, tree, work);
         #if PROFILE > 2
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -937,7 +951,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        status = build_dual_problem(Nn, Np, stage_QPs, tree, regMat, &idxFactorStart, opts, work);
+        status = build_dual_problem(qp_in, stage_QPs, &idxFactorStart, opts, work);
         #if PROFILE > 2
         build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -963,7 +977,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        lsIter = line_search(Nn, Np, stage_QPs, tree, opts, work);
+        lsIter = line_search(qp_in, Nn, Np, stage_QPs, tree, opts, work);
         #if PROFILE > 2
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1362,11 +1376,9 @@ int main(int argc, char const *argv[]) {
         if (kk > 0) {
             real = tree[kk].real;
             stage_QPs[kk].A = &sA_in[real];
-            stage_QPs[kk].B = &sB_in[real];
             stage_QPs[kk].b = &sb_in[real];
         } else {  // NOTE: dynamics assigned to children nodes
             stage_QPs[kk].A = NULL;
-            stage_QPs[kk].B = NULL;
             stage_QPs[kk].b = NULL;
         }
 

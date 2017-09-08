@@ -24,7 +24,6 @@ typedef struct stage_QP_ {
 
     // dynamics
     struct d_strmat *A;
-    struct d_strmat *B;
     struct d_strvec *b;
 
     // bounds
