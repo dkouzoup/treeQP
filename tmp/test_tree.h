@@ -70,9 +70,6 @@ typedef struct dual_block_ {
     struct d_strvec *lambda;
     struct d_strvec *deltalambda;
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    int_t blockChanged;
-    #endif
 } dual_block;
 
 

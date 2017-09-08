@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-// #include "treeqp/flags.h"
+#include "treeqp/flags.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/types.h"
 // #include "treeqp/utils/tree_utils.h"
@@ -44,7 +44,10 @@ typedef struct treeqp_tdunes_workspace_ {
     int_t Nn;
     int_t Np;
 
-    int_t *npar;  // number of parallel factorizations per stage
+    int_t *npar;  // 1 x Nh: number of parallel factorizations per stage
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    int_t *blockChanged;  // 1 x Np
+    #endif
 
     struct d_strvec *regMat;  // 1 x 1
     struct d_strmat *sW;  // 1 x Np

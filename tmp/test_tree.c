@@ -274,23 +274,26 @@ static void compare_with_previous_active_set(stage_QP *QP, int_t isLeaf) {
 }
 
 
-static int_t find_starting_point_of_factorization(int_t Np, int_t Nn, stage_QP *QP, dual_block *dual, struct node *tree) {
-    int_t kk, nx, idxdad, asDadChanged;
+static int_t find_starting_point_of_factorization(stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
+    int_t idxdad, asDadChanged;
+    int_t Np = work->Np;
     int_t idxFactorStart = Np;
-    for (kk = 0; kk < Np; kk++) {
-        dual[kk].blockChanged = 0;
+    int_t *blockChanged = work->blockChanged;
+
+    for (int_t kk = 0; kk < Np; kk++) {
+        blockChanged[kk] = 0;
     }
 
     // TODO(dimitris):check if it's worth parallelizing
-    // --> CAREFULLY THOUGH since multiple threads right on same memory
-    for (kk = Nn-1; kk > 0; kk--) {
+    // --> CAREFULLY THOUGH since multiple threads write on same memory
+    for (int_t kk = work->Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
         asDadChanged = QP[idxdad].xasChanged | QP[idxdad].uasChanged;
 
-        if (asDadChanged || QP[kk].xasChanged) dual[idxdad].blockChanged = 1;
+        if (asDadChanged || QP[kk].xasChanged) blockChanged[idxdad] = 1;
     }
-    for (kk = Np-1; kk >= 0; kk--) {
-        if (!dual[kk].blockChanged) {
+    for (int_t kk = Np-1; kk >= 0; kk--) {
+        if (!blockChanged[kk]) {
             idxFactorStart--;
         } else {
             break;
@@ -364,7 +367,7 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
         compare_with_previous_active_set(&QP[kk], isLeaf);
     }
     // TODO(dimitris): double check that this indx is correct (not higher s.t. we loose efficiency)
-    *idxFactorStart = find_starting_point_of_factorization(Np, Nn, QP, dual, tree);
+    *idxFactorStart = find_starting_point_of_factorization(QP, tree, work);
     #endif
 
     #ifdef PARALLEL
@@ -990,7 +993,11 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     int_t nx = qp_in->nx[0];
 
-    bytes += Nh*sizeof(int);  // npar
+    bytes += Nh*sizeof(int_t);  // npar
+
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    bytes += Np*sizeof(int_t);  // blockChanged;
+    #endif
 
     // struct pointers
     bytes += 1*sizeof(struct d_strvec);  // regMat
@@ -1045,6 +1052,11 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->npar = (int_t *) c_ptr;
     c_ptr += Nh*sizeof(int_t);
     setup_npar(Nh, Nn, tree, work->npar);
+
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    work->blockChanged = (int_t *) c_ptr;
+    c_ptr += Np*sizeof(int_t);
+    #endif
 
     work->regMat = (struct d_strvec *) c_ptr;
     c_ptr += 1*sizeof(struct d_strvec);
