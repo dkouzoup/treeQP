@@ -304,19 +304,20 @@ static int_t find_starting_point_of_factorization(int_t Np, int_t Nn, stage_QP *
 // TODO(dimitris): one, two, inf norms efficiently in blasfeo?
 // TODO(dimitris): benchmark different stopping criteria
 // TODO(dimitris): check if it is slower or faster when parallelized
-static real_t calculate_error_in_residuals(int_t Np, dual_block *dual, termination_t condition) {
-    int_t ii, kk;
+static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdunes_workspace *work) {
     real_t error = 0;
+    int_t Np = work->Np;
+    struct d_strvec *sres = work->sres;
 
     if ((condition == TREEQP_SUMSQUAREDERRORS) || (condition == TREEQP_TWONORM)) {
-        for (kk = 0; kk < Np; kk++) {
-            error += ddot_libstr(dual[kk].res->m, dual[kk].res, 0, dual[kk].res, 0);
+        for (int_t kk = 0; kk < Np; kk++) {
+            error += ddot_libstr(sres[kk].m, &sres[kk], 0, &sres[kk], 0);
         }
         if (condition == TREEQP_TWONORM) error = sqrt(error);
     } else if (condition == TREEQP_INFNORM) {
-        for (kk = 0; kk < Np; kk++) {
-            for (ii = 0; ii < dual[kk].res->m; ii++) {
-                error = MAX(error, ABS(DVECEL_LIBSTR(dual[kk].res, ii)));
+        for (int_t kk = 0; kk < Np; kk++) {
+            for (int_t ii = 0; ii < sres[kk].m; ii++) {
+                error = MAX(error, ABS(DVECEL_LIBSTR(&sres[kk], ii)));
             }
         }
     } else {
@@ -335,6 +336,9 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
     real_t error;
 
     struct d_strmat *sW = work->sW;
+    struct d_strmat *sUt = work->sUt;
+    struct d_strvec *sres = work->sres;
+    struct d_strvec *sresMod = work->sresMod;
 
     *idxFactorStart = -1;
 
@@ -344,8 +348,8 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
     int_t dimW = 0;
     int_t dimUt = 0;
     for (kk = 0; kk < Np; kk++) {
-        dimW += sW[kk]->n*sW[kk]->n;  // NOTE(dimitris): not m, as it may be equal to n+1
-        if (kk > 0) dimUt += dual[kk].Ut->m*dual[kk].Ut->n;
+        dimW += sW[kk].n*sW[kk].n;  // NOTE(dimitris): not m, as it may be equal to n+1
+        if (kk > 0) dimUt += sUt[kk-1].m*sUt[kk-1].n;
     }
     real_t W[dimW], Ut[dimUt];
     int_t indW = 0;
@@ -375,23 +379,23 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
         // res[k] = b[k] - x[k]
-        daxpy_libstr(nx, -1.0, QP[kk].x, 0, QP[kk].b, 0, dual[idxdad].res, idxpos);
+        daxpy_libstr(nx, -1.0, QP[kk].x, 0, QP[kk].b, 0, &sres[idxdad], idxpos);
 
         // res[k] += A[k]*x[idxdad]
-        dgemv_n_libstr(nx, nx, 1.0, QP[kk].A, 0, 0, QP[idxdad].x, 0, 1.0, dual[idxdad].res,
-            idxpos, dual[idxdad].res, idxpos);
+        dgemv_n_libstr(nx, nx, 1.0, QP[kk].A, 0, 0, QP[idxdad].x, 0, 1.0, &sres[idxdad],
+            idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
-        dgemv_n_libstr(nx, nu, 1.0, QP[kk].B, 0, 0, QP[idxdad].u, 0, 1.0, dual[idxdad].res,
-            idxpos, dual[idxdad].res, idxpos);
+        dgemv_n_libstr(nx, nu, 1.0, QP[kk].B, 0, 0, QP[idxdad].u, 0, 1.0, &sres[idxdad],
+            idxpos, &sres[idxdad], idxpos);
 
         // resMod[k] = res[k]
-        dveccp_libstr(nx, dual[idxdad].res, idxpos, dual[idxdad].resMod, idxpos);
+        dveccp_libstr(nx, &sres[idxdad], idxpos, &sresMod[idxdad], idxpos);
 
     }
 
     // Check termination condition
-    error = calculate_error_in_residuals(Np, dual, opts->termCondition);
+    error = calculate_error_in_residuals(opts->termCondition, work);
     if (error < opts->stationarityTolerance) {
         return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
     }
@@ -407,7 +411,7 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
         asDadChanged = QP[idxdad].xasChanged | QP[idxdad].uasChanged;
         #endif
 
-        // Filling dual[idxdad].W and dual[idxdad].Ut
+        // Filling W[idxdad] and Ut[idxdad-1]
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // TODO(dimitris): if only xasChanged, remove QinvCalPrev and add new
@@ -428,9 +432,8 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
         if (tree[idxdad].dad >= 0) {
         #endif
             // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
-            // dgetr_libstr(nx, nx, -1.0, QP[kk].M, 0, 0, dual[idxdad].Ut, 0, idxpos);
-            dgetr_libstr(nx, nx, QP[kk].M, 0, 0, dual[idxdad].Ut, 0, idxpos);
-            dgesc_libstr(nx, nx, -1.0, dual[idxdad].Ut, 0, idxpos);
+            dgetr_libstr(nx, nx, QP[kk].M, 0, 0, &sUt[idxdad-1], 0, idxpos);
+            dgesc_libstr(nx, nx, -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
         // --- hessian contribution of node (diagonal block of W)
@@ -497,14 +500,14 @@ static return_t build_dual_problem(int_t Nn, int_t Np, stage_QP *QP, dual_block 
 
     #if DEBUG == 1
     for (kk = 0; kk < Np; kk++) {
-        d_cvt_strvec2vec(dual[kk].res->m, dual[kk].res, 0, &res[indres]);
-        indres += dual[kk].res->m;
-        d_cvt_strmat2mat(&sW[kk]->n, &sW[kk]->n, &sW[kk], 0, 0, &W[indW], &sW[kk]->n);
-        indW += &sW[kk]->n*&sW[kk]->n;
+        d_cvt_strvec2vec(sres[kk].m, &sres[kk], 0, &res[indres]);
+        indres += sres[kk].m;
+        d_cvt_strmat2mat(sW[kk].n, sW[kk].n, &sW[kk], 0, 0, &W[indW], sW[kk].n);
+        indW += sW[kk].n*sW[kk].n;
         if (kk > 0) {
-            d_cvt_strmat2mat(dual[kk].Ut->m, dual[kk].Ut->n, dual[kk].Ut, 0, 0,
-                &Ut[indUt], dual[kk].Ut->m);
-            indUt += dual[kk].Ut->m*dual[kk].Ut->n;
+            d_cvt_strmat2mat( sUt[kk-1].m, sUt[kk-1].n, &sUt[kk-1], 0, 0,
+                &Ut[indUt], sUt[kk-1].m);
+            indUt += sUt[kk-1].m*sUt[kk-1].n;
         }
     }
     write_double_vector_to_txt(res, (Nn-1)*nx, "data_tree/res.txt");
@@ -523,7 +526,10 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     int_t icur = Np-1;
 
     struct d_strmat *sW = work->sW;
+    struct d_strmat *sUt = work->sUt;
     struct d_strmat *sCholW = work->sCholW;
+    struct d_strmat *sCholUt = work->sCholUt;
+    struct d_strvec *sresMod = work->sresMod;
 
     #if DEBUG == 1
     int_t dimlam = 0;  // aka (Nn-1)*nx
@@ -554,7 +560,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             #endif
 
             // add resMod in last row of matrix W
-            drowin_libstr(dual[ii].resMod->m, 1.0, dual[ii].resMod, 0, &sW[ii], sW[ii].m-1, 0);
+            drowin_libstr(sresMod[ii].m, 1.0, &sresMod[ii], 0, &sW[ii], sW[ii].m-1, 0);
             // perform Cholesky factorization and backward substitution together
             dpotrf_l_mn_libstr(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
             // extract result of substitution
@@ -563,7 +569,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             #ifdef _CHECK_LAST_ACTIVE_SET_
             } else {
             // perform only vector substitution
-            dtrsv_lnn_libstr(dual[ii].resMod->m, &sCholW[ii], 0, 0, dual[ii].resMod, 0,
+            dtrsv_lnn_libstr(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
                 dual[ii].deltalambda, 0);
             }
             #endif
@@ -580,32 +586,32 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             #endif
 
             // vector substitution
-            dtrsv_lnn_libstr(dual[ii].resMod->m, &sCholW[ii], 0, 0, dual[ii].resMod, 0,
+            dtrsv_lnn_libstr(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
                 dual[ii].deltalambda, 0);
 
             #endif  /* _MERGE_FACTORIZATION_WITH_SUBSTITUTION_ */
 
             // Matrix substitution to calculate transposed factor of parent block
-            dtrsm_rltn_libstr(dual[ii].Ut->m, dual[ii].Ut->n, 1.0, &sCholW[ii], 0, 0,
-                dual[ii].Ut, 0, 0, dual[ii].CholUt, 0, 0);
+            dtrsm_rltn_libstr( sUt[ii-1].m , sUt[ii-1].n, 1.0, &sCholW[ii], 0, 0,
+                &sUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0);
 
             // Symmetric matrix multiplication to update diagonal block of parent
             // NOTE(dimitris): use dgemm_nt_libstr if dsyrk not implemented yet
             idxdad = tree[ii].dad;
             idxpos = tree[ii].idxkid*nx;
-            dsyrk_ln_libstr(dual[ii].CholUt->m, dual[ii].CholUt->n, -1.0,
-                dual[ii].CholUt, 0, 0, dual[ii].CholUt, 0, 0, 1.0, &sW[idxdad], idxpos, idxpos,
-                &sW[idxdad], idxpos, idxpos);
+            dsyrk_ln_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0,
+                &sCholUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0, 1.0,
+                &sW[idxdad], idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
             // Matrix vector multiplication to update vector of parent
-            dgemv_n_libstr(dual[ii].CholUt->m, dual[ii].CholUt->n, -1.0, dual[ii].CholUt, 0, 0,
-                dual[ii].deltalambda, 0, 1.0, dual[idxdad].resMod, idxpos, dual[idxdad].resMod, idxpos);
+            dgemv_n_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
+                dual[ii].deltalambda, 0, 1.0, &sresMod[idxdad], idxpos, &sresMod[idxdad], idxpos);
         }
         icur -= npar[kk];
     }
     #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
     // add resMod in last row of matrix W
-    drowin_libstr(dual[0].resMod->m, 1.0, dual[0].resMod, 0, &sW[0], sW[0].m-1, 0);
+    drowin_libstr(sresMod[0].m, 1.0, &sresMod[0], 0, &sW[0], sW[0].m-1, 0);
     // perform Cholesky factorization and backward substitution together
     dpotrf_l_mn_libstr(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
     // extract result of substitution
@@ -615,7 +621,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     dpotrf_l_libstr(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
 
     // calculate last elements of backward substitution
-    dtrsv_lnn_libstr(dual[0].resMod->m, &sCholW[0], 0, 0, dual[0].resMod, 0,
+    dtrsv_lnn_libstr(sresMod[0].m, &sCholW[0], 0, 0, &sresMod[0], 0,
         dual[0].deltalambda, 0);
     #endif
 
@@ -633,7 +639,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
         for (ii = icur; ii < icur+npar[kk]; ii++) {
             idxdad = tree[ii].dad;
             idxpos = tree[ii].idxkid*nx;
-            dgemv_t_libstr(dual[ii].CholUt->m, dual[ii].CholUt->n, -1.0, dual[ii].CholUt, 0, 0,
+            dgemv_t_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
                 dual[idxdad].deltalambda, idxpos, 1.0, dual[ii].deltalambda, 0, dual[ii].deltalambda, 0);
 
             dtrsv_ltn_libstr(dual[ii].deltalambda->m, &sCholW[ii], 0, 0, dual[ii].deltalambda, 0,
@@ -649,7 +655,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     }
     for (ii = 1; ii < Np; ii++) {
         printf("\nTransposed Cholesky factor of parent block #%d as strmat: \n\n", ii+1);
-        d_print_strmat(dual[ii].CholUt->m, dual[ii].CholUt->n, dual[ii].CholUt, 0, 0);
+        d_print_strmat(sCholUt[ii-1].m, sCholUt[ii-1].n, &sCholUt[ii-1], 0, 0);
     }
 
     printf("\nResult of backward substitution:\n\n");
@@ -673,14 +679,15 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
 }
 
 
-static real_t gradient_trans_times_direction(int_t Np, dual_block *dual) {
-    int_t kk;
+static real_t gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
     real_t ans = 0;
+    struct d_strvec *sres = work->sres;
+    struct d_strvec *sDeltalambda = work->sDeltalambda;
 
-    for (kk = 0; kk < Np; kk++) {
-        ans += ddot_libstr(dual[kk].res->m, dual[kk].res, 0, dual[kk].deltalambda, 0);
+    for (int_t kk = 0; kk < work->Np; kk++) {
+        ans += ddot_libstr(sres[kk].m, &sres[kk], 0, &sDeltalambda[kk], 0);
     }
-    // NOTE: res has was -gradient above
+    // NOTE(dimitris): res has was -gradient above
     return -ans;
 }
 
@@ -777,7 +784,7 @@ static real_t evaluate_dual_function(int_t Nn, int_t Np, stage_QP *QP, dual_bloc
 
 
 static int_t line_search(int_t Nn, int_t Np, stage_QP *QP, dual_block *dual, struct node *tree,
-    treeqp_tdunes_options_t *opts) {
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
     int_t jj, kk;
 
     #if DEBUG == 1
@@ -789,7 +796,7 @@ static int_t line_search(int_t Nn, int_t Np, stage_QP *QP, dual_block *dual, str
     real_t tau = 1;
     real_t tauPrev = 0;
 
-    dotProduct = gradient_trans_times_direction(Np, dual);
+    dotProduct = gradient_trans_times_direction(work);
     fval0 = evaluate_dual_function(Nn, Np, QP, dual, tree);
     // printf(" dot_product = %f\n", dotProduct);
     // printf(" dual_function = %f\n", fval0);
@@ -895,14 +902,12 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs, dual_block *dual,
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
         if (ii < Np) {
-            // dual[ii].W = &work->sW[ii];
-            // dual[ii].CholW = &work->sCholW[ii];
+            dual[ii].deltalambda = &work->sDeltalambda[ii];
+            // dual[ii].lambda = &work->slambda[ii];
+            if (ii > 0) {
+                // dual[ii].CholUt = &work->sCholUt[ii-1];
+            }
         }
-        if (ii > 0) {
-            dual[ii].Ut = &work->sUt[ii-1];
-            dual[ii].CholUt = &work->sCholUt[ii-1];
-        }
-        // NEXT: REMOVE THOSE FIELDS!!!
     }
 
     // dual Newton iterations
@@ -950,7 +955,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs, dual_block *dual,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        lsIter = line_search(Nn, Np, stage_QPs, dual, tree, opts);
+        lsIter = line_search(Nn, Np, stage_QPs, dual, tree, opts, work);
         #if PROFILE > 2
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -991,6 +996,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 1*sizeof(struct d_strvec);  // regMat
     bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
+    bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
 
     // structs
     bytes += d_size_strvec(md*nx);  // regMat
@@ -1004,7 +1010,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
             #else
             bytes += 2*d_size_strmat(dim, dim);  // W, CholW
             #endif
-
+            bytes += 4*d_size_strvec(dim);  // res, resMod, lambda, Deltalambda
             if (ii > 0) {
                 bytes += 2*d_size_strmat(nx, dim);  // Ut, CholUt
             }
@@ -1055,6 +1061,18 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->sCholUt = (struct d_strmat *) c_ptr;
     c_ptr += (Np-1)*sizeof(struct d_strmat);
 
+    work->sres = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
+    work->sresMod = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
+    work->slambda = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
+    work->sDeltalambda = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
     // move pointer for proper alignment of blasfeo matrices and vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
@@ -1073,7 +1091,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             init_strmat(dim, dim, &work->sW[ii], &c_ptr);
             init_strmat(dim, dim, &work->sCholW[ii], &c_ptr);
             #endif
-
+            init_strvec(dim, &work->sres[ii], &c_ptr);
+            init_strvec(dim, &work->sresMod[ii], &c_ptr);
+            init_strvec(dim, &work->slambda[ii], &c_ptr);
+            init_strvec(dim, &work->sDeltalambda[ii], &c_ptr);
             if (ii > 0) {
                 init_strmat(nx, dim, &work->sUt[ii-1], &c_ptr);
                 init_strmat(nx, dim, &work->sCholUt[ii-1], &c_ptr);
@@ -1171,14 +1192,7 @@ int main(int argc, char const *argv[]) {
     struct d_strvec sxmin_in,  sxmax_in;
     struct d_strvec sumin_in, sumax_in;
 
-    // TODO(dimitris): do the same for scenarios
-    struct d_strmat *sUt = malloc((Np-1)*sizeof(struct d_strmat));
-    struct d_strmat *sCholUt = malloc((Np-1)*sizeof(struct d_strmat));
-
-    struct d_strvec *sres = malloc(Np*sizeof(struct d_strvec));
-    struct d_strvec *sresMod = malloc(Np*sizeof(struct d_strvec));
     struct d_strvec *slambda = malloc(Np*sizeof(struct d_strvec));
-    struct d_strvec *sDeltalambda = malloc(Np*sizeof(struct d_strvec));
 
     // q,r + contribution of current dual multipliers
     struct d_strvec *sqmod = malloc(Nn*sizeof(struct d_strvec));
@@ -1283,27 +1297,13 @@ int main(int argc, char const *argv[]) {
         }
     }
 
+    // TODO(dimitris): read x0 properly
     indlam = nx;  // NOTE: we skip lambda[0] which is zero by convention
     for (kk = 0; kk < Np; kk++) {
         dim = tree[kk].nkids*nx;
-        init_strvec(dim, &sres[kk], &blasfeoPtr);
-        dual[kk].res = &sres[kk];
-        init_strvec(dim, &sresMod[kk], &blasfeoPtr);
-        dual[kk].resMod = &sresMod[kk];
         wrapper_vec_to_strvec(dim, &lambda[indlam], &slambda[kk], &blasfeoPtr);
         indlam += dim;
         dual[kk].lambda = &slambda[kk];
-        init_strvec(dim, &sDeltalambda[kk], &blasfeoPtr);
-        dual[kk].deltalambda = &sDeltalambda[kk];
-        if (kk > 0) {
-            init_strmat(nx, dim, &sUt[kk-1], &blasfeoPtr);
-            dual[kk].Ut = &sUt[kk-1];
-            init_strmat(nx, dim, &sCholUt[kk-1], &blasfeoPtr);
-            dual[kk].CholUt = &sCholUt[kk-1];
-        } else {
-            dual[kk].Ut = NULL;
-            dual[kk].CholUt = NULL;
-        }
     }
 
     // build stage_QPs
@@ -1418,12 +1418,7 @@ int main(int argc, char const *argv[]) {
     free(dual);
     free(sqmod);
     free(srmod);
-    free(sUt);
-    free(sCholUt);
-    free(sres);
-    free(sresMod);
     free(slambda);
-    free(sDeltalambda);
     free(sx);
     free(su);
     free(sxas);

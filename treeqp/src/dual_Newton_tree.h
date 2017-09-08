@@ -51,6 +51,10 @@ typedef struct treeqp_tdunes_workspace_ {
     struct d_strmat *sCholW;  // 1 x Np
     struct d_strmat *sUt;  // 1 x (Np-1)
     struct d_strmat *sCholUt;  // 1 x (Np-1)
+    struct d_strvec *sres;  // 1 x Np
+    struct d_strvec *sresMod;  // 1 x Np
+    struct d_strvec *slambda;  // 1 x Np
+    struct d_strvec *sDeltalambda;  // 1 x Np
 
 } treeqp_tdunes_workspace;
 
