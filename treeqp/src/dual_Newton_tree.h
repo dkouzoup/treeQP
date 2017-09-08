@@ -48,6 +48,9 @@ typedef struct treeqp_tdunes_workspace_ {
 
     struct d_strvec *regMat;  // 1 x 1
     struct d_strmat *sW;  // 1 x Np
+    struct d_strmat *sCholW;  // 1 x Np
+    struct d_strmat *sUt;  // 1 x (Np-1)
+    struct d_strmat *sCholUt;  // 1 x (Np-1)
 
 } treeqp_tdunes_workspace;
 

@@ -73,7 +73,6 @@ typedef struct dual_block_ {
     struct d_strvec *resMod;  // modified gradient in substitution phase
 
     struct d_strmat *Ut;  // parent block
-    struct d_strmat *CholW;  // diagonal block of Cholesky factor of Hessian
     struct d_strmat *CholUt; // parent block of Cholesky factor of Hessian
 
     #ifdef _CHECK_LAST_ACTIVE_SET_

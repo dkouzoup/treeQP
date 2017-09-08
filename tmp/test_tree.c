@@ -29,7 +29,7 @@
 
 #include "./data.c"
 
-// #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+#define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
 // TODO(dimitris): on-the-fly regularization
 // TODO(dimitris): different types of line-search
@@ -523,6 +523,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     int_t icur = Np-1;
 
     struct d_strmat *sW = work->sW;
+    struct d_strmat *sCholW = work->sCholW;
 
     #if DEBUG == 1
     int_t dimlam = 0;  // aka (Nn-1)*nx
@@ -555,14 +556,14 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             // add resMod in last row of matrix W
             drowin_libstr(dual[ii].resMod->m, 1.0, dual[ii].resMod, 0, &sW[ii], sW[ii].m-1, 0);
             // perform Cholesky factorization and backward substitution together
-            dpotrf_l_mn_libstr(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, dual[ii].CholW, 0, 0);
+            dpotrf_l_mn_libstr(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
             // extract result of substitution
-            drowex_libstr(dual[ii].deltalambda->m, 1.0, dual[ii].CholW, dual[ii].CholW->m-1, 0, dual[ii].deltalambda, 0);
+            drowex_libstr(dual[ii].deltalambda->m, 1.0, &sCholW[ii], sCholW[ii].m-1, 0, dual[ii].deltalambda, 0);
 
             #ifdef _CHECK_LAST_ACTIVE_SET_
             } else {
             // perform only vector substitution
-            dtrsv_lnn_libstr(dual[ii].resMod->m, dual[ii].CholW, 0, 0, dual[ii].resMod, 0,
+            dtrsv_lnn_libstr(dual[ii].resMod->m, &sCholW[ii], 0, 0, dual[ii].resMod, 0,
                 dual[ii].deltalambda, 0);
             }
             #endif
@@ -573,19 +574,19 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             if (ii < idxFactorStart) {
             #endif
             // Cholesky factorization to calculate factor of current diagonal block
-            dpotrf_l_libstr(sW[ii].n, &sW[ii], 0, 0, dual[ii].CholW, 0, 0);
+            dpotrf_l_libstr(sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
             #ifdef _CHECK_LAST_ACTIVE_SET_
             }  // TODO(dimitris): we can probably skip more calculations (see scenarios)
             #endif
 
             // vector substitution
-            dtrsv_lnn_libstr(dual[ii].resMod->m, dual[ii].CholW, 0, 0, dual[ii].resMod, 0,
+            dtrsv_lnn_libstr(dual[ii].resMod->m, &sCholW[ii], 0, 0, dual[ii].resMod, 0,
                 dual[ii].deltalambda, 0);
 
             #endif  /* _MERGE_FACTORIZATION_WITH_SUBSTITUTION_ */
 
             // Matrix substitution to calculate transposed factor of parent block
-            dtrsm_rltn_libstr(dual[ii].Ut->m, dual[ii].Ut->n, 1.0, dual[ii].CholW, 0, 0,
+            dtrsm_rltn_libstr(dual[ii].Ut->m, dual[ii].Ut->n, 1.0, &sCholW[ii], 0, 0,
                 dual[ii].Ut, 0, 0, dual[ii].CholUt, 0, 0);
 
             // Symmetric matrix multiplication to update diagonal block of parent
@@ -606,15 +607,15 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     // add resMod in last row of matrix W
     drowin_libstr(dual[0].resMod->m, 1.0, dual[0].resMod, 0, &sW[0], sW[0].m-1, 0);
     // perform Cholesky factorization and backward substitution together
-    dpotrf_l_mn_libstr(sW[0].m, sW[0].n, &sW[0], 0, 0, dual[0].CholW, 0, 0);
+    dpotrf_l_mn_libstr(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
     // extract result of substitution
-    drowex_libstr(dual[0].deltalambda->m, 1.0, dual[0].CholW, dual[0].CholW->m-1, 0, dual[0].deltalambda, 0);
+    drowex_libstr(dual[0].deltalambda->m, 1.0, &sCholW[0], sCholW[0].m-1, 0, dual[0].deltalambda, 0);
     #else
     // calculate Cholesky factor of root block
-    dpotrf_l_libstr(sW[0].m, &sW[0], 0, 0, dual[0].CholW, 0, 0);
+    dpotrf_l_libstr(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
 
     // calculate last elements of backward substitution
-    dtrsv_lnn_libstr(dual[0].resMod->m, dual[0].CholW, 0, 0, dual[0].resMod, 0,
+    dtrsv_lnn_libstr(dual[0].resMod->m, &sCholW[0], 0, 0, dual[0].resMod, 0,
         dual[0].deltalambda, 0);
     #endif
 
@@ -622,7 +623,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
 
     icur = 1;
 
-    dtrsv_ltn_libstr(dual[0].deltalambda->m, dual[0].CholW, 0, 0, dual[0].deltalambda, 0,
+    dtrsv_ltn_libstr(dual[0].deltalambda->m, &sCholW[0], 0, 0, dual[0].deltalambda, 0,
         dual[0].deltalambda, 0);
 
     for (kk = 1; kk < Nh; kk++) {
@@ -635,7 +636,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
             dgemv_t_libstr(dual[ii].CholUt->m, dual[ii].CholUt->n, -1.0, dual[ii].CholUt, 0, 0,
                 dual[idxdad].deltalambda, idxpos, 1.0, dual[ii].deltalambda, 0, dual[ii].deltalambda, 0);
 
-            dtrsv_ltn_libstr(dual[ii].deltalambda->m, dual[ii].CholW, 0, 0, dual[ii].deltalambda, 0,
+            dtrsv_ltn_libstr(dual[ii].deltalambda->m, &sCholW[ii], 0, 0, dual[ii].deltalambda, 0,
                 dual[ii].deltalambda, 0);
         }
         icur += npar[kk];
@@ -644,7 +645,7 @@ static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int
     #if PRINT_LEVEL > 2
     for (ii = 0; ii < Np; ii++) {
         printf("\nCholesky factor of diagonal block #%d as strmat: \n\n", ii+1);
-        d_print_strmat(dual[ii].CholW->m, dual[ii].CholW->n, dual[ii].CholW, 0, 0);
+        d_print_strmat( sCholW[ii].m, sCholW[ii].n, &sCholW[ii], 0, 0);
     }
     for (ii = 1; ii < Np; ii++) {
         printf("\nTransposed Cholesky factor of parent block #%d as strmat: \n\n", ii+1);
@@ -895,7 +896,13 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs, dual_block *dual,
     for (int_t ii = 0; ii < Nn; ii++) {
         if (ii < Np) {
             // dual[ii].W = &work->sW[ii];
+            // dual[ii].CholW = &work->sCholW[ii];
         }
+        if (ii > 0) {
+            dual[ii].Ut = &work->sUt[ii-1];
+            dual[ii].CholUt = &work->sCholUt[ii-1];
+        }
+        // NEXT: REMOVE THOSE FIELDS!!!
     }
 
     // dual Newton iterations
@@ -982,7 +989,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     // struct pointers
     bytes += 1*sizeof(struct d_strvec);  // regMat
-    bytes += Np*sizeof(struct d_strmat);  // W
+    bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
+    bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
 
     // structs
     bytes += d_size_strvec(md*nx);  // regMat
@@ -992,10 +1000,14 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         if (ii < Np) {
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-            bytes += d_size_strmat(dim + 1, dim);  // W
+            bytes += 2*d_size_strmat(dim + 1, dim);  // W, CholW
             #else
-            bytes += d_size_strmat(dim, dim);  // W
+            bytes += 2*d_size_strmat(dim, dim);  // W, CholW
             #endif
+
+            if (ii > 0) {
+                bytes += 2*d_size_strmat(nx, dim);  // Ut, CholUt
+            }
         }
     }
 
@@ -1034,6 +1046,15 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->sW = (struct d_strmat *) c_ptr;
     c_ptr += Np*sizeof(struct d_strmat);
 
+    work->sCholW = (struct d_strmat *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strmat);
+
+    work->sUt = (struct d_strmat *) c_ptr;
+    c_ptr += (Np-1)*sizeof(struct d_strmat);
+
+    work->sCholUt = (struct d_strmat *) c_ptr;
+    c_ptr += (Np-1)*sizeof(struct d_strmat);
+
     // move pointer for proper alignment of blasfeo matrices and vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
@@ -1047,9 +1068,16 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
             init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
+            init_strmat(dim+1, dim, &work->sCholW[ii], &c_ptr);
             #else
             init_strmat(dim, dim, &work->sW[ii], &c_ptr);
+            init_strmat(dim, dim, &work->sCholW[ii], &c_ptr);
             #endif
+
+            if (ii > 0) {
+                init_strmat(nx, dim, &work->sUt[ii-1], &c_ptr);
+                init_strmat(nx, dim, &work->sCholUt[ii-1], &c_ptr);
+            }
         }
     }
 
@@ -1145,7 +1173,6 @@ int main(int argc, char const *argv[]) {
 
     // TODO(dimitris): do the same for scenarios
     struct d_strmat *sUt = malloc((Np-1)*sizeof(struct d_strmat));
-    struct d_strmat *sCholW = malloc(Np*sizeof(struct d_strmat));
     struct d_strmat *sCholUt = malloc((Np-1)*sizeof(struct d_strmat));
 
     struct d_strvec *sres = malloc(Np*sizeof(struct d_strvec));
@@ -1268,13 +1295,6 @@ int main(int argc, char const *argv[]) {
         dual[kk].lambda = &slambda[kk];
         init_strvec(dim, &sDeltalambda[kk], &blasfeoPtr);
         dual[kk].deltalambda = &sDeltalambda[kk];
-        #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-        init_strmat(dim+1, dim, &sCholW[kk], &blasfeoPtr);
-        dual[kk].CholW = &sCholW[kk];
-        #else
-        init_strmat(dim, dim, &sCholW[kk], &blasfeoPtr);
-        dual[kk].CholW = &sCholW[kk];
-        #endif
         if (kk > 0) {
             init_strmat(nx, dim, &sUt[kk-1], &blasfeoPtr);
             dual[kk].Ut = &sUt[kk-1];
@@ -1399,7 +1419,6 @@ int main(int argc, char const *argv[]) {
     free(sqmod);
     free(srmod);
     free(sUt);
-    free(sCholW);
     free(sCholUt);
     free(sres);
     free(sresMod);
