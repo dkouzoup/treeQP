@@ -58,17 +58,13 @@ typedef struct stage_QP_ {
 
 } stage_QP;
 
-// Note(dimitris):
+// TODO(dimitris): outdated?
+// NOTE(dimitris):
 // - There are as many Hessian blocks on the diagonal as parent nodes in the tree
 // - Each of those blocks except for the root has a lower diagonal block from its parent
 // - The upper diagonal blocks from the children are neglected due to symmetry
 // - Dimension of block k is (nc[k]*nx) x (nc[k]*nx), where nc[k] = tree[k].nkids
 // - Dimension of parent block is (nc[k]*nx) x nx
-
-typedef struct dual_block_ {
-
-} dual_block;
-
 
 // Options of QP solver
 typedef struct
