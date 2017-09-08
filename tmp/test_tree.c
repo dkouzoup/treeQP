@@ -948,6 +948,14 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         }
     }
 
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    for (int_t ii = 0; ii < Nn; ii++) {
+        dvecse_libstr(stage_QPs[ii].xasPrev->m, 0.0/0.0, stage_QPs[ii].xasPrev, 0);
+        if (ii < Np)
+            dvecse_libstr(stage_QPs[ii].uasPrev->m, 0.0/0.0, stage_QPs[ii].uasPrev, 0);
+    }
+    #endif
+
     // dual Newton iterations
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
         #if PROFILE > 1
