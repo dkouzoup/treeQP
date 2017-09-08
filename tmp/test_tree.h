@@ -9,7 +9,6 @@ extern "C" {
 #include "treeqp/flags.h"
 #include "treeqp/utils/types.h"
 
-// #include "acados/utils/types.h"
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 

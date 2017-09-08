@@ -996,7 +996,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     int_t bytes = 0;
     int_t dim;
 
-    int_t nx = qp_in->nx[0];
+    int_t nx = qp_in->nx[1];
 
     bytes += Nh*sizeof(int_t);  // npar
 
@@ -1140,13 +1140,21 @@ void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspa
 
 int main(int argc, char const *argv[]) {
 
+    return_t status;
     int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
 
     treeqp_tdunes_options_t opts = set_default_options();
 
-    // TODO(dimitris): implement those
     // read initial point from txt file
+    int_t nl = Nn*nx;  // number of dual variables
+    real_t *lambda = malloc(Nn*nx*sizeof(real_t));
+    status = read_double_vector_from_txt(lambda, nl, "data_tree/lambda0.txt");
+    if (status != TREEQP_OK) return -1;
+
     // read constraint on x0 from txt file
+    real_t x0[nx];
+    status = read_double_vector_from_txt(x0, nx, "data_tree/x0.txt");
+    if (status != TREEQP_OK) return status;
 
     // setup scenario tree
     struct node *tree = malloc(Nn*sizeof(struct node));
@@ -1164,7 +1172,7 @@ int main(int argc, char const *argv[]) {
             nxVec[ii] = nx;
         } else {
             // TODO(dimitris): support both with and without eliminating x0
-            nxVec[ii] = nx;
+            nxVec[ii] = 0;
         }
 
         if (tree[ii].nkids > 0) {  // not a leaf
@@ -1177,10 +1185,10 @@ int main(int argc, char const *argv[]) {
     int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nxVec, nuVec, tree);
     void *qp_in_memory = malloc(qp_in_size);
     create_tree_ocp_qp_in(Nn, nxVec, nuVec, tree, &qp_in, qp_in_memory);
-    free(nxVec); free(nuVec);
 
-    // setup output
-    tree_ocp_qp_out qp_out;
+    // NOTE(dimitris): skipping first dynamics that represent the nominal ones
+    tree_ocp_qp_in_fill_lti_data(&A[nx*nx], &B[nx*nu], &b[nx], dQ, q, dP, p, dR, r, xmin, xmax,
+        umin, umax, x0, &qp_in);
 
     // setup QP solver
     treeqp_tdunes_workspace work;
@@ -1189,9 +1197,17 @@ int main(int argc, char const *argv[]) {
     void *qp_solver_memory = malloc(treeqp_size);
     create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
 
-    int_t ii, jj, kk, ll, status_OLD, real, dim, indlam, lsIter, idxFactorStart;
+    // setup QP solution
+    tree_ocp_qp_out qp_out;
+
+    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nxVec, nuVec);
+    void *qp_out_memory = malloc(qp_out_size);
+    create_tree_ocp_qp_out(Nn, nxVec, nuVec, &qp_out, qp_out_memory);
+
+    // ----------------------- OLD STUFF BELOW -----------------------------------------------------
+
+    int_t ii, jj, kk, ll, real;
     real_t prob;
-    return_t status;
 
     int_t Np = get_number_of_parent_nodes(Nn, tree);  // = Nn - ipow(md, Nr), for the standard case
 
@@ -1203,20 +1219,7 @@ int main(int argc, char const *argv[]) {
     for (ii = 0; ii < nx; ii++) dPinv[ii] = 1./dP[ii];
     for (ii = 0; ii < nu; ii++) dRinv[ii] = 1./dR[ii];
 
-    int_t nl = Nn*nx;  // number of dual variables
-
-    real_t error;
-
-    #ifndef _HARDCODE_INITIAL_POINT_
-    real_t x0[nx], lambda[nl];  // TODO(dimitris): use malloc here too.
-
-    status = read_double_vector_from_txt(x0, nx, "data_tree/x0.txt");
-    if (status != TREEQP_OK) return status;
-    status = read_double_vector_from_txt(lambda, nl, "data_tree/lambda0.txt");
-    if (status != TREEQP_OK) return status;
-    #endif
-
-    struct d_strvec regMat, sx0;
+    struct d_strvec sx0;
 
     struct d_strmat sA_in[md], sB_in[md];
     struct d_strvec sb_in[md];
@@ -1300,8 +1303,6 @@ int main(int argc, char const *argv[]) {
     wrapper_vec_to_strvec(nx, xmax, &sxmax_in, &blasfeoPtr);
     wrapper_vec_to_strvec(nu, umin, &sumin_in, &blasfeoPtr);
     wrapper_vec_to_strvec(nu, umax, &sumax_in, &blasfeoPtr);
-    init_strvec(md*nx, &regMat, &blasfeoPtr);
-    dvecse_libstr(md*nx, opts.regValue, &regMat, 0);
 
     for (kk = 0; kk < Nn; kk++) {
             init_strvec(nx, &sx[kk], &blasfeoPtr);
@@ -1399,6 +1400,8 @@ int main(int argc, char const *argv[]) {
         }
     }
 
+    // ----------------------- OLD STUFF ABOVE -----------------------------------------------------
+
     #if PROFILE > 0
     initialize_timers( );
     #endif
@@ -1442,6 +1445,12 @@ int main(int argc, char const *argv[]) {
     free(sWdiag);
     #endif
     free(sM);
+
+    free(lambda);
+    free(qp_in_memory);
+    free(qp_solver_memory);
+    free(qp_out_memory);
+    free(nxVec); free(nuVec);
 
     // TODO(dimitris): why do I get an error when I use c_align/free instead?
     v_free(tmpBlasfeoPtr);
