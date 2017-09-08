@@ -67,9 +67,6 @@ typedef struct stage_QP_ {
 
 typedef struct dual_block_ {
 
-    struct d_strvec *lambda;
-    struct d_strvec *deltalambda;
-
 } dual_block;
 
 
