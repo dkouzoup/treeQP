@@ -22,15 +22,9 @@ typedef struct stage_QP_ {
     struct d_strvec *Qinv;
     struct d_strvec *Rinv;
 
-    // iterates
-    struct d_strvec *x;
-    struct d_strvec *u;
-
     // intermediate results
     struct d_strvec *qmod;
     struct d_strvec *rmod;
-    struct d_strvec *xas;
-    struct d_strvec *uas;
     #ifdef _CHECK_LAST_ACTIVE_SET_
     struct d_strvec *xasPrev;
     struct d_strvec *uasPrev;

@@ -59,6 +59,11 @@ typedef struct treeqp_tdunes_workspace_ {
     struct d_strvec *slambda;  // 1 x Np
     struct d_strvec *sDeltalambda;  // 1 x Np
 
+    struct d_strvec *sx;  // 1 x Nn
+    struct d_strvec *su;  // 1 x Np
+    struct d_strvec *sxas;  // 1 x Nn
+    struct d_strvec *suas;  // 1 x Np
+
 } treeqp_tdunes_workspace;
 
 // Options of QP solver

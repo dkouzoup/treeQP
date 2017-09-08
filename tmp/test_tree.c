@@ -153,6 +153,11 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
 
     struct d_strvec *slambda = work->slambda;
+    struct d_strvec *sx = (struct d_strvec *) work->sx;
+    struct d_strvec *su = (struct d_strvec *) work->su;
+    struct d_strvec *sxas = (struct d_strvec *) work->sxas;
+    struct d_strvec *suas = (struct d_strvec *) work->suas;
+
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
     struct d_strvec *sQinv = (struct d_strvec *) qp_in->Qinv;
@@ -212,37 +217,37 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, QP[kk].x, 0);
+        dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        dveccl_mask_libstr(nx, &sxmin[kk], 0, QP[kk].x, 0, &sxmax[kk], 0, QP[kk].x, 0,
-            QP[kk].xas, 0);
+        dveccl_mask_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0,
+            &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        dvecze_libstr(nx, QP[kk].xas, 0, QP[kk].Qinv, 0, QP[kk].QinvCal, 0);
+        dvecze_libstr(nx, &sxas[kk], 0, QP[kk].Qinv, 0, QP[kk].QinvCal, 0);
 
         if (tree[kk].nkids > 0) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, QP[kk].u, 0);
+            dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax), uas[k] = active set
-            dveccl_mask_libstr(nu, &sumin[kk], 0, QP[kk].u, 0, &sumax[kk], 0, QP[kk].u, 0,
-                QP[kk].uas, 0);
+            dveccl_mask_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
+                &suas[kk], 0);
 
             // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-            dvecze_libstr(nu, QP[kk].uas, 0, QP[kk].Rinv, 0, QP[kk].RinvCal, 0);
+            dvecze_libstr(nu, &suas[kk], 0, QP[kk].Rinv, 0, QP[kk].RinvCal, 0);
         }
     }
 
     #if DEBUG == 1
     for (kk = 0; kk < Nn; kk++) {
         d_cvt_strvec2vec(nx, QP[kk].qmod, 0, &hmod[indh]);
-        d_cvt_strvec2vec(nx, QP[kk].x, 0, &xit[indx]);
+        d_cvt_strvec2vec(nx, &sx[kk], 0, &xit[indx]);
         d_cvt_strvec2vec(nx, QP[kk].QinvCal, 0, &QinvCal[indx]);
         indh += nx;
         indx += nx;
         if (tree[kk].nkids > 0) {
             d_cvt_strvec2vec(nu, QP[kk].rmod, 0, &hmod[indh]);
-            d_cvt_strvec2vec(nu, QP[kk].u, 0, &uit[indu]);
+            d_cvt_strvec2vec(nu, &su[kk], 0, &uit[indu]);
             d_cvt_strvec2vec(nx, QP[kk].RinvCal, 0, &RinvCal[indu]);
             indh += nu;
             indu += nu;
@@ -259,27 +264,29 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
 
 #ifdef _CHECK_LAST_ACTIVE_SET_
 
-static void compare_with_previous_active_set(stage_QP *QP, int_t isLeaf) {
-    int_t ii;
+static void compare_with_previous_active_set(stage_QP *QP, int_t isLeaf, int_t indx, treeqp_tdunes_workspace *work) {
+
+    struct d_strvec *sxas = &work->sxas[indx];
+    struct d_strvec *suas = &work->suas[indx];
 
     QP->xasChanged = 0;
-    for (ii = 0; ii < QP->x->m; ii++) {
-        if ( DVECEL_LIBSTR(QP->xas, ii) != DVECEL_LIBSTR(QP->xasPrev, ii)) {
+    for (int_t ii = 0; ii < sxas->m; ii++) {
+        if (DVECEL_LIBSTR(sxas, ii) != DVECEL_LIBSTR(QP->xasPrev, ii)) {
             QP->xasChanged = 1;
             break;
         }
     }
-    dveccp_libstr(QP->x->m, QP->xas, 0, QP->xasPrev, 0);
+    dveccp_libstr(sxas->m, sxas, 0, QP->xasPrev, 0);
 
     if (!isLeaf) {
         QP->uasChanged = 0;
-        for (ii = 0; ii < QP->u->m; ii++) {
-            if ( DVECEL_LIBSTR(QP->uas, ii) != DVECEL_LIBSTR(QP->uasPrev, ii)) {
+        for (int_t ii = 0; ii < suas->m; ii++) {
+            if (DVECEL_LIBSTR(suas, ii) != DVECEL_LIBSTR(QP->uasPrev, ii)) {
                 QP->uasChanged = 1;
                 break;
             }
         }
-        dveccp_libstr(QP->u->m, QP->uas, 0, QP->uasPrev, 0);
+        dveccp_libstr(suas->m, suas, 0, QP->uasPrev, 0);
     }
 }
 
@@ -356,6 +363,10 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
     struct node *tree = (struct node *)qp_in->tree;
 
+    struct d_strvec *sx = work->sx;
+    struct d_strvec *su = work->su;
+    // struct d_strvec *sxas = work->sxas;
+    // struct d_strvec *suas = work->suas;
     struct d_strmat *sW = work->sW;
     struct d_strmat *sUt = work->sUt;
     struct d_strvec *sres = work->sres;
@@ -383,11 +394,12 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     for (kk = Nn-1; kk >= 0; kk--) {
         isLeaf = (tree[kk].nkids > 0 ? 0:1);
         // NOTE(dimitris): updates both xasChanged/uasChanged and xasPrev/uasPrev
-        compare_with_previous_active_set(&QP[kk], isLeaf);
+        compare_with_previous_active_set(&QP[kk], isLeaf, kk, work);
     }
     // TODO(dimitris): double check that this indx is correct (not higher s.t. we loose efficiency)
     *idxFactorStart = find_starting_point_of_factorization(QP, tree, work);
     #endif
+    printf("RESTART FACTORIZATION AT %d BLOCK\n", *idxFactorStart);
 
     #ifdef PARALLEL
     #pragma omp parallel for private(idxdad, idxpos)
@@ -401,14 +413,14 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
         // res[k] = b[k] - x[k]
-        daxpy_libstr(nx, -1.0, QP[kk].x, 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
+        daxpy_libstr(nx, -1.0, &sx[kk], 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
 
         // res[k] += A[k]*x[idxdad]
-        dgemv_n_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, QP[idxdad].x, 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sx[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
-        dgemv_n_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, QP[idxdad].u, 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &su[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // resMod[k] = res[k]
@@ -721,6 +733,11 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
+    struct d_strvec *sx = work->sx;
+    struct d_strvec *su = work->su;
+    struct d_strvec *sxas = work->sxas;
+    struct d_strvec *suas = work->suas;
+
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
@@ -784,16 +801,16 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, QP[kk].x, 0);
+        dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax)
-        dveccl_libstr(nx, &sxmin[kk], 0, QP[kk].x, 0, &sxmax[kk], 0, QP[kk].x, 0);
+        dveccl_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, QP[kk].u, 0);
+            dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax)
-            dveccl_libstr(nu, &sumin[kk], 0, QP[kk].u, 0, &sumax[kk], 0, QP[kk].u, 0);
+            dveccl_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
         }
 
         // --- calculate dual function term
@@ -801,15 +818,15 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
         // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
         // NOTE: qmod[k] has already a minus sign
         // NOTE: xas used as workspace
-        dvecmuldot_libstr(nx, QP[kk].Q, 0, QP[kk].x, 0, QP[kk].xas, 0);
-        QP[kk].fval = -0.5*ddot_libstr(nx, QP[kk].xas, 0, QP[kk].x, 0) - QP[kk].cmod;
-        QP[kk].fval += ddot_libstr(nx, QP[kk].qmod, 0, QP[kk].x, 0);
+        dvecmuldot_libstr(nx, QP[kk].Q, 0, &sx[kk], 0, &sxas[kk], 0);
+        QP[kk].fval = -0.5*ddot_libstr(nx, &sxas[kk], 0, &sx[kk], 0) - QP[kk].cmod;
+        QP[kk].fval += ddot_libstr(nx, QP[kk].qmod, 0, &sx[kk], 0);
 
         if (kk < Np) {
             // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-            dvecmuldot_libstr(nu, QP[kk].R, 0, QP[kk].u, 0, QP[kk].uas, 0);
-            QP[kk].fval -= 0.5*ddot_libstr(nu, QP[kk].uas, 0, QP[kk].u, 0);
-            QP[kk].fval += ddot_libstr(nu, QP[kk].rmod, 0, QP[kk].u, 0);
+            dvecmuldot_libstr(nu, QP[kk].R, 0, &su[kk], 0, &suas[kk], 0);
+            QP[kk].fval -= 0.5*ddot_libstr(nu, &suas[kk], 0, &su[kk], 0);
+            QP[kk].fval += ddot_libstr(nu, QP[kk].rmod, 0, &su[kk], 0);
         }
     }
 
@@ -883,6 +900,9 @@ void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, stage_QP *QP,
 
     int_t kk, indx, indu, ind;
 
+    struct d_strvec *sx = work->sx;
+    struct d_strvec *su = work->su;
+
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sDeltalambda = work->sDeltalambda;
 
@@ -894,10 +914,10 @@ void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, stage_QP *QP,
 
     indx = 0; indu = 0;
     for (kk = 0; kk < Nn; kk++) {
-        d_cvt_strvec2vec(nx, QP[kk].x, 0, &x[indx]);
+        d_cvt_strvec2vec(nx, &sx[kk], 0, &x[indx]);
         indx += nx;
         if (kk < Np) {
-            d_cvt_strvec2vec(nu, QP[kk].u, 0, &u[indu]);
+            d_cvt_strvec2vec(nu, &su[kk], 0, &u[indu]);
             indu += nu;
         }
     }
@@ -944,10 +964,14 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
         if (ii < Np) {
+            // stage_QPs[ii].u = &work->su[ii];
+            // stage_QPs[ii].uas = &work->suas[ii];
             // dual[ii].deltalambda = &work->sDeltalambda[ii];
         }
+
     }
 
+    // TODO(dimitris): Check if this was missing in scenarios too
     #ifdef _CHECK_LAST_ACTIVE_SET_
     for (int_t ii = 0; ii < Nn; ii++) {
         dvecse_libstr(stage_QPs[ii].xasPrev->m, 0.0/0.0, stage_QPs[ii].xasPrev, 0);
@@ -1035,6 +1059,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     int_t dim;
 
     int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     bytes += Nh*sizeof(int_t);  // npar
 
@@ -1048,12 +1073,20 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
     bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
 
+    // TODO(dimitris): allow nu[N] > 0?
+    bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
+    bytes += 2*Np*sizeof(struct d_strvec);  // u, uas
+
     // structs
     bytes += d_size_strvec(md*nx);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
+        bytes += 2*d_size_strvec(nx);  // x, xas
+
         if (ii < Np) {
+            bytes += 2*d_size_strvec(nu);  // u, uas
+
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
             bytes += 2*d_size_strmat(dim + 1, dim);  // W, CholW
@@ -1128,6 +1161,18 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->sDeltalambda = (struct d_strvec *) c_ptr;
     c_ptr += Np*sizeof(struct d_strvec);
 
+    work->sx = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->su = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
+    work->sxas = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->suas = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+
     // move pointer for proper alignment of blasfeo matrices and vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
@@ -1137,7 +1182,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     dvecse_libstr(md*nx, opts->regValue, work->regMat, 0);
 
     for (int_t ii = 0; ii < Nn; ii++) {
+        init_strvec(nx, &work->sx[ii], &c_ptr);
+        init_strvec(nx, &work->sxas[ii], &c_ptr);
         if (ii < Np) {
+            init_strvec(nu, &work->su[ii], &c_ptr);
+            init_strvec(nu, &work->suas[ii], &c_ptr);
+
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
             init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
@@ -1260,17 +1310,10 @@ int main(int argc, char const *argv[]) {
     struct d_strvec sx0;
 
     struct d_strvec sQ[Nh+1], sQinv[Nh+1], sq[Nh+1], sR[Nh], sRinv[Nh], sr[Nh];
-    struct d_strvec sxmin_in,  sxmax_in;
-    struct d_strvec sumin_in, sumax_in;
 
     // q,r + contribution of current dual multipliers
     struct d_strvec *sqmod = malloc(Nn*sizeof(struct d_strvec));
     struct d_strvec *srmod = malloc(Nn*sizeof(struct d_strvec));
-
-    struct d_strvec *sx = malloc(Nn*sizeof(struct d_strvec));
-    struct d_strvec *su = malloc(Np*sizeof(struct d_strvec));
-    struct d_strvec *sxas = malloc(Nn*sizeof(struct d_strvec));
-    struct d_strvec *suas = malloc(Np*sizeof(struct d_strvec));
 
     struct d_strvec *sQinvCal = malloc(Nn*sizeof(struct d_strvec));
     struct d_strvec *sRinvCal = malloc(Np*sizeof(struct d_strvec));
@@ -1327,15 +1370,9 @@ int main(int argc, char const *argv[]) {
 
     // TODO(dimitris): find out why algorithm is not scale-invariant
 
-    wrapper_vec_to_strvec(nx, x0, &sx0, &blasfeoPtr);
-    wrapper_vec_to_strvec(nx, xmin, &sxmin_in, &blasfeoPtr);
-    wrapper_vec_to_strvec(nx, xmax, &sxmax_in, &blasfeoPtr);
-    wrapper_vec_to_strvec(nu, umin, &sumin_in, &blasfeoPtr);
-    wrapper_vec_to_strvec(nu, umax, &sumax_in, &blasfeoPtr);
-
     for (kk = 0; kk < Nn; kk++) {
-            init_strvec(nx, &sx[kk], &blasfeoPtr);
-            init_strvec(nx, &sxas[kk], &blasfeoPtr);
+            // init_strvec(nx, &sx[kk], &blasfeoPtr);
+            // init_strvec(nx, &sxas[kk], &blasfeoPtr);
             #ifdef _CHECK_LAST_ACTIVE_SET_
             init_strvec(nx, &sxasPrev[kk], &blasfeoPtr);
             // NOTE(dimitris): set a value outside {-1, 0, 1} to force full factorization at 1st it.
@@ -1346,8 +1383,8 @@ int main(int argc, char const *argv[]) {
             init_strvec(nx, &sQinvCal[kk], &blasfeoPtr);
             init_strmat(MAX(nx, nu), MAX(nx, nu), &sM[kk], &blasfeoPtr);
         if (kk < Np) {
-            init_strvec(nu, &su[kk], &blasfeoPtr);
-            init_strvec(nu, &suas[kk], &blasfeoPtr);
+            // init_strvec(nu, &su[kk], &blasfeoPtr);
+            // init_strvec(nu, &suas[kk], &blasfeoPtr);
             #ifdef _CHECK_LAST_ACTIVE_SET_
             init_strvec(nu, &suasPrev[kk], &blasfeoPtr);
             dvecse_libstr(nu, 0.0/0.0, &suasPrev[kk], 0);
@@ -1360,8 +1397,6 @@ int main(int argc, char const *argv[]) {
     // build stage_QPs
     for (kk = 0; kk < Nn; kk++) {
         // iterates and intermediate results
-        stage_QPs[kk].x = &sx[kk];
-        stage_QPs[kk].xas = &sxas[kk];
         #ifdef _CHECK_LAST_ACTIVE_SET_
         stage_QPs[kk].xasPrev = &sxasPrev[kk];
         stage_QPs[kk].Wdiag = &sWdiag[kk];
@@ -1371,16 +1406,12 @@ int main(int argc, char const *argv[]) {
         stage_QPs[kk].M = &sM[kk];
 
         if (kk < Np) {
-            stage_QPs[kk].u = &su[kk];
-            stage_QPs[kk].uas = &suas[kk];
             #ifdef _CHECK_LAST_ACTIVE_SET_
             stage_QPs[kk].uasPrev = &suasPrev[kk];
             #endif
             stage_QPs[kk].rmod = &srmod[kk];
             stage_QPs[kk].RinvCal = &sRinvCal[kk];
         } else {
-            stage_QPs[kk].u = NULL;
-            stage_QPs[kk].uas = NULL;
             #ifdef _CHECK_LAST_ACTIVE_SET_
             stage_QPs[kk].uasPrev = NULL;
             #endif
@@ -1436,10 +1467,6 @@ int main(int argc, char const *argv[]) {
     free(stage_QPs);
     free(sqmod);
     free(srmod);
-    free(sx);
-    free(su);
-    free(sxas);
-    free(suas);
     free(sQinvCal);
     free(sRinvCal);
     #ifdef _CHECK_LAST_ACTIVE_SET_
