@@ -15,6 +15,7 @@ extern "C" {
 typedef struct stage_QP_ {
 
     // objective
+    // TODO(dimitris): figure out how to fix the issue with the scaling factor
     struct d_strvec *Q;
     struct d_strvec *R;
     struct d_strvec *q;
@@ -26,8 +27,6 @@ typedef struct stage_QP_ {
     struct d_strvec *qmod;
     struct d_strvec *rmod;
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    struct d_strvec *xasPrev;
-    struct d_strvec *uasPrev;
     struct d_strmat *Wdiag;  // diagonal nx x nx block of dual Hessian that corresponds to node
     int_t xasChanged;
     int_t uasChanged;

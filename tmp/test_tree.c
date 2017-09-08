@@ -103,25 +103,8 @@ static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, in
     size += 3*(Nh+1)*d_size_strvec(nx);  // Q, Qinv, q
     size += 3*Nh*d_size_strvec(nu);  // R, Rinv, r
 
-    // // dynamics
-    // size += md*d_size_strmat(nx, nx);  // A
-    // size += md*d_size_strmat(nx, nu);  // B
-    // size += md*d_size_strvec(nx);  // b
-
-    // bounds
-    size += 2*d_size_strvec(nx);  // xmin, xmax
-    size += 2*d_size_strvec(nu);  // umin, umax
-
-    // primal iterates
-    size += Nn*d_size_strvec(nx);
-    size += Np*d_size_strvec(nu);
-
     // intermediate results
-    size += Nn*d_size_strvec(nx);  // xas
-    size += Np*d_size_strvec(nu);  // uas
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    size += Nn*d_size_strvec(nx);  // xasPrev
-    size += Np*d_size_strvec(nu);  // uasPrev
     size += Nn*d_size_strmat(nx, nx);  // Wdiag
     #endif
     size += Nn*d_size_strvec(nx);  // qmod
@@ -129,21 +112,6 @@ static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, in
     size += Nn*d_size_strvec(nx);  // QinvCal
     size += Np*d_size_strvec(nu);  // RinvCal
     size += Nn*d_size_strmat(MAX(nx, nu), MAX(nx, nu));  // M
-
-    // // Newton system
-    // for (kk = 0; kk < Np; kk++) {
-    //     size += 4*d_size_strvec(tree[kk].nkids*nx);  // res, resMod, lambda, deltalambda
-    //     #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-    //     size += 2*d_size_strmat(tree[kk].nkids*nx+1, tree[kk].nkids*nx);  // W, CholW
-    //     #else
-    //     size += 2*d_size_strmat(tree[kk].nkids*nx, tree[kk].nkids*nx);  // W, CholW
-    //     #endif
-    //     if (kk > 0) size += 2*d_size_strmat(nx, tree[kk].nkids*nx);  // Ut, CholUt
-    // }
-
-    // misc
-    // size += d_size_strvec(md*nx);  // regMat
-    size += d_size_strvec(nx);  // x0
 
     return size;
 }
@@ -268,25 +236,27 @@ static void compare_with_previous_active_set(stage_QP *QP, int_t isLeaf, int_t i
 
     struct d_strvec *sxas = &work->sxas[indx];
     struct d_strvec *suas = &work->suas[indx];
+    struct d_strvec *sxasPrev = &work->sxasPrev[indx];
+    struct d_strvec *suasPrev = &work->suasPrev[indx];
 
     QP->xasChanged = 0;
     for (int_t ii = 0; ii < sxas->m; ii++) {
-        if (DVECEL_LIBSTR(sxas, ii) != DVECEL_LIBSTR(QP->xasPrev, ii)) {
+        if (DVECEL_LIBSTR(sxas, ii) != DVECEL_LIBSTR(sxasPrev, ii)) {
             QP->xasChanged = 1;
             break;
         }
     }
-    dveccp_libstr(sxas->m, sxas, 0, QP->xasPrev, 0);
+    dveccp_libstr(sxas->m, sxas, 0, sxasPrev, 0);
 
     if (!isLeaf) {
         QP->uasChanged = 0;
         for (int_t ii = 0; ii < suas->m; ii++) {
-            if (DVECEL_LIBSTR(suas, ii) != DVECEL_LIBSTR(QP->uasPrev, ii)) {
+            if (DVECEL_LIBSTR(suas, ii) != DVECEL_LIBSTR(suasPrev, ii)) {
                 QP->uasChanged = 1;
                 break;
             }
         }
-        dveccp_libstr(suas->m, suas, 0, QP->uasPrev, 0);
+        dveccp_libstr(suas->m, suas, 0, suasPrev, 0);
     }
 }
 
@@ -963,20 +933,18 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
 
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
+        // stage_QPs[ii].xasPrev = &work->sxasPrev[ii];
         if (ii < Np) {
             // stage_QPs[ii].u = &work->su[ii];
-            // stage_QPs[ii].uas = &work->suas[ii];
-            // dual[ii].deltalambda = &work->sDeltalambda[ii];
         }
-
     }
 
     // TODO(dimitris): Check if this was missing in scenarios too
     #ifdef _CHECK_LAST_ACTIVE_SET_
     for (int_t ii = 0; ii < Nn; ii++) {
-        dvecse_libstr(stage_QPs[ii].xasPrev->m, 0.0/0.0, stage_QPs[ii].xasPrev, 0);
+        dvecse_libstr(work->sxasPrev[ii].m, 0.0/0.0, &work->sxasPrev[ii], 0);
         if (ii < Np)
-            dvecse_libstr(stage_QPs[ii].uasPrev->m, 0.0/0.0, stage_QPs[ii].uasPrev, 0);
+            dvecse_libstr(work->suasPrev[ii].m, 0.0/0.0, &work->suasPrev[ii], 0);
     }
     #endif
 
@@ -1077,15 +1045,26 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
     bytes += 2*Np*sizeof(struct d_strvec);  // u, uas
 
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    bytes += Nn*sizeof(struct d_strvec);  // xasPrev
+    bytes += Np*sizeof(struct d_strvec);  // uasPrev
+    #endif
+
     // structs
     bytes += d_size_strvec(md*nx);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
         bytes += 2*d_size_strvec(nx);  // x, xas
+        #ifdef _CHECK_LAST_ACTIVE_SET_
+        bytes += d_size_strvec(nx);  // xasPrev
+        #endif
 
         if (ii < Np) {
             bytes += 2*d_size_strvec(nu);  // u, uas
+            #ifdef _CHECK_LAST_ACTIVE_SET_
+            bytes += d_size_strvec(nu);  // uasPrev
+            #endif
 
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
@@ -1173,6 +1152,14 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->suas = (struct d_strvec *) c_ptr;
     c_ptr += Np*sizeof(struct d_strvec);
 
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    work->sxasPrev = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->suasPrev = (struct d_strvec *) c_ptr;
+    c_ptr += Np*sizeof(struct d_strvec);
+    #endif
+
     // move pointer for proper alignment of blasfeo matrices and vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
@@ -1184,9 +1171,15 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(nx, &work->sx[ii], &c_ptr);
         init_strvec(nx, &work->sxas[ii], &c_ptr);
+        #ifdef _CHECK_LAST_ACTIVE_SET_
+        init_strvec(nx, &work->sxasPrev[ii], &c_ptr);
+        #endif
         if (ii < Np) {
             init_strvec(nu, &work->su[ii], &c_ptr);
             init_strvec(nu, &work->suas[ii], &c_ptr);
+            #ifdef _CHECK_LAST_ACTIVE_SET_
+            init_strvec(nu, &work->suasPrev[ii], &c_ptr);
+            #endif
 
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
@@ -1307,8 +1300,6 @@ int main(int argc, char const *argv[]) {
     for (ii = 0; ii < nx; ii++) dPinv[ii] = 1./dP[ii];
     for (ii = 0; ii < nu; ii++) dRinv[ii] = 1./dR[ii];
 
-    struct d_strvec sx0;
-
     struct d_strvec sQ[Nh+1], sQinv[Nh+1], sq[Nh+1], sR[Nh], sRinv[Nh], sr[Nh];
 
     // q,r + contribution of current dual multipliers
@@ -1319,8 +1310,6 @@ int main(int argc, char const *argv[]) {
     struct d_strvec *sRinvCal = malloc(Np*sizeof(struct d_strvec));
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    struct d_strvec *sxasPrev = malloc(Nn*sizeof(struct d_strvec));
-    struct d_strvec *suasPrev = malloc(Np*sizeof(struct d_strvec));
     struct d_strmat *sWdiag = malloc(Nn*sizeof(struct d_strmat));
     #endif
 
@@ -1371,12 +1360,7 @@ int main(int argc, char const *argv[]) {
     // TODO(dimitris): find out why algorithm is not scale-invariant
 
     for (kk = 0; kk < Nn; kk++) {
-            // init_strvec(nx, &sx[kk], &blasfeoPtr);
-            // init_strvec(nx, &sxas[kk], &blasfeoPtr);
             #ifdef _CHECK_LAST_ACTIVE_SET_
-            init_strvec(nx, &sxasPrev[kk], &blasfeoPtr);
-            // NOTE(dimitris): set a value outside {-1, 0, 1} to force full factorization at 1st it.
-            dvecse_libstr(nx, 0.0/0.0, &sxasPrev[kk], 0);
             init_strmat(nx, nx, &sWdiag[kk], &blasfeoPtr);
             #endif
             init_strvec(nx, &sqmod[kk], &blasfeoPtr);
@@ -1385,10 +1369,6 @@ int main(int argc, char const *argv[]) {
         if (kk < Np) {
             // init_strvec(nu, &su[kk], &blasfeoPtr);
             // init_strvec(nu, &suas[kk], &blasfeoPtr);
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            init_strvec(nu, &suasPrev[kk], &blasfeoPtr);
-            dvecse_libstr(nu, 0.0/0.0, &suasPrev[kk], 0);
-            #endif
             init_strvec(nu, &srmod[kk], &blasfeoPtr);
             init_strvec(nu, &sRinvCal[kk], &blasfeoPtr);
         }
@@ -1398,7 +1378,6 @@ int main(int argc, char const *argv[]) {
     for (kk = 0; kk < Nn; kk++) {
         // iterates and intermediate results
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        stage_QPs[kk].xasPrev = &sxasPrev[kk];
         stage_QPs[kk].Wdiag = &sWdiag[kk];
         #endif
         stage_QPs[kk].qmod = &sqmod[kk];
@@ -1407,14 +1386,10 @@ int main(int argc, char const *argv[]) {
 
         if (kk < Np) {
             #ifdef _CHECK_LAST_ACTIVE_SET_
-            stage_QPs[kk].uasPrev = &suasPrev[kk];
             #endif
             stage_QPs[kk].rmod = &srmod[kk];
             stage_QPs[kk].RinvCal = &sRinvCal[kk];
         } else {
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            stage_QPs[kk].uasPrev = NULL;
-            #endif
             stage_QPs[kk].rmod = NULL;
             stage_QPs[kk].RinvCal = NULL;
         }
@@ -1470,8 +1445,6 @@ int main(int argc, char const *argv[]) {
     free(sQinvCal);
     free(sRinvCal);
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    free(sxasPrev);
-    free(suasPrev);
     free(sWdiag);
     #endif
     free(sM);
