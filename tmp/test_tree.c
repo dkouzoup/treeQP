@@ -103,10 +103,10 @@ static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, in
     size += 3*(Nh+1)*d_size_strvec(nx);  // Q, Qinv, q
     size += 3*Nh*d_size_strvec(nu);  // R, Rinv, r
 
-    // dynamics
-    size += md*d_size_strmat(nx, nx);  // A
-    size += md*d_size_strmat(nx, nu);  // B
-    size += md*d_size_strvec(nx);  // b
+    // // dynamics
+    // size += md*d_size_strmat(nx, nx);  // A
+    // size += md*d_size_strmat(nx, nu);  // B
+    // size += md*d_size_strvec(nx);  // b
 
     // bounds
     size += 2*d_size_strvec(nx);  // xmin, xmax
@@ -130,19 +130,19 @@ static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, in
     size += Np*d_size_strvec(nu);  // RinvCal
     size += Nn*d_size_strmat(MAX(nx, nu), MAX(nx, nu));  // M
 
-    // Newton system
-    for (kk = 0; kk < Np; kk++) {
-        size += 4*d_size_strvec(tree[kk].nkids*nx);  // res, resMod, lambda, deltalambda
-        #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-        size += 2*d_size_strmat(tree[kk].nkids*nx+1, tree[kk].nkids*nx);  // W, CholW
-        #else
-        size += 2*d_size_strmat(tree[kk].nkids*nx, tree[kk].nkids*nx);  // W, CholW
-        #endif
-        if (kk > 0) size += 2*d_size_strmat(nx, tree[kk].nkids*nx);  // Ut, CholUt
-    }
+    // // Newton system
+    // for (kk = 0; kk < Np; kk++) {
+    //     size += 4*d_size_strvec(tree[kk].nkids*nx);  // res, resMod, lambda, deltalambda
+    //     #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+    //     size += 2*d_size_strmat(tree[kk].nkids*nx+1, tree[kk].nkids*nx);  // W, CholW
+    //     #else
+    //     size += 2*d_size_strmat(tree[kk].nkids*nx, tree[kk].nkids*nx);  // W, CholW
+    //     #endif
+    //     if (kk > 0) size += 2*d_size_strmat(nx, tree[kk].nkids*nx);  // Ut, CholUt
+    // }
 
     // misc
-    size += d_size_strvec(md*nx);  // regMat
+    // size += d_size_strvec(md*nx);  // regMat
     size += d_size_strvec(nx);  // x0
 
     return size;
@@ -153,6 +153,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
 
     struct d_strvec *slambda = work->slambda;
+    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
 
     #if DEBUG == 1
@@ -194,7 +195,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
             idxpos = tree[idxkid].idxkid*nx;
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, QP[idxkid].A, 0, 0, &slambda[idxdad], idxpos, 1.0,
+            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                  QP[kk].qmod, 0, QP[kk].qmod, 0);
             if (tree[kk].nkids > 0) {
                 // rmod[k] -= B[jj]' * lambda[jj]
@@ -344,7 +345,9 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
+    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
     struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strmat *sW = work->sW;
@@ -392,10 +395,10 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
         // res[k] = b[k] - x[k]
-        daxpy_libstr(nx, -1.0, QP[kk].x, 0, QP[kk].b, 0, &sres[idxdad], idxpos);
+        daxpy_libstr(nx, -1.0, QP[kk].x, 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
 
         // res[k] += A[k]*x[idxdad]
-        dgemv_n_libstr(nx, nx, 1.0, QP[kk].A, 0, 0, QP[idxdad].x, 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, QP[idxdad].x, 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
@@ -434,7 +437,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nx, 1.0,  QP[kk].A, 0, 0, QP[idxdad].QinvCal, 0, 0.0,
+        dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, QP[idxdad].QinvCal, 0, 0.0,
             QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
         // --- hessian contribution of parent (Ut)
@@ -452,7 +455,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         // --- hessian contribution of node (diagonal block of W)
 
         // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[k]'
-        dsyrk_ln_libstr(nx, nx, 1.0, QP[kk].A, 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
@@ -485,11 +488,11 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
             if (idxsib == kk) break;  // completed all preceding siblings
 
             // M = A[idxsib] * Qinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nx, 1.0,  QP[idxsib].A, 0, 0, QP[idxdad].QinvCal, 0, 0.0,
+            dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, QP[idxdad].QinvCal, 0, 0.0,
                 QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
-            dgemm_nt_libstr(nx, nx, nx, 1.0, QP[kk].A, 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
+            dgemm_nt_libstr(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
 
             // M = B[idxsib]*Rinvcal[idxdad]
@@ -712,7 +715,10 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
+    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+
     struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strvec *slambda = work->slambda;
@@ -752,12 +758,12 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
             idxpos = tree[idxkid].idxkid*nx;
 
             // cmod[k] += b[jj]' * lambda[jj]
-            QP[kk].cmod += ddot_libstr(nx, QP[idxkid].b, 0, &slambda[idxdad], idxpos);
+            QP[kk].cmod += ddot_libstr(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
 
             // return x^T * y
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, QP[idxkid].A, 0, 0, &slambda[idxdad], idxpos, 1.0,
+            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                  QP[kk].qmod, 0, QP[kk].qmod, 0);
             if (kk < Np) {
                 // rmod[k] -= B[jj]' * lambda[jj]
@@ -1186,7 +1192,7 @@ int main(int argc, char const *argv[]) {
             nxVec[ii] = nx;
         } else {
             // TODO(dimitris): support both with and without eliminating x0
-            nxVec[ii] = 0;
+            nxVec[ii] = nx;
         }
 
         if (tree[ii].nkids > 0) {  // not a leaf
@@ -1235,8 +1241,6 @@ int main(int argc, char const *argv[]) {
 
     struct d_strvec sx0;
 
-    struct d_strmat sA_in[md], sB_in[md];
-    struct d_strvec sb_in[md];
     struct d_strvec sQ[Nh+1], sQinv[Nh+1], sq[Nh+1], sR[Nh], sRinv[Nh], sr[Nh];
     struct d_strvec sxmin_in,  sxmax_in;
     struct d_strvec sumin_in, sumax_in;
@@ -1272,13 +1276,6 @@ int main(int argc, char const *argv[]) {
     void *tmpBlasfeoPtr;
     v_zeros_align(&tmpBlasfeoPtr, memorySize);
     char *blasfeoPtr = (char *) tmpBlasfeoPtr;
-
-    for (ii = 0; ii < md; ii++) {
-        // NOTE: first dynamics in data file are the nominal ones (skipped here)
-        wrapper_mat_to_strmat(nx, nx, &A[(ii+1)*nx*nx], &sA_in[ii], &blasfeoPtr);
-        wrapper_mat_to_strmat(nx, nu, &B[(ii+1)*nx*nu], &sB_in[ii], &blasfeoPtr);
-        wrapper_vec_to_strvec(nx, &b[(ii+1)*nx], &sb_in[ii], &blasfeoPtr);
-    }
 
     for (kk = 0; kk < Nh; kk++) {
         // calculate stage-wise scaling to minimize average performance
@@ -1373,15 +1370,6 @@ int main(int argc, char const *argv[]) {
             stage_QPs[kk].RinvCal = NULL;
         }
         // input data
-        if (kk > 0) {
-            real = tree[kk].real;
-            stage_QPs[kk].A = &sA_in[real];
-            stage_QPs[kk].b = &sb_in[real];
-        } else {  // NOTE: dynamics assigned to children nodes
-            stage_QPs[kk].A = NULL;
-            stage_QPs[kk].b = NULL;
-        }
-
         stage_QPs[kk].Q = &sQ[tree[kk].stage];
         stage_QPs[kk].Qinv = &sQinv[tree[kk].stage];
         stage_QPs[kk].q = &sq[tree[kk].stage];

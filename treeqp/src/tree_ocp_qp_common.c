@@ -182,20 +182,19 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
     int_t Nn = qp_in->N;
     int_t re, nx, nu, nxp, nup;
 
-    // check that x0 is eliminated
-    if (qp_in->nx[0] != 0) {
-        printf("[TREEQP]: Error! tree_ocp_qp_in_fill_lti_data function assumes x0 is eliminated\n");
-        exit(1);
-    }
-
-    // TODO(dimitris): check that nx and nu are constant for the lti case (except root and leaves)
-
-    // TODO(dimitris): avoid allocating memory here
+    // check if x0 is eliminated
+    answer_t eliminatedX0;
     struct d_strmat sA;
     struct d_strvec sx0;
-    d_allocate_strmat(qp_in->nx[1], qp_in->nx[1], &sA);
-    d_allocate_strvec(qp_in->nx[1], &sx0);
-    d_cvt_vec2strvec(qp_in->nx[1], x0, &sx0, 0);
+    if (qp_in->nx[0] == 0) {
+        eliminatedX0 = YES;
+        // TODO(dimitris): avoid allocating memory here
+        d_allocate_strmat(qp_in->nx[1], qp_in->nx[1], &sA);
+        d_allocate_strvec(qp_in->nx[1], &sx0);
+        d_cvt_vec2strvec(qp_in->nx[1], x0, &sx0, 0);
+    } else {
+        eliminatedX0 = NO;
+    }
 
     for (int_t ii = 0; ii < Nn; ii++) {
         nx = qp_in->nx[ii];
@@ -206,7 +205,7 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
             re = tree[ii].real;
             d_cvt_mat2strmat(nx, nxp, &A[re*nx*nxp], nx, (struct d_strmat *) &qp_in->A[ii-1], 0, 0);
             d_cvt_mat2strmat(nx, nup, &B[re*nx*nup], nx, (struct d_strmat *) &qp_in->B[ii-1], 0, 0);
-            if (tree[ii].dad == 0) {
+            if (tree[ii].dad == 0 && eliminatedX0 == YES) {
                 d_cvt_vec2strvec(nx, &b[re*nx], (struct d_strvec *) &qp_in->b[ii-1], 0);
                 d_cvt_mat2strmat(nx, nx, &A[re*nx*nx], nx, &sA, 0, 0);
                 dgemv_n_libstr(sA.m, sA.n, 1.0, &sA, 0, 0, &sx0, 0, 1.0,
@@ -236,8 +235,11 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
         d_cvt_vec2strvec(nu, umin, (struct d_strvec *) &qp_in->umin[ii], 0);
         d_cvt_vec2strvec(nu, umax, (struct d_strvec *) &qp_in->umax[ii], 0);
     }
-    d_free_strmat(&sA);
-    d_free_strvec(&sx0);
+
+    if (eliminatedX0 == YES) {
+        d_free_strmat(&sA);
+        d_free_strvec(&sx0);
+    }
 }
 
 
