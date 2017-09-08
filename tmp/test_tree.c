@@ -155,6 +155,12 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
     struct d_strvec *slambda = work->slambda;
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct d_strvec *sQinv = (struct d_strvec *) qp_in->Qinv;
+    struct d_strvec *sRinv = (struct d_strvec *) qp_in->Rinv;
+    struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
+    struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
+    struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
+    struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
 
     #if DEBUG == 1
     int_t indh, indx, indu;
@@ -209,7 +215,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
         dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, QP[kk].x, 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        dveccl_mask_libstr(nx, QP[kk].xmin, 0, QP[kk].x, 0, QP[kk].xmax, 0, QP[kk].x, 0,
+        dveccl_mask_libstr(nx, &sxmin[kk], 0, QP[kk].x, 0, &sxmax[kk], 0, QP[kk].x, 0,
             QP[kk].xas, 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
@@ -219,7 +225,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
             // u[k] = R[k]^-1 .* rmod[k]
             dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, QP[kk].u, 0);
             // u[k] = median(umin, u[k], umax), uas[k] = active set
-            dveccl_mask_libstr(nu, QP[kk].umin, 0, QP[kk].u, 0, QP[kk].umax, 0, QP[kk].u, 0,
+            dveccl_mask_libstr(nu, &sumin[kk], 0, QP[kk].u, 0, &sumax[kk], 0, QP[kk].u, 0,
                 QP[kk].uas, 0);
 
             // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
@@ -718,6 +724,10 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+    struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
+    struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
+    struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
+    struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
 
     struct node *tree = (struct node *)qp_in->tree;
 
@@ -777,13 +787,13 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
         dvecmuldot_libstr(nx, QP[kk].Qinv, 0, QP[kk].qmod, 0, QP[kk].x, 0);
 
         // x[k] = median(xmin, x[k], xmax)
-        dveccl_libstr(nx, QP[kk].xmin, 0, QP[kk].x, 0, QP[kk].xmax, 0, QP[kk].x, 0);
+        dveccl_libstr(nx, &sxmin[kk], 0, QP[kk].x, 0, &sxmax[kk], 0, QP[kk].x, 0);
 
         if (kk < Np) {
             // u[k] = R[k]^-1 .* rmod[k]
             dvecmuldot_libstr(nu, QP[kk].Rinv, 0, QP[kk].rmod, 0, QP[kk].u, 0);
             // u[k] = median(umin, u[k], umax)
-            dveccl_libstr(nu, QP[kk].umin, 0, QP[kk].u, 0, QP[kk].umax, 0, QP[kk].u, 0);
+            dveccl_libstr(nu, &sumin[kk], 0, QP[kk].u, 0, &sumax[kk], 0, QP[kk].u, 0);
         }
 
         // --- calculate dual function term
@@ -1378,25 +1388,10 @@ int main(int argc, char const *argv[]) {
             stage_QPs[kk].R = &sR[tree[kk].stage];
             stage_QPs[kk].Rinv = &sRinv[tree[kk].stage];
             stage_QPs[kk].r = &sr[tree[kk].stage];
-
-            if (kk > 0) {
-                stage_QPs[kk].xmin = &sxmin_in;
-                stage_QPs[kk].xmax = &sxmax_in;
-            } else {
-                stage_QPs[kk].xmin = &sx0;
-                stage_QPs[kk].xmax = &sx0;
-            }
-            stage_QPs[kk].umin = &sumin_in;
-            stage_QPs[kk].umax = &sumax_in;
         } else {  // leaf node
             stage_QPs[kk].R = NULL;
             stage_QPs[kk].Rinv = NULL;
             stage_QPs[kk].r = NULL;
-
-            stage_QPs[kk].xmin = &sxmin_in;
-            stage_QPs[kk].xmax = &sxmax_in;
-            stage_QPs[kk].umin = NULL;
-            stage_QPs[kk].umax = NULL;
         }
     }
 

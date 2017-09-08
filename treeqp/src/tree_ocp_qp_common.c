@@ -230,8 +230,13 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
         for (int_t jj = 0; jj < nu; jj++)
             DVECEL_LIBSTR(&qp_in->Rinv[ii], jj) = 1.0/R[jj];
 
-        d_cvt_vec2strvec(nx, xmin, (struct d_strvec *) &qp_in->xmin[ii], 0);
-        d_cvt_vec2strvec(nx, xmax, (struct d_strvec *) &qp_in->xmax[ii], 0);
+        if (ii == 0 && eliminatedX0 == NO) {
+            d_cvt_vec2strvec(nx, x0, (struct d_strvec *) &qp_in->xmin[ii], 0);
+            d_cvt_vec2strvec(nx, x0, (struct d_strvec *) &qp_in->xmax[ii], 0);
+        } else {
+            d_cvt_vec2strvec(nx, xmin, (struct d_strvec *) &qp_in->xmin[ii], 0);
+            d_cvt_vec2strvec(nx, xmax, (struct d_strvec *) &qp_in->xmax[ii], 0);
+        }
         d_cvt_vec2strvec(nu, umin, (struct d_strvec *) &qp_in->umin[ii], 0);
         d_cvt_vec2strvec(nu, umax, (struct d_strvec *) &qp_in->umax[ii], 0);
     }

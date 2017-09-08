@@ -22,12 +22,6 @@ typedef struct stage_QP_ {
     struct d_strvec *Qinv;
     struct d_strvec *Rinv;
 
-    // bounds
-    struct d_strvec *xmin;
-    struct d_strvec *xmax;
-    struct d_strvec *umin;
-    struct d_strvec *umax;
-
     // iterates
     struct d_strvec *x;
     struct d_strvec *u;
