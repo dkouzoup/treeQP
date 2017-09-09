@@ -79,6 +79,13 @@ typedef struct treeqp_dune_scenarios_workspace_ {
     struct d_strmat **sCholLambdaD;
     struct d_strmat **sCholLambdaL;
 
+    struct d_strvec *sQ;
+    struct d_strvec *sR;
+    struct d_strvec *sq;
+    struct d_strvec *sr;
+    struct d_strvec *sQinv;
+    struct d_strvec *sRinv;
+
     struct d_strvec **sQinvCal;
     struct d_strvec **sRinvCal;
 

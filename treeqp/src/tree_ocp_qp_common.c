@@ -52,7 +52,7 @@ int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node 
     bytes += (Nn-1)*sizeof(struct d_strvec);  // b
 
     bytes += 6*Nn*sizeof(struct d_strvec);  // q, r, xmin, xmax, umin, umax
-    bytes += 4*Nn*sizeof(struct d_strvec);  // Q, R, Qinv, Rinv
+    bytes += 2*Nn*sizeof(struct d_strvec);  // Q, R
 
     int_t idx, idxp;
     for (int_t ii = 0; ii < Nn; ii++) {
@@ -65,8 +65,8 @@ int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node 
             bytes += d_size_strvec(nx[idx]);  // b
         }
 
-        bytes += 3*d_size_strvec(nx[idx]);  // Q, q, Qinv
-        bytes += 3*d_size_strvec(nu[idx]);  // R, r, Rinv
+        bytes += 2*d_size_strvec(nx[idx]);  // Q, q
+        bytes += 2*d_size_strvec(nu[idx]);  // R, r
 
         bytes += 2*d_size_strvec(nx[idx]);  // xmin, xmax
         bytes += 2*d_size_strvec(nu[idx]);  // umin, umax
@@ -121,10 +121,6 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
     c_ptr += Nn*sizeof(struct d_strvec);
     qp_in->r = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
-    qp_in->Qinv = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
-    qp_in->Rinv = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
 
     qp_in->xmin = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
@@ -153,8 +149,6 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
         init_strvec(nx[idx], (struct d_strvec *) &qp_in->q[idx], &c_ptr);
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->R[idx], &c_ptr);
         init_strvec(nu[idx], (struct d_strvec *) &qp_in->r[idx], &c_ptr);
-        init_strvec(nx[idx], (struct d_strvec *) &qp_in->Qinv[idx], &c_ptr);
-        init_strvec(nu[idx], (struct d_strvec *) &qp_in->Rinv[idx], &c_ptr);
 
         init_strvec(nx[idx], (struct d_strvec *) &qp_in->xmin[idx], &c_ptr);
         init_strvec(nx[idx], (struct d_strvec *) &qp_in->xmax[idx], &c_ptr);
@@ -178,9 +172,34 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
     double *p, double *R, double *r, double *xmin, double *xmax, double *umin, double *umax,
     double *x0, tree_ocp_qp_in *qp_in) {
 
-    struct node *tree = (struct node *) qp_in->tree;
     int_t Nn = qp_in->N;
+    struct node *tree = (struct node *) qp_in->tree;
+    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
+    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
+    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
+    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
+    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
+    struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
+    struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
+    struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
+    struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
+
     int_t re, nx, nu, nxp, nup;
+    real_t scalingFactor;
+    int_t currentStage = 0;
+    int_t nodesInStage = 0;
+    int_t numberOfLeaves = 1;
+
+    // detect number of leaves
+    for (int_t ii = Nn-1; ii > 0; ii--) {
+        if (tree[ii].stage == tree[ii-1].stage) {
+            numberOfLeaves++;
+        } else {
+            break;
+        }
+    }
 
     // check that x0 is eliminated
     if (qp_in->nx[0] != 0) {
@@ -191,9 +210,9 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
     // TODO(dimitris): check that nx and nu are constant for the lti case (except root and leaves)
 
     // TODO(dimitris): avoid allocating memory here
-    struct d_strmat sA;
+    struct d_strmat sA0;
     struct d_strvec sx0;
-    d_allocate_strmat(qp_in->nx[1], qp_in->nx[1], &sA);
+    d_allocate_strmat(qp_in->nx[1], qp_in->nx[1], &sA0);
     d_allocate_strvec(qp_in->nx[1], &sx0);
     d_cvt_vec2strvec(qp_in->nx[1], x0, &sx0, 0);
 
@@ -204,39 +223,51 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
             nxp = qp_in->nx[tree[ii].dad];
             nup = qp_in->nu[tree[ii].dad];
             re = tree[ii].real;
-            d_cvt_mat2strmat(nx, nxp, &A[re*nx*nxp], nx, (struct d_strmat *) &qp_in->A[ii-1], 0, 0);
-            d_cvt_mat2strmat(nx, nup, &B[re*nx*nup], nx, (struct d_strmat *) &qp_in->B[ii-1], 0, 0);
+            d_cvt_mat2strmat(nx, nxp, &A[re*nx*nxp], nx, &sA[ii-1], 0, 0);
+            d_cvt_mat2strmat(nx, nup, &B[re*nx*nup], nx, &sB[ii-1], 0, 0);
             if (tree[ii].dad == 0) {
-                d_cvt_vec2strvec(nx, &b[re*nx], (struct d_strvec *) &qp_in->b[ii-1], 0);
-                d_cvt_mat2strmat(nx, nx, &A[re*nx*nx], nx, &sA, 0, 0);
-                dgemv_n_libstr(sA.m, sA.n, 1.0, &sA, 0, 0, &sx0, 0, 1.0,
-                    (struct d_strvec *) &qp_in->b[ii-1], 0, (struct d_strvec *) &qp_in->b[ii-1], 0);
+                d_cvt_vec2strvec(nx, &b[re*nx], &sb[ii-1], 0);
+                d_cvt_mat2strmat(nx, nx, &A[re*nx*nx], nx, &sA0, 0, 0);
+                dgemv_n_libstr(sA0.m, sA0.n, 1.0, &sA0, 0, 0, &sx0, 0, 1.0, &sb[ii-1], 0,
+                    &sb[ii-1], 0);
             } else {
-                d_cvt_vec2strvec(nx, &b[re*nx], (struct d_strvec *) &qp_in->b[ii-1], 0);
+                d_cvt_vec2strvec(nx, &b[re*nx], &sb[ii-1], 0);
             }
         }
         if (tree[ii].nkids > 0) {
-            d_cvt_vec2strvec(nx, Q, (struct d_strvec *) &qp_in->Q[ii], 0);
-            d_cvt_vec2strvec(nx, q, (struct d_strvec *) &qp_in->q[ii], 0);
+            d_cvt_vec2strvec(sQ[ii].m, Q, &sQ[ii], 0);
+            d_cvt_vec2strvec(sq[ii].m, q, &sq[ii], 0);
         } else {
-            d_cvt_vec2strvec(nx, P, (struct d_strvec *) &qp_in->Q[ii], 0);
-            d_cvt_vec2strvec(nx, p, (struct d_strvec *) &qp_in->q[ii], 0);
+            d_cvt_vec2strvec(sQ[ii].m, P, &sQ[ii], 0);
+            d_cvt_vec2strvec(sq[ii].m, p, &sq[ii], 0);
         }
-        d_cvt_vec2strvec(nu, R, (struct d_strvec *) &qp_in->R[ii], 0);
-        d_cvt_vec2strvec(nu, r, (struct d_strvec *) &qp_in->r[ii], 0);
+        d_cvt_vec2strvec(sR[ii].m, R, &sR[ii], 0);
+        d_cvt_vec2strvec(sr[ii].m, r, &sr[ii], 0);
 
-        // TODO(dimitris): move from qp_in to workspace
-        for (int_t jj = 0; jj < nx; jj++)
-            DVECEL_LIBSTR(&qp_in->Qinv[ii], jj) = 1.0/DVECEL_LIBSTR(&qp_in->Q[ii], jj);
-        for (int_t jj = 0; jj < nu; jj++)
-            DVECEL_LIBSTR(&qp_in->Rinv[ii], jj) = 1.0/R[jj];
-
-        d_cvt_vec2strvec(nx, xmin, (struct d_strvec *) &qp_in->xmin[ii], 0);
-        d_cvt_vec2strvec(nx, xmax, (struct d_strvec *) &qp_in->xmax[ii], 0);
-        d_cvt_vec2strvec(nu, umin, (struct d_strvec *) &qp_in->umin[ii], 0);
-        d_cvt_vec2strvec(nu, umax, (struct d_strvec *) &qp_in->umax[ii], 0);
+        // scale objective function with number of nodes per stage
+        if (tree[ii].stage > currentStage) {
+            scalingFactor = numberOfLeaves/nodesInStage;
+            // scalingFactor = 1;
+            // printf("--- detected %d nodes on stage %d (scaling factor = %f)\n", nodesInStage, currentStage, scalingFactor);
+            for (int_t jj = 1; jj <= nodesInStage; jj++) {
+                // printf("- scaling node %d with %f\n", ii-jj, scalingFactor);
+                dvecsc_libstr(sQ[ii-jj].m, scalingFactor, &sQ[ii-jj], 0);
+                dvecsc_libstr(sR[ii-jj].m, scalingFactor, &sR[ii-jj], 0);
+                dvecsc_libstr(sq[ii-jj].m, scalingFactor, &sq[ii-jj], 0);
+                dvecsc_libstr(sr[ii-jj].m, scalingFactor, &sr[ii-jj], 0);
+            }
+            // reset counters
+            currentStage = tree[ii].stage;
+            nodesInStage = 1;
+        } else {
+            nodesInStage++;
+        }
+        d_cvt_vec2strvec(sxmin[ii].m, xmin, &sxmin[ii], 0);
+        d_cvt_vec2strvec(sxmax[ii].m, xmax, &sxmax[ii], 0);
+        d_cvt_vec2strvec(sumin[ii].m, umin, &sumin[ii], 0);
+        d_cvt_vec2strvec(sumax[ii].m, umax, &sumax[ii], 0);
     }
-    d_free_strmat(&sA);
+    d_free_strmat(&sA0);
     d_free_strvec(&sx0);
 }
 
