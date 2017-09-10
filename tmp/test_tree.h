@@ -14,9 +14,6 @@ extern "C" {
 
 typedef struct stage_QP_ {
 
-    // intermediate results
-    struct d_strvec *qmod;
-    struct d_strvec *rmod;
     #ifdef _CHECK_LAST_ACTIVE_SET_
     struct d_strmat *Wdiag;  // diagonal nx x nx block of dual Hessian that corresponds to node
     int_t xasChanged;
@@ -25,6 +22,7 @@ typedef struct stage_QP_ {
     struct d_strvec *QinvCal;
     struct d_strvec *RinvCal;
     struct d_strmat *M;  // MAX(nx, nu) x MAX(nx, nu) matrix to store intermediate results
+
     real_t fval;
     real_t cmod;
 
@@ -37,29 +35,6 @@ typedef struct stage_QP_ {
 // - The upper diagonal blocks from the children are neglected due to symmetry
 // - Dimension of block k is (nc[k]*nx) x (nc[k]*nx), where nc[k] = tree[k].nkids
 // - Dimension of parent block is (nc[k]*nx) x nx
-
-// Options of QP solver
-typedef struct
-{
-	// iterations
-	int_t maxIter;
-    int_t lineSearchMaxIter;
-
-    // numerical tolerances
-	real_t stationarityTolerance;
-
-    // termination condition options
-    termination_t termCondition;
-
-    // regularization options
-    regType_t regType;
-    real_t regValue;
-
-    // line search options
-    real_t lineSearchGamma;
-    real_t lineSearchBeta;
-
-} tree_options_t;
 
 #ifdef __cplusplus
 }  /* extern "C" */
