@@ -72,7 +72,7 @@ int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node 
         bytes += 2*d_size_strvec(nu[idx]);  // umin, umax
     }
 
-    bytes += (bytes + 63)/64*64;
+    bytes = (bytes + 63)/64*64;
     bytes += 64;
 
     return bytes;
@@ -160,7 +160,6 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
     char *ptrEnd = c_ptr;
     int_t bytes = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
     assert(ptrEnd <= ptrStart + bytes);
-    // TODO(dimitris): Check that the number of bytes lost due to alignment is reasonable
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
     // exit(1);
@@ -282,7 +281,7 @@ int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu) {
         bytes += d_size_strvec(nu[kk]);
     }
 
-    bytes += (bytes + 63)/64*64;
+    bytes = (bytes + 63)/64*64;
     bytes += 64;
 
     return bytes;
