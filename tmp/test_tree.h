@@ -14,15 +14,6 @@ extern "C" {
 
 typedef struct stage_QP_ {
 
-    // objective
-    // TODO(dimitris): figure out how to fix the issue with the scaling factor
-    struct d_strvec *Q;
-    struct d_strvec *R;
-    struct d_strvec *q;
-    struct d_strvec *r;
-    struct d_strvec *Qinv;
-    struct d_strvec *Rinv;
-
     // intermediate results
     struct d_strvec *qmod;
     struct d_strvec *rmod;
