@@ -115,16 +115,18 @@ typedef struct {
 } treeqp_tdunes_options_t;
 
 
-// int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
+int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
 
-// void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
-//     treeqp_tdunes_workspace *work, void *ptr);
+void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
+    treeqp_tdunes_workspace *work, void *ptr);
 
-// int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-//     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work);
+void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspace *work);
 
-// TODO
-// void check_compiler_flags();
+int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work);
+
+void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct node *tree,
+    treeqp_tdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

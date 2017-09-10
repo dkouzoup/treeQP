@@ -1,8 +1,14 @@
+// TODO(dimitris): HEADER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>  // for sqrt in 2-norm
 #ifdef PARALLEL
 #include <omp.h>
+#endif
+
+#ifdef RUNTIME_CHECKS
+#include <assert.h>
 #endif
 
 // TODO(dimitris): VALGRIND CODE
@@ -31,29 +37,7 @@
 #include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#include "./data.c"
-
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-
-treeqp_tdunes_options_t set_default_options(void) {
-    treeqp_tdunes_options_t opts;
-    termination_t cond = TREEQP_INFNORM;
-
-    opts.maxIter = 100;
-    opts.termCondition = cond;
-    opts.stationarityTolerance = 1.0e-12;
-
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.8;
-
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    // opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-6;
-
-    return opts;
-}
-
 
 static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
     int kk;
@@ -378,7 +362,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     if (error < opts->stationarityTolerance) {
         return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
     }
-
     #ifdef PARALLEL
     #pragma omp parallel for private(ii, idxdad, idxpos, idxsib, ns, asDadChanged)
     #endif
@@ -923,6 +906,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct node *tree = (struct node *)qp_in->tree;
 
     int_t Nn = work->Nn;
+    int_t Nh = qp_in->tree[Nn-1].stage;
     int_t Np = work->Np;
     int_t *npar = work->npar;
     struct d_strvec *regMat = work->regMat;
@@ -1093,7 +1077,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         }
     }
 
-    bytes += (bytes + 63)/64*64;
+    bytes = (bytes + 63)/64*64;
     bytes += 64;
 
     return bytes;
@@ -1266,7 +1250,16 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             }
         }
     }
-
+    #ifdef  RUNTIME_CHECKS
+    char *ptrStart = (char *) ptr;
+    char *ptrEnd = c_ptr;
+    int_t bytes = treeqp_tdunes_calculate_size(qp_in);
+    // TODO(dimitris): FIX THIS!
+    // assert(ptrEnd <= ptrStart + bytes);
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    // exit(1);
+    #endif
 }
 
 
@@ -1283,127 +1276,4 @@ void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspa
         d_cvt_vec2strvec(work->slambda[ii].m, &lambda[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }
-}
-
-
-int main( ) {
-    return_t status;
-
-    int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
-    int_t Np = Nn - ipow(md, Nr);
-
-    treeqp_tdunes_options_t opts = set_default_options();
-
-    // read initial point from txt file
-    int_t nl = Nn*NX;
-    real_t *lambda = malloc(nl*sizeof(real_t));
-    status = read_double_vector_from_txt(lambda, nl, "data_tree/lambda0.txt");
-    if (status != TREEQP_OK) return -1;
-
-    // read constraint on x0 from txt file
-    real_t x0[NX];
-    status = read_double_vector_from_txt(x0, NX, "data_tree/x0.txt");
-    if (status != TREEQP_OK) return status;
-
-    // setup scenario tree
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_tree(md, Nr, Nh, Nn, tree);
-
-    // setup QP
-    tree_ocp_qp_in qp_in;
-
-    int_t *nx = malloc(Nn*sizeof(int_t));
-    int_t *nu = malloc(Nn*sizeof(int_t));
-
-    for (int_t ii = 0; ii < Nn; ii++) {
-        // state and input dimensions on each node (only different at root/leaves)
-        if (ii > 0) {
-            nx[ii] = NX;
-        } else {
-            // TODO(dimitris): support both with and without eliminating x0
-            nx[ii] = NX;
-        }
-
-        if (tree[ii].nkids > 0) {  // not a leaf
-            nu[ii] = NU;
-        } else {
-            nu[ii] = 0;
-        }
-    }
-
-    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
-    void *qp_in_memory = malloc(qp_in_size);
-    create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
-
-    // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r, xmin, xmax,
-        umin, umax, x0, &qp_in);
-
-    // print_tree_ocp_qp_in(&qp_in);
-    // exit(1);
-
-    // setup QP solver
-    treeqp_tdunes_workspace work;
-
-    int_t treeqp_size = treeqp_tdunes_calculate_size(&qp_in);
-    void *qp_solver_memory = malloc(treeqp_size);
-    create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
-
-    // setup QP solution
-    tree_ocp_qp_out qp_out;
-
-    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
-    void *qp_out_memory = malloc(qp_out_size);
-    create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
-
-    #if PRINT_LEVEL > 0
-    printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
-    #endif
-
-    #if PROFILE > 0
-    initialize_timers( );
-    #endif
-
-    for (int_t jj = 0; jj < NRUNS; jj++) {
-        treeqp_tdunes_set_dual_initialization(lambda, &work);
-
-        #if PROFILE > 0
-        treeqp_tic(&tot_tmr);
-        #endif
-
-        treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
-
-        #if PROFILE > 0
-        total_time = treeqp_toc(&tot_tmr);
-        update_min_timers(jj);
-        #endif
-    }
-
-    write_solution_to_txt(&qp_in, Np, qp_out.info.iter, tree, &work);
-
-    real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints: %2.2e\n", err);
-
-    #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
-    #endif
-
-    for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
-    }
-
-    // Free memory
-    free(nx);
-    free(nu);
-
-    free(qp_in_memory);
-    free(qp_solver_memory);
-    free(qp_out_memory);
-
-    free_tree(md, Nr, Nh, Nn, tree);
-    free(tree);
-
-    free(lambda);
-
-    return 0;
 }

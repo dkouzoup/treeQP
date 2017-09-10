@@ -26,7 +26,7 @@
 
 
 OBJS=
-OBJS+=./treeqp/src/tree_ocp_qp_common.o ./treeqp/src/dual_Newton_scenarios.o
+OBJS+=./treeqp/src/tree_ocp_qp_common.o ./treeqp/src/dual_Newton_scenarios.o ./treeqp/src/dual_Newton_tree.o
 OBJS+=./treeqp/utils/blasfeo_utils.o ./treeqp/utils/profiling_utils.o ./treeqp/utils/tree_utils.o
 OBJS+=./treeqp/utils/utils.o ./treeqp/utils/timing.o
 
@@ -48,7 +48,7 @@ clean:
 	make -C examples clean
 	rm -f *.exe *.o *.a
 
-lint: # TODO(dimitris): fix for Linux, currently works only on mac 
+lint: # TODO(dimitris): fix for Linux, currently works only on mac
 	# Generate list of files and pass them to lint
 	find . \( -not -path "./tmp/*" -not -path "./external/*" \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) ! -name "*blasfeo_d_aux_tmp.h" ! -name  "dims.h" ! -name  "old_*.h" ! -name  "timing.h" ! -name "*data.c" \) > project.lnt
 	./cpplint.py --filter=-legal/copyright,-readability/casting --counting=detailed --linelength=100 --extensions=c,h,cpp $$(<project.lnt)
