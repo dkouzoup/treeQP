@@ -1895,9 +1895,9 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sq[jj], 0);
         dveccp_libstr(qp_in->nu[jj], &srnonScaled[jj], 0, &work->sr[jj], 0);
         dvecsc_libstr(qp_in->nu[jj], scalingFactor, &work->sr[jj], 0);
-        for (int_t nn = 0; nn < nx; nn++)
+        for (int_t nn = 0; nn < qp_in->nx[jj]; nn++)
             DVECEL_LIBSTR(&work->sQinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[jj], nn);
-        for (int_t nn = 0; nn < nu; nn++)
+        for (int_t nn = 0; nn < qp_in->nu[jj]; nn++)
             DVECEL_LIBSTR(&work->sRinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sR[jj], nn);
     }
 
