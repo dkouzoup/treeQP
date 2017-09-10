@@ -5,9 +5,14 @@
 #include <omp.h>
 #endif
 
+// TODO(dimitris): VALGRIND CODE
 // TODO(dimitris): Try open MPI interface (message passing)
 // TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1)
 // TODO(dimitris): find out why algorithm is not scale-invariant
+// TODO(dimitris): on-the-fly regularization
+// TODO(dimitris): different types of line-search
+// TODO(dimitris): why saving so many Chol factorizations does not imporove cpu time?
+// TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
 
 #include "treeqp/src/dual_Newton_tree.h"
 
@@ -30,11 +35,6 @@
 
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
-// TODO(dimitris): on-the-fly regularization
-// TODO(dimitris): different types of line-search
-// TODO(dimitris): why saving so many Chol factorizations does not imporove cpu time?
-// TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
-
 treeqp_tdunes_options_t set_default_options(void) {
     treeqp_tdunes_options_t opts;
     termination_t cond = TREEQP_INFNORM;
@@ -55,29 +55,6 @@ treeqp_tdunes_options_t set_default_options(void) {
 }
 
 
-// static tree_options_t read_matlab_options(void) {
-//     tree_options_t opts;
-
-//     opts.maxIter = maxit;
-//     opts.stationarityTolerance = termTolerance;
-
-//     opts.lineSearchMaxIter = maxIterLS;
-//     opts.lineSearchGamma = gammaLS;
-//     opts.lineSearchBeta = betaLS;
-
-//     #if REGULARIZATION == 1
-//     opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-//     opts.regValue = valueREG;
-//     #else
-//     // TODO(dimitris): do not even add regularization instead of adding zero
-//     opts.regType  = TREEQP_NO_REGULARIZATION;
-//     opts.regValue = 0.0;
-//     #endif
-
-//     return opts;
-// }
-
-
 static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
     int kk;
 
@@ -92,6 +69,9 @@ static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
 
 static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *tree, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
+
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sx = (struct d_strvec *) work->sx;
@@ -309,6 +289,9 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     int_t ii, kk, idxdad, idxpos, idxsib, ns, isLeaf, asDadChanged;
     real_t error;
 
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
+
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int_t *xasChanged = work->xasChanged;
     int_t *uasChanged = work->uasChanged;
@@ -362,7 +345,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     // TODO(dimitris): double check that this indx is correct (not higher s.t. we loose efficiency)
     *idxFactorStart = find_starting_point_of_factorization(tree, work);
     #endif
-    printf("RESTART FACTORIZATION AT %d BLOCK\n", *idxFactorStart);
 
     #ifdef PARALLEL
     #pragma omp parallel for private(idxdad, idxpos)
@@ -516,11 +498,12 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 }
 
 
-static void calculate_delta_lambda(int_t Np, int_t Nh, int_t idxFactorStart, int_t *npar,
+static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, int_t idxFactorStart, int_t *npar,
     struct node *tree, treeqp_tdunes_workspace *work) {
 
     int_t ii, kk, idxdad, idxpos;
     int_t icur = Np-1;
+    int_t nx = qp_in->nx[1];
 
     struct d_strmat *sW = work->sW;
     struct d_strmat *sUt = work->sUt;
@@ -695,6 +678,9 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
     int_t Nn = work->Nn;
     int_t Np = work->Np;
+
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     real_t *fvals = work->fval;
     real_t *cmod = work->cmod;
@@ -871,10 +857,14 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
 }
 
 
-void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, struct node *tree,
+void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct node *tree,
     treeqp_tdunes_workspace *work) {
 
     int_t kk, indx, indu, ind;
+
+    int_t Nn = qp_in->N;
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     struct d_strvec *sx = work->sx;
     struct d_strvec *su = work->su;
@@ -910,10 +900,6 @@ void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, struct node *tree,
     write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/deltalambda_opt.txt");
     write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/lambda_opt.txt");
     write_int_vector_to_txt(&iter, 1, "data_tree/iter.txt");
-
-    for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(nx, &work->sx[ii], 0);
-    }
 
     #if PROFILE > 0
     write_timers_to_txt( );
@@ -990,7 +976,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        calculate_delta_lambda(Np, Nh, idxFactorStart, npar, tree, work);
+        calculate_delta_lambda(qp_in, Np, Nh, idxFactorStart, npar, tree, work);
         #if PROFILE > 2
         newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1015,6 +1001,11 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
     }
 
+    // ------ copy solution to qp_out
+    for (int_t ii = 0; ii < Nn; ii++) {
+        dveccp_libstr(qp_in->nx[ii], &work->sx[ii], 0, &qp_out->x[ii], 0);
+        dveccp_libstr(qp_in->nu[ii], &work->su[ii], 0, &qp_out->u[ii], 0);
+    }
     qp_out->info.iter = NewtonIter;
 
     if (qp_out->info.iter == opts->maxIter)
@@ -1118,6 +1109,9 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     int_t Np = get_number_of_parent_nodes(Nn, tree);
     int_t md = tree[0].nkids;
     int_t dim;
+
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     // save some useful dimensions to workspace
     work->Nn = Nn;
@@ -1227,7 +1221,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(real_t);
 
     // TODO(dimitris): asserts for mem. alignment
-
     init_strvec(md*nx, work->regMat, &c_ptr);
     dvecse_libstr(md*nx, opts->regValue, work->regMat, 0);
 
@@ -1293,22 +1286,23 @@ void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspa
 }
 
 
-int main(int argc, char const *argv[]) {
-
+int main( ) {
     return_t status;
+
     int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
+    int_t Np = Nn - ipow(md, Nr);
 
     treeqp_tdunes_options_t opts = set_default_options();
 
     // read initial point from txt file
-    int_t nl = Nn*nx;  // number of dual variables
-    real_t *lambda = malloc(Nn*nx*sizeof(real_t));
+    int_t nl = Nn*NX;
+    real_t *lambda = malloc(nl*sizeof(real_t));
     status = read_double_vector_from_txt(lambda, nl, "data_tree/lambda0.txt");
     if (status != TREEQP_OK) return -1;
 
     // read constraint on x0 from txt file
-    real_t x0[nx];
-    status = read_double_vector_from_txt(x0, nx, "data_tree/x0.txt");
+    real_t x0[NX];
+    status = read_double_vector_from_txt(x0, NX, "data_tree/x0.txt");
     if (status != TREEQP_OK) return status;
 
     // setup scenario tree
@@ -1318,31 +1312,31 @@ int main(int argc, char const *argv[]) {
     // setup QP
     tree_ocp_qp_in qp_in;
 
-    int_t *nxVec = malloc(Nn*sizeof(int_t));
-    int_t *nuVec = malloc(Nn*sizeof(int_t));
+    int_t *nx = malloc(Nn*sizeof(int_t));
+    int_t *nu = malloc(Nn*sizeof(int_t));
 
     for (int_t ii = 0; ii < Nn; ii++) {
         // state and input dimensions on each node (only different at root/leaves)
         if (ii > 0) {
-            nxVec[ii] = nx;
+            nx[ii] = NX;
         } else {
             // TODO(dimitris): support both with and without eliminating x0
-            nxVec[ii] = nx;
+            nx[ii] = NX;
         }
 
         if (tree[ii].nkids > 0) {  // not a leaf
-            nuVec[ii] = nu;
+            nu[ii] = NU;
         } else {
-            nuVec[ii] = 0;
+            nu[ii] = 0;
         }
     }
 
-    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nxVec, nuVec, tree);
+    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
     void *qp_in_memory = malloc(qp_in_size);
-    create_tree_ocp_qp_in(Nn, nxVec, nuVec, tree, &qp_in, qp_in_memory);
+    create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data(&A[nx*nx], &B[nx*nu], &b[nx], dQ, q, dP, p, dR, r, xmin, xmax,
+    tree_ocp_qp_in_fill_lti_data(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r, xmin, xmax,
         umin, umax, x0, &qp_in);
 
     // setup QP solver
@@ -1355,25 +1349,19 @@ int main(int argc, char const *argv[]) {
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
-    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nxVec, nuVec);
+    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
     void *qp_out_memory = malloc(qp_out_size);
-    create_tree_ocp_qp_out(Nn, nxVec, nuVec, &qp_out, qp_out_memory);
-
-    // ----------------------- OLD STUFF BELOW -----------------------------------------------------
-
-    int_t Np = get_number_of_parent_nodes(Nn, tree);  // = Nn - ipow(md, Nr), for the standard case
+    create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
 
     #if PRINT_LEVEL > 0
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
-    // ----------------------- OLD STUFF ABOVE -----------------------------------------------------
-
     #if PROFILE > 0
     initialize_timers( );
     #endif
 
-    for (int_t ll = 0; ll < NRUNS; ll++) {
+    for (int_t jj = 0; jj < NRUNS; jj++) {
         treeqp_tdunes_set_dual_initialization(lambda, &work);
 
         #if PROFILE > 0
@@ -1384,28 +1372,36 @@ int main(int argc, char const *argv[]) {
 
         #if PROFILE > 0
         total_time = treeqp_toc(&tot_tmr);
-        update_min_timers(ll);
+        update_min_timers(jj);
         #endif
     }
 
-    write_solution_to_txt(Nn, Np, qp_out.info.iter, tree, &work);
+    write_solution_to_txt(&qp_in, Np, qp_out.info.iter, tree, &work);
+
+    // TODO(dimitris): WHY ERROR SO BIG?
+    real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
+    printf("\nMaximum violation of dynamic constraints: %2.2e\n", err);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);
     #endif
 
+    for (int_t ii = 0; ii < 5; ii++) {
+        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+    }
+
     // Free memory
+    free(nx);
+    free(nu);
+
+    free(qp_in_memory);
+    free(qp_solver_memory);
+    free(qp_out_memory);
+
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);
 
     free(lambda);
-    free(qp_in_memory);
-    free(qp_solver_memory);
-    free(qp_out_memory);
-    free(nxVec); free(nuVec);
 
-    // for (kk = 0; kk < Np; kk++) d_print_strvec(slambda[kk].m, &slambda[kk],0);
-    // printf("\n");
-    // d_print_tran_strvec(slambda[Np-1].m, &slambda[Np-1],0);
     return 0;
 }
