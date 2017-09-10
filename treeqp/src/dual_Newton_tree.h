@@ -69,6 +69,7 @@ typedef struct treeqp_tdunes_workspace_ {
     // - Dimension of parent block is (nc[k]*nx) x nx
 
     struct d_strvec *regMat;  // 1 x 1
+    struct d_strmat *sM;  // 1 x Nn: matrix MAX(nx, nu) x MAX(nx, nu) to store intermediate results
     struct d_strmat *sW;  // 1 x Np
     struct d_strmat *sCholW;  // 1 x Np
     struct d_strmat *sUt;  // 1 x (Np-1)

@@ -355,8 +355,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
 
     struct d_strvec *sx = work->sx;
     struct d_strvec *su = work->su;
-    // struct d_strvec *sxas = work->sxas;
-    // struct d_strvec *suas = work->suas;
+
+    struct d_strmat *sM = work->sM;
     struct d_strmat *sW = work->sW;
     struct d_strmat *sUt = work->sUt;
     struct d_strvec *sres = work->sres;
@@ -446,7 +446,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
 
         // M = A[k] * Qinvcal[idxdad]
         dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
-            QP[kk].M, 0, 0, QP[kk].M, 0, 0);
+            &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // --- hessian contribution of parent (Ut)
 
@@ -456,22 +456,22 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         if (tree[idxdad].dad >= 0) {
         #endif
             // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
-            dgetr_libstr(nx, nx, QP[kk].M, 0, 0, &sUt[idxdad-1], 0, idxpos);
+            dgetr_libstr(nx, nx, &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
             dgesc_libstr(nx, nx, -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
         // --- hessian contribution of node (diagonal block of W)
 
         // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[k]'
-        dsyrk_ln_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
         dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
-            QP[kk].M, 0, 0, QP[kk].M, 0, 0);
+            &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
-        dsyrk_ln_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
@@ -497,18 +497,18 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
 
             // M = A[idxsib] * Qinvcal[idxdad]
             dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
-                QP[kk].M, 0, 0, QP[kk].M, 0, 0);
+                &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
-            dgemm_nt_libstr(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, QP[kk].M, 0, 0, 0.0, &sW[idxdad],
+            dgemm_nt_libstr(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
 
             // M = B[idxsib]*Rinvcal[idxdad]
             dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
-                QP[kk].M, 0, 0, QP[kk].M, 0, 0);
+                &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
-            dgemm_nt_libstr(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, QP[kk].M, 0, 0, 1.0, &sW[idxdad],
+            dgemm_nt_libstr(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
         }
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -968,6 +968,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
     int_t *npar = work->npar;
     struct d_strvec *regMat = work->regMat;
 
+    // ------ initialization
     for (int_t ii = 0; ii < Nn; ii++) {
         for (int_t nn = 0; nn < qp_in->nx[ii]; nn++)
             DVECEL_LIBSTR(&work->sQinv[ii], nn) = 1.0/DVECEL_LIBSTR(&qp_in->Q[ii], nn);
@@ -981,13 +982,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #endif
     }
 
-    // TEMP!!
-    for (int_t ii = 0; ii < Nn; ii++) {
-        // stage_QPs[ii].Wdiag = &work->sWdiag[ii];
-        // stage_QPs[ii].RinvCal = &work->sRinvCal[ii];
-    }
-
-    // dual Newton iterations
+    // ------ dual Newton iterations
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
@@ -1084,6 +1079,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += Nn*sizeof(struct d_strmat);  // Wdiag
     #endif
     bytes += 1*sizeof(struct d_strvec);  // regMat
+    bytes += Nn*sizeof(struct d_strmat);  // M
     bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
     bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
@@ -1110,6 +1106,9 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         bytes += d_size_strmat(nx, nx);  // Wdiag
         bytes += d_size_strvec(nx);  // xasPrev
         #endif
+
+        bytes +=  // M
+            d_size_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]));
 
         if (ii < Np) {
             bytes += 2*d_size_strvec(nu);  // u, uas
@@ -1191,6 +1190,9 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->regMat = (struct d_strvec *) c_ptr;
     c_ptr += 1*sizeof(struct d_strvec);
 
+    work->sM = (struct d_strmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strmat);
+
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->sWdiag = (struct d_strmat *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strmat);
@@ -1270,6 +1272,9 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(nx, &work->sxasPrev[ii], &c_ptr);
         init_strmat(nx, nx, &work->sWdiag[ii], &c_ptr);
         #endif
+        init_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]),
+            &work->sM[ii], &c_ptr);
+
         if (ii < Np) {
             init_strvec(nu, &work->su[ii], &c_ptr);
             init_strvec(nu, &work->suas[ii], &c_ptr);
@@ -1389,8 +1394,6 @@ int main(int argc, char const *argv[]) {
 
     stage_QP *stage_QPs = malloc(Nn*sizeof(stage_QP));
 
-    struct d_strmat *sM = malloc(Nn*sizeof(struct d_strmat));
-
     int_t memorySize = calculate_blasfeo_memory_size_tree(Nh, Nr, md, nx, nu, tree);
     #if PRINT_LEVEL > 0
     printf("\n-------- Blasfeo requires %d bytes of memory\n\n", memorySize);
@@ -1404,16 +1407,6 @@ int main(int argc, char const *argv[]) {
     char *blasfeoPtr = (char *) tmpBlasfeoPtr;
 
     // TODO(dimitris): find out why algorithm is not scale-invariant
-
-    for (kk = 0; kk < Nn; kk++) {
-            init_strmat(MAX(nx, nu), MAX(nx, nu), &sM[kk], &blasfeoPtr);
-    }
-
-    // build stage_QPs
-    for (kk = 0; kk < Nn; kk++) {
-        // iterates and intermediate results
-        stage_QPs[kk].M = &sM[kk];
-    }
 
     // ----------------------- OLD STUFF ABOVE -----------------------------------------------------
 
@@ -1446,7 +1439,6 @@ int main(int argc, char const *argv[]) {
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);
     free(stage_QPs);
-    free(sM);
 
     free(lambda);
     free(qp_in_memory);
