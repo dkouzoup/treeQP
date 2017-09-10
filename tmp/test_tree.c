@@ -339,6 +339,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int_t *xasChanged = work->xasChanged;
     int_t *uasChanged = work->uasChanged;
+    struct d_strmat *sWdiag = work->sWdiag;
     #endif
 
     int_t Nn = work->Nn;
@@ -481,7 +482,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // save diagonal block that will be overwritten in factorization
-        dgecp_libstr(nx, nx, &sW[idxdad], idxpos, idxpos, QP[kk].Wdiag, 0, 0);
+        dgecp_libstr(nx, nx, &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
         #endif
 
         // --- hessian contribution of preceding siblings (off-diagonal blocks of W)
@@ -516,7 +517,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         } else {
-            dgecp_libstr(nx, nx, QP[kk].Wdiag, 0, 0, &sW[idxdad], idxpos, idxpos);
+            dgecp_libstr(nx, nx, &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
         }
         #endif
     }
@@ -982,7 +983,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
 
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
-        stage_QPs[ii].Wdiag = &work->sWdiag[ii];
+        // stage_QPs[ii].Wdiag = &work->sWdiag[ii];
         // stage_QPs[ii].RinvCal = &work->sRinvCal[ii];
     }
 
