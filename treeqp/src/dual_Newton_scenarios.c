@@ -308,10 +308,10 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
     int_t *commonNodes = work->commonNodes;
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
-    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
-    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
-    struct d_strvec *sQinv = (struct d_strvec *) qp_in->Qinv;
-    struct d_strvec *sRinv = (struct d_strvec *) qp_in->Rinv;
+    struct d_strvec *sq = work->sq;
+    struct d_strvec *sr = work->sr;
+    struct d_strvec *sQinv = work->sQinv;
+    struct d_strvec *sRinv = work->sRinv;
     struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
     struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
     struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
@@ -1274,12 +1274,12 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
-    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
-    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
-    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
-    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
-    struct d_strvec *sQinv = (struct d_strvec *) qp_in->Qinv;
-    struct d_strvec *sRinv = (struct d_strvec *) qp_in->Rinv;
+    struct d_strvec *sQ = work->sQ;
+    struct d_strvec *sR = work->sR;
+    struct d_strvec *sq = work->sq;
+    struct d_strvec *sr = work->sr;
+    struct d_strvec *sQinv = work->sQinv;
+    struct d_strvec *sRinv = work->sRinv;
     struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
     struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
     struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
@@ -1539,7 +1539,7 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     int_t Ns = Nn - Np;
     int_t Nr = get_robust_horizon(Nn, tree);
 
-    int_t ii, commonNodes, commonNodesNxt, maxTmpDim;
+    int_t commonNodes, commonNodesNxt, maxTmpDim;
     int_t commonNodesMax = 0;
     int_t bytes = 0;
 
@@ -1590,6 +1590,7 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     #endif
 
     // struct pointers
+    bytes += 6*Nn*sizeof(struct d_strmat);  // Q, R, q, r, Qinv, Rinv
     bytes += 2*(Ns-1)*sizeof(struct d_strmat);  // JayD, CholJayD
     bytes += 2*(Ns-2)*sizeof(struct d_strmat);  // JayL, CholJayL
     bytes += 2*Ns*sizeof(struct d_strmat);  // Ut, K
@@ -1599,7 +1600,12 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += Ns*sizeof(struct d_strvec);  // tmpVecs
     bytes += Ns*sizeof(struct d_strmat);  // tmpMats
 
-    for (ii = 0; ii < Ns-1; ii++) {
+    for (int_t jj = 0; jj < Nn; jj++) {
+        bytes += 3*d_size_strvec(qp_in->nx[jj]);  // Q, q, Qinv
+        bytes += 3*d_size_strvec(qp_in->nu[jj]);  // R, r, Rinv
+    }
+
+    for (int_t ii = 0; ii < Ns-1; ii++) {
         commonNodes = get_number_of_common_nodes(Nn, Ns, Nh, ii, ii+1, tree);
         commonNodesMax = MAX(commonNodesMax, commonNodes);
         bytes += 2*d_size_strmat(nu*commonNodes, nu*commonNodes);  // JayD, CholJayD
@@ -1640,7 +1646,7 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     int_t Ns = Nn - Np;
     int_t Nr = get_robust_horizon(Nn, tree);
 
-    int_t ii, kk, maxTmpDim, node, ans;
+    int_t maxTmpDim, node, ans;
     int_t *commonNodes;
 
     // TODO(dimitris): move to workspace
@@ -1674,11 +1680,11 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     create_double_ptr_int(&work->nodeIdx, Ns, Nh+1, &c_ptr);
     create_double_ptr_int(&work->boundsRemoved, Ns, Nh+1, &c_ptr);
 
-    for (ii = 0; ii < Ns; ii++) {
+    for (int_t ii = 0; ii < Ns; ii++) {
         node = tree[Nn-Ns+ii].idx;
         work->nodeIdx[ii][Nh] = node;
         work->boundsRemoved[ii][Nh] = 0;
-        for (kk = Nh; kk > 0; kk--) {
+        for (int_t kk = Nh; kk > 0; kk--) {
             work->nodeIdx[ii][kk-1] = tree[node].dad;
             node = tree[node].dad;
             ans = node_processed(node, processedNodes, idx);
@@ -1691,6 +1697,19 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
         }
     }
 
+    // QP weights
+    work->sQ = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sR = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sq = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sr = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sQinv = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sRinv = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
     // diagonal matrix (stored in vector) with regularization value
     work->regMat = (struct d_strvec *) c_ptr;
     c_ptr += 1*sizeof(struct d_strvec);
@@ -1768,7 +1787,16 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     init_strvec(maxTmpDim, work->regMat, &c_ptr);
     dvecse_libstr(maxTmpDim, opts->regValue, work->regMat, 0);
 
-    for (ii = 0; ii < Ns; ii++) {
+    for (int_t jj = 0; jj < Nn; jj++) {
+        init_strvec(qp_in->nx[jj], &work->sQ[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sR[jj], &c_ptr);
+        init_strvec(qp_in->nx[jj], &work->sq[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sr[jj], &c_ptr);
+        init_strvec(qp_in->nx[jj], &work->sQinv[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sRinv[jj], &c_ptr);
+    }
+
+    for (int_t ii = 0; ii < Ns; ii++) {
         init_strmat(nu*Nr, Nh*nx, &work->sUt[ii], &c_ptr);
         init_strmat(nu*Nr, nu*Nr, &work->sK[ii], &c_ptr);
         init_strvec(maxTmpDim, &work->sTmpVecs[ii], &c_ptr);
@@ -1788,23 +1816,17 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
         }
     }
 
-    for (ii = 0; ii < Ns; ii++) {
-        for (kk = 0; kk < Nh; kk++) {
+    for (int_t ii = 0; ii < Ns; ii++) {
+        for (int_t kk = 0; kk < Nh; kk++) {
+            // NOTE(dimitris): all states are shifted by one after eliminating x0
             init_strvec(nx, &work->sx[ii][kk], &c_ptr);
             init_strvec(nu, &work->su[ii][kk], &c_ptr);
             init_strvec(nx, &work->sxUnc[ii][kk], &c_ptr);
             init_strvec(nu, &work->suUnc[ii][kk], &c_ptr);
             init_strvec(nx, &work->sxas[ii][kk], &c_ptr);
             init_strvec(nu, &work->suas[ii][kk], &c_ptr);
-
             init_strvec(nx, &work->sQinvCal[ii][kk], &c_ptr);
             init_strvec(nu, &work->sRinvCal[ii][kk], &c_ptr);
-            // NOTE(dimitris): all states are shifted by one after eliminating x0
-            dveccp_libstr(nx, (struct d_strvec*)&qp_in->Qinv[work->nodeIdx[ii][kk+1]], 0,
-                &work->sQinvCal[ii][kk], 0);
-            dveccp_libstr(nu, (struct d_strvec*)&qp_in->Rinv[work->nodeIdx[ii][kk]], 0,
-                &work->sRinvCal[ii][kk], 0);
-
             init_strvec(nx, &work->smu[ii][kk], &c_ptr);
             init_strvec(nx, &work->sDeltamu[ii][kk], &c_ptr);
             init_strvec(nx, &work->sresk[ii][kk], &c_ptr);
@@ -1818,9 +1840,6 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
             init_strmat(nx, nx, &work->sTmpLambdaD[ii][kk], &c_ptr);
             init_strvec(nx, &work->sxasPrev[ii][kk], &c_ptr);
             init_strvec(nu, &work->suasPrev[ii][kk], &c_ptr);
-            // NOTE(dimitris): setting value outside {-1,0,1} to force full factorization at 1st it.
-            dvecse_libstr(nx, 0.0/0.0, &work->sxasPrev[ii][kk], 0);
-            dvecse_libstr(nu, 0.0/0.0, &work->suasPrev[ii][kk], 0);
             #endif
         }
     }
@@ -1843,6 +1862,7 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
 
     int_t NewtonIter, lsIter;
     real_t error;
+    int_t Nn = qp_in->N;
     int_t nu = qp_in->nu[0];
     int_t nx = qp_in->nx[1];
     return_t status = TREEQP_ERR_UNKNOWN_ERROR;
@@ -1854,6 +1874,52 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
 
     struct d_strmat *sJayD = work->sJayD;
     struct d_strmat *sJayL = work->sJayL;
+
+    struct d_strvec *sQnonScaled = (struct d_strvec*)qp_in->Q;
+    struct d_strvec *sRnonScaled = (struct d_strvec*)qp_in->R;
+    struct d_strvec *sqnonScaled = (struct d_strvec*)qp_in->q;
+    struct d_strvec *srnonScaled = (struct d_strvec*)qp_in->r;
+
+    // ------ initialization
+    treeqp_timer timer;
+    treeqp_tic(&timer);
+    real_t scalingFactor;
+    for (int_t jj = 0; jj < Nn; jj++) {
+        // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
+        scalingFactor = (real_t)ipow(md, MIN(qp_in->tree[jj].stage, Nr))/ipow(md, Nr);
+        dveccp_libstr(qp_in->nx[jj], &sQnonScaled[jj], 0, &work->sQ[jj], 0);
+        dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sQ[jj], 0);
+        dveccp_libstr(qp_in->nu[jj], &sRnonScaled[jj], 0, &work->sR[jj], 0);
+        dvecsc_libstr(qp_in->nu[jj], scalingFactor, &work->sR[jj], 0);
+        dveccp_libstr(qp_in->nx[jj], &sqnonScaled[jj], 0, &work->sq[jj], 0);
+        dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sq[jj], 0);
+        dveccp_libstr(qp_in->nu[jj], &srnonScaled[jj], 0, &work->sr[jj], 0);
+        dvecsc_libstr(qp_in->nu[jj], scalingFactor, &work->sr[jj], 0);
+        for (int_t nn = 0; nn < nx; nn++)
+            DVECEL_LIBSTR(&work->sQinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[jj], nn);
+        for (int_t nn = 0; nn < nu; nn++)
+            DVECEL_LIBSTR(&work->sRinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sR[jj], nn);
+    }
+
+    int_t idx, idxp1;
+    for (int_t ii = 0; ii < Ns; ii++) {
+        for (int_t kk = 0; kk < Nh; kk++) {
+            idx = work->nodeIdx[ii][kk];
+            idxp1 = work->nodeIdx[ii][kk+1];
+
+            // NOTE(dimitris): QinvCal and RinvCal of nodes with removed bounds never change
+            dveccp_libstr(nx, &work->sQinv[idxp1], 0, &work->sQinvCal[ii][kk], 0);
+            dveccp_libstr(nu, &work->sRinv[idx], 0, &work->sRinvCal[ii][kk], 0);
+
+            #ifdef _CHECK_LAST_ACTIVE_SET_
+            // NOTE(dimitris): setting value outside {-1,0,1} to force full factorization at 1st it.
+            dvecse_libstr(nx, 0.0/0.0, &work->sxasPrev[ii][kk], 0);
+            dvecse_libstr(nu, 0.0/0.0, &work->suasPrev[ii][kk], 0);
+            #endif
+        }
+    }
+    real_t init_time = treeqp_toc(&timer);
+    // printf("init. time = %f ms\n", 1e3*init_time);
 
     // ------ dual Newton iterations
     // NOTE(dimitris): at first iteration some matrices are initialized for _CHECK_LAST_ACTIVE_SET_

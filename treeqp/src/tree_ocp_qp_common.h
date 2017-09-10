@@ -55,8 +55,6 @@ typedef struct {
     const struct d_strvec *R;
     const struct d_strvec *q;
     const struct d_strvec *r;
-    const struct d_strvec *Qinv;
-    const struct d_strvec *Rinv;
     const struct d_strvec *xmin;
     const struct d_strvec *xmax;
     const struct d_strvec *umin;
