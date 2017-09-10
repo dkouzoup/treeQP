@@ -7,10 +7,9 @@
 
 // TODO(dimitris): Try open MPI interface (message passing)
 // TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1)
+// TODO(dimitris): find out why algorithm is not scale-invariant
 
 #include "treeqp/src/dual_Newton_tree.h"
-
-#include "./test_tree.h"
 
 #include "treeqp/flags.h"
 #include "treeqp/utils/types.h"
@@ -91,33 +90,7 @@ static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
 }
 
 
-static int_t calculate_blasfeo_memory_size_tree(int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
-    struct node *tree) {
-
-    int_t size = 0;
-    int_t Nn = calculate_number_of_nodes(md, Nr, Nh);
-    int_t Np = Nn - ipow(md, Nr);
-    int_t kk;
-
-    // objective
-    size += 3*(Nh+1)*d_size_strvec(nx);  // Q, Qinv, q
-    size += 3*Nh*d_size_strvec(nu);  // R, Rinv, r
-
-    // intermediate results
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    size += Nn*d_size_strmat(nx, nx);  // Wdiag
-    #endif
-    size += Nn*d_size_strvec(nx);  // qmod
-    size += Np*d_size_strvec(nu);  // rmod
-    size += Nn*d_size_strvec(nx);  // QinvCal
-    size += Np*d_size_strvec(nu);  // RinvCal
-    size += Nn*d_size_strmat(MAX(nx, nu), MAX(nx, nu));  // M
-
-    return size;
-}
-
-
-static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
+static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *tree, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
 
     struct d_strvec *slambda = work->slambda;
@@ -270,7 +243,7 @@ static void compare_with_previous_active_set(int_t isLeaf, int_t indx, treeqp_td
 }
 
 
-static int_t find_starting_point_of_factorization(stage_QP *QP, struct node *tree, treeqp_tdunes_workspace *work) {
+static int_t find_starting_point_of_factorization(struct node *tree, treeqp_tdunes_workspace *work) {
     int_t idxdad, asDadChanged;
     int_t Np = work->Np;
     int_t idxFactorStart = Np;
@@ -330,8 +303,8 @@ static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdune
 }
 
 
-static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
-    int_t *idxFactorStart, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
+static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
     int_t ii, kk, idxdad, idxpos, idxsib, ns, isLeaf, asDadChanged;
     real_t error;
@@ -387,7 +360,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         compare_with_previous_active_set(isLeaf, kk, work);
     }
     // TODO(dimitris): double check that this indx is correct (not higher s.t. we loose efficiency)
-    *idxFactorStart = find_starting_point_of_factorization(QP, tree, work);
+    *idxFactorStart = find_starting_point_of_factorization(tree, work);
     #endif
     printf("RESTART FACTORIZATION AT %d BLOCK\n", *idxFactorStart);
 
@@ -716,7 +689,7 @@ static real_t gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
 }
 
 
-static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp_tdunes_workspace *work) {
+static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxpos, idxdad;
     real_t fval = 0;
 
@@ -839,7 +812,7 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
 }
 
 
-static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, stage_QP *QP, struct node *tree,
+static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node *tree,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
     int_t jj, kk;
 
@@ -856,7 +829,7 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, stage_QP *QP
     real_t tauPrev = 0;
 
     dotProduct = gradient_trans_times_direction(work);
-    fval0 = evaluate_dual_function(qp_in, QP, work);
+    fval0 = evaluate_dual_function(qp_in, work);
     // printf(" dot_product = %f\n", dotProduct);
     // printf(" dual_function = %f\n", fval0);
 
@@ -871,7 +844,7 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, stage_QP *QP
         }
 
         // evaluate dual function
-        fval = evaluate_dual_function(qp_in, QP, work);
+        fval = evaluate_dual_function(qp_in, work);
         // printf("LS iteration #%d (fval = %f <? %f )\n", jj, fval, fval0 + opts->lineSearchGamma*tau*dotProduct);
 
         // check condition
@@ -898,8 +871,8 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, stage_QP *QP
 }
 
 
-void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, stage_QP *QP,
-    struct node *tree, treeqp_tdunes_workspace *work) {
+void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, struct node *tree,
+    treeqp_tdunes_workspace *work) {
 
     int_t kk, indx, indu, ind;
 
@@ -952,8 +925,8 @@ void write_solution_to_txt(int_t Nn, int_t Np, int_t iter, stage_QP *QP,
     free(lambda);
 }
 
-int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
-    tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
+int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
     int status;
     int idxFactorStart;
@@ -992,7 +965,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(qp_in, Nn, stage_QPs, tree, work);
+        solve_stage_problems(qp_in, Nn, tree, work);
         #if PROFILE > 2
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1001,7 +974,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        status = build_dual_problem(qp_in, stage_QPs, &idxFactorStart, opts, work);
+        status = build_dual_problem(qp_in, &idxFactorStart, opts, work);
         #if PROFILE > 2
         build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1027,7 +1000,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        lsIter = line_search(qp_in, Nn, Np, stage_QPs, tree, opts, work);
+        lsIter = line_search(qp_in, Nn, Np, tree, opts, work);
         #if PROFILE > 2
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1388,25 +1361,11 @@ int main(int argc, char const *argv[]) {
 
     // ----------------------- OLD STUFF BELOW -----------------------------------------------------
 
-    int_t ii, jj, kk, ll, real;
-
     int_t Np = get_number_of_parent_nodes(Nn, tree);  // = Nn - ipow(md, Nr), for the standard case
 
-    stage_QP *stage_QPs = malloc(Nn*sizeof(stage_QP));
-
-    int_t memorySize = calculate_blasfeo_memory_size_tree(Nh, Nr, md, nx, nu, tree);
-    #if PRINT_LEVEL > 0
-    printf("\n-------- Blasfeo requires %d bytes of memory\n\n", memorySize);
-    #endif
     #if PRINT_LEVEL > 0
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
-
-    void *tmpBlasfeoPtr;
-    v_zeros_align(&tmpBlasfeoPtr, memorySize);
-    char *blasfeoPtr = (char *) tmpBlasfeoPtr;
-
-    // TODO(dimitris): find out why algorithm is not scale-invariant
 
     // ----------------------- OLD STUFF ABOVE -----------------------------------------------------
 
@@ -1414,14 +1373,14 @@ int main(int argc, char const *argv[]) {
     initialize_timers( );
     #endif
 
-    for (ll = 0; ll < NRUNS; ll++) {
+    for (int_t ll = 0; ll < NRUNS; ll++) {
         treeqp_tdunes_set_dual_initialization(lambda, &work);
 
         #if PROFILE > 0
         treeqp_tic(&tot_tmr);
         #endif
 
-        treeqp_tdunes_solve(stage_QPs, &qp_in, &qp_out, &opts, &work);
+        treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 
         #if PROFILE > 0
         total_time = treeqp_toc(&tot_tmr);
@@ -1429,7 +1388,7 @@ int main(int argc, char const *argv[]) {
         #endif
     }
 
-    write_solution_to_txt(Nn, Np, qp_out.info.iter, stage_QPs, tree, &work);
+    write_solution_to_txt(Nn, Np, qp_out.info.iter, tree, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);
@@ -1438,16 +1397,12 @@ int main(int argc, char const *argv[]) {
     // Free memory
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);
-    free(stage_QPs);
 
     free(lambda);
     free(qp_in_memory);
     free(qp_solver_memory);
     free(qp_out_memory);
     free(nxVec); free(nuVec);
-
-    // TODO(dimitris): why do I get an error when I use c_align/free instead?
-    v_free(tmpBlasfeoPtr);
 
     // for (kk = 0; kk < Np; kk++) d_print_strvec(slambda[kk].m, &slambda[kk],0);
     // printf("\n");
