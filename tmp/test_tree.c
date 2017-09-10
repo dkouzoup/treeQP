@@ -982,7 +982,7 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
 
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
-        // stage_QPs[ii].QinvCal = &work->sQinvCal[ii];
+        stage_QPs[ii].Wdiag = &work->sWdiag[ii];
         // stage_QPs[ii].RinvCal = &work->sRinvCal[ii];
     }
 
@@ -1079,6 +1079,9 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     // struct pointers
     bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    bytes += Nn*sizeof(struct d_strmat);  // Wdiag
+    #endif
     bytes += 1*sizeof(struct d_strvec);  // regMat
     bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
@@ -1103,6 +1106,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
         bytes += 2*d_size_strvec(nx);  // x, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
+        bytes += d_size_strmat(nx, nx);  // Wdiag
         bytes += d_size_strvec(nx);  // xasPrev
         #endif
 
@@ -1186,6 +1190,11 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->regMat = (struct d_strvec *) c_ptr;
     c_ptr += 1*sizeof(struct d_strvec);
 
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    work->sWdiag = (struct d_strmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strmat);
+    #endif
+
     work->sW = (struct d_strmat *) c_ptr;
     c_ptr += Np*sizeof(struct d_strmat);
 
@@ -1258,6 +1267,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(nx, &work->sxas[ii], &c_ptr);
         #ifdef _CHECK_LAST_ACTIVE_SET_
         init_strvec(nx, &work->sxasPrev[ii], &c_ptr);
+        init_strmat(nx, nx, &work->sWdiag[ii], &c_ptr);
         #endif
         if (ii < Np) {
             init_strvec(nu, &work->su[ii], &c_ptr);
@@ -1378,10 +1388,6 @@ int main(int argc, char const *argv[]) {
 
     stage_QP *stage_QPs = malloc(Nn*sizeof(stage_QP));
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    struct d_strmat *sWdiag = malloc(Nn*sizeof(struct d_strmat));
-    #endif
-
     struct d_strmat *sM = malloc(Nn*sizeof(struct d_strmat));
 
     int_t memorySize = calculate_blasfeo_memory_size_tree(Nh, Nr, md, nx, nu, tree);
@@ -1399,18 +1405,12 @@ int main(int argc, char const *argv[]) {
     // TODO(dimitris): find out why algorithm is not scale-invariant
 
     for (kk = 0; kk < Nn; kk++) {
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            init_strmat(nx, nx, &sWdiag[kk], &blasfeoPtr);
-            #endif
             init_strmat(MAX(nx, nu), MAX(nx, nu), &sM[kk], &blasfeoPtr);
     }
 
     // build stage_QPs
     for (kk = 0; kk < Nn; kk++) {
         // iterates and intermediate results
-        #ifdef _CHECK_LAST_ACTIVE_SET_
-        stage_QPs[kk].Wdiag = &sWdiag[kk];
-        #endif
         stage_QPs[kk].M = &sM[kk];
     }
 
@@ -1445,9 +1445,6 @@ int main(int argc, char const *argv[]) {
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);
     free(stage_QPs);
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    free(sWdiag);
-    #endif
     free(sM);
 
     free(lambda);

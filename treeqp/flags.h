@@ -6,7 +6,7 @@
 #define DEBUG 0
 
 // Run algorithm NRUNS times and take minimum CPU time
-#define NRUNS 20
+#define NRUNS 3
 
 // PRINT_LEVEL = 0: supress all printing
 // PRINT_LEVEL = 1: print profiling information at the end

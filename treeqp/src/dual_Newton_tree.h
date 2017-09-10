@@ -85,6 +85,7 @@ typedef struct treeqp_tdunes_workspace_ {
     #ifdef _CHECK_LAST_ACTIVE_SET_
     struct d_strvec *sxasPrev;  // 1 x Nn
     struct d_strvec *suasPrev;  // 1 x Np
+    struct d_strmat *sWdiag;  // 1 x Nn
     #endif
 
 } treeqp_tdunes_workspace;
