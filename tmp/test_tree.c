@@ -722,6 +722,9 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
+    real_t *fvals = work->fval;
+    real_t *cmod = work->cmod;
+
     struct d_strvec *sx = work->sx;
     struct d_strvec *su = work->su;
     struct d_strvec *sxas = work->sxas;
@@ -776,7 +779,7 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
         }
 
         // cmod[k] = 0
-        QP[kk].cmod = 0.;
+        cmod[kk] = 0.;
 
         for (ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
@@ -784,7 +787,7 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
             idxpos = tree[idxkid].idxkid*nx;
 
             // cmod[k] += b[jj]' * lambda[jj]
-            QP[kk].cmod += ddot_libstr(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
+            cmod[kk] += ddot_libstr(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
 
             // return x^T * y
 
@@ -818,18 +821,18 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, stage_QP *QP, treeqp
         // NOTE: qmod[k] has already a minus sign
         // NOTE: xas used as workspace
         dvecmuldot_libstr(nx, &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
-        QP[kk].fval = -0.5*ddot_libstr(nx, &sxas[kk], 0, &sx[kk], 0) - QP[kk].cmod;
-        QP[kk].fval += ddot_libstr(nx, &sqmod[kk], 0, &sx[kk], 0);
+        fvals[kk] = -0.5*ddot_libstr(nx, &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
+        fvals[kk] += ddot_libstr(nx, &sqmod[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
             dvecmuldot_libstr(nu, &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
-            QP[kk].fval -= 0.5*ddot_libstr(nu, &suas[kk], 0, &su[kk], 0);
-            QP[kk].fval += ddot_libstr(nu, &srmod[kk], 0, &su[kk], 0);
+            fvals[kk] -= 0.5*ddot_libstr(nu, &suas[kk], 0, &su[kk], 0);
+            fvals[kk] += ddot_libstr(nu, &srmod[kk], 0, &su[kk], 0);
         }
     }
 
-    for (kk = 0; kk < Nn; kk++) fval += QP[kk].fval;
+    for (kk = 0; kk < Nn; kk++) fval += fvals[kk];
 
     return fval;
 }
@@ -1064,12 +1067,15 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     int_t nx = qp_in->nx[1];
     int_t nu = qp_in->nu[0];
 
+    // int pointers
     bytes += Nh*sizeof(int_t);  // npar
-
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += 2*Nn*sizeof(int_t);  // xasChanged, uasChanged
     bytes += Np*sizeof(int_t);  // blockChanged
     #endif
+
+    // real_t pointers
+    bytes += Nn*sizeof(real_t);  // fval, cmod
 
     // struct pointers
     bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
@@ -1224,10 +1230,18 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Np*sizeof(struct d_strvec);
     #endif
 
-    // move pointer for proper alignment of blasfeo matrices and vectors
+    // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
     c_ptr = (char *) l_ptr;
+
+    work->fval = (real_t *) c_ptr;
+    c_ptr += Nn*sizeof(real_t);
+
+    work->cmod = (real_t *) c_ptr;
+    c_ptr += Nn*sizeof(real_t);
+
+    // TODO(dimitris): asserts for mem. alignment
 
     init_strvec(md*nx, work->regMat, &c_ptr);
     dvecse_libstr(md*nx, opts->regValue, work->regMat, 0);

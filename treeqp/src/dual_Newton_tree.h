@@ -51,12 +51,22 @@ typedef struct treeqp_tdunes_workspace_ {
     int_t *blockChanged;  // 1 x Np
     #endif
 
+    real_t *fval;  // 1 x Nn
+    real_t *cmod;  // 1 x Nn
+
     struct d_strvec *sQinv;  // 1 x Nn
     struct d_strvec *sRinv;  // 1 x Nn
     struct d_strvec *sQinvCal;  // 1 x Nn
     struct d_strvec *sRinvCal;  // 1 x Nn
     struct d_strvec *sqmod;  // 1 x Nn
     struct d_strvec *srmod;  // 1 x Nn
+
+    // NOTE(dimitris):
+    // - There are as many Hessian blocks on the diagonal as parent nodes in the tree
+    // - Each of those blocks except for the root has a lower diagonal block from its parent
+    // - The upper diagonal blocks from the children are neglected due to symmetry
+    // - Dimension of block k is (nc[k]*nx) x (nc[k]*nx), where nc[k] = tree[k].nkids
+    // - Dimension of parent block is (nc[k]*nx) x nx
 
     struct d_strvec *regMat;  // 1 x 1
     struct d_strmat *sW;  // 1 x Np
