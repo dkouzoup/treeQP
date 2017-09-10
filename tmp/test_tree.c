@@ -238,28 +238,30 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
 
 
 #ifdef _CHECK_LAST_ACTIVE_SET_
+static void compare_with_previous_active_set(int_t isLeaf, int_t indx, treeqp_tdunes_workspace *work) {
 
-static void compare_with_previous_active_set(stage_QP *QP, int_t isLeaf, int_t indx, treeqp_tdunes_workspace *work) {
+    int_t *xasChanged = work->xasChanged;
+    int_t *uasChanged = work->uasChanged;
 
     struct d_strvec *sxas = &work->sxas[indx];
     struct d_strvec *suas = &work->suas[indx];
     struct d_strvec *sxasPrev = &work->sxasPrev[indx];
     struct d_strvec *suasPrev = &work->suasPrev[indx];
 
-    QP->xasChanged = 0;
+    xasChanged[indx] = 0;
     for (int_t ii = 0; ii < sxas->m; ii++) {
         if (DVECEL_LIBSTR(sxas, ii) != DVECEL_LIBSTR(sxasPrev, ii)) {
-            QP->xasChanged = 1;
+            xasChanged[indx] = 1;
             break;
         }
     }
     dveccp_libstr(sxas->m, sxas, 0, sxasPrev, 0);
 
     if (!isLeaf) {
-        QP->uasChanged = 0;
+        uasChanged[indx] = 0;
         for (int_t ii = 0; ii < suas->m; ii++) {
             if (DVECEL_LIBSTR(suas, ii) != DVECEL_LIBSTR(suasPrev, ii)) {
-                QP->uasChanged = 1;
+                uasChanged[indx] = 1;
                 break;
             }
         }
@@ -272,6 +274,8 @@ static int_t find_starting_point_of_factorization(stage_QP *QP, struct node *tre
     int_t idxdad, asDadChanged;
     int_t Np = work->Np;
     int_t idxFactorStart = Np;
+    int_t *xasChanged = work->xasChanged;
+    int_t *uasChanged = work->uasChanged;
     int_t *blockChanged = work->blockChanged;
 
     for (int_t kk = 0; kk < Np; kk++) {
@@ -282,9 +286,9 @@ static int_t find_starting_point_of_factorization(stage_QP *QP, struct node *tre
     // --> CAREFULLY THOUGH since multiple threads write on same memory
     for (int_t kk = work->Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
-        asDadChanged = QP[idxdad].xasChanged | QP[idxdad].uasChanged;
+        asDadChanged = xasChanged[idxdad] | uasChanged[idxdad];
 
-        if (asDadChanged || QP[kk].xasChanged) blockChanged[idxdad] = 1;
+        if (asDadChanged || xasChanged[kk]) blockChanged[idxdad] = 1;
     }
     for (int_t kk = Np-1; kk >= 0; kk--) {
         if (!blockChanged[kk]) {
@@ -332,6 +336,11 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     int_t ii, kk, idxdad, idxpos, idxsib, ns, isLeaf, asDadChanged;
     real_t error;
 
+    #ifdef _CHECK_LAST_ACTIVE_SET_
+    int_t *xasChanged = work->xasChanged;
+    int_t *uasChanged = work->uasChanged;
+    #endif
+
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
@@ -374,7 +383,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     for (kk = Nn-1; kk >= 0; kk--) {
         isLeaf = (tree[kk].nkids > 0 ? 0:1);
         // NOTE(dimitris): updates both xasChanged/uasChanged and xasPrev/uasPrev
-        compare_with_previous_active_set(&QP[kk], isLeaf, kk, work);
+        compare_with_previous_active_set(isLeaf, kk, work);
     }
     // TODO(dimitris): double check that this indx is correct (not higher s.t. we loose efficiency)
     *idxFactorStart = find_starting_point_of_factorization(QP, tree, work);
@@ -422,14 +431,14 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         idxdad = tree[kk].dad;
         idxpos = tree[kk].idxkid*nx;
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        asDadChanged = QP[idxdad].xasChanged | QP[idxdad].uasChanged;
+        asDadChanged = xasChanged[idxdad] | uasChanged[idxdad];
         #endif
 
         // Filling W[idxdad] and Ut[idxdad-1]
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // TODO(dimitris): if only xasChanged, remove QinvCalPrev and add new
-        if (asDadChanged || QP[kk].xasChanged) {
+        if (asDadChanged || xasChanged[kk]) {
         #endif
 
         // --- intermediate result (used both for Ut and W)
@@ -1058,7 +1067,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += Nh*sizeof(int_t);  // npar
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += Np*sizeof(int_t);  // blockChanged;
+    bytes += 2*Nn*sizeof(int_t);  // xasChanged, uasChanged
+    bytes += Np*sizeof(int_t);  // blockChanged
     #endif
 
     // struct pointers
@@ -1139,6 +1149,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     setup_npar(Nh, Nn, tree, work->npar);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
+    work->xasChanged = (int_t *) c_ptr;
+    c_ptr += Nn*sizeof(int_t);
+
+    work->uasChanged = (int_t *) c_ptr;
+    c_ptr += Nn*sizeof(int_t);
+
     work->blockChanged = (int_t *) c_ptr;
     c_ptr += Np*sizeof(int_t);
     #endif

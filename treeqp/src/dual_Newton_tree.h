@@ -37,8 +37,8 @@ extern "C" {
 #include "treeqp/utils/types.h"
 // #include "treeqp/utils/tree_utils.h"
 
-// #include "blasfeo/include/blasfeo_target.h"
-// #include "blasfeo/include/blasfeo_common.h"
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
 
 typedef struct treeqp_tdunes_workspace_ {
     int_t Nn;
@@ -46,6 +46,8 @@ typedef struct treeqp_tdunes_workspace_ {
 
     int_t *npar;  // 1 x Nh: number of parallel factorizations per stage
     #ifdef _CHECK_LAST_ACTIVE_SET_
+    int_t *xasChanged;  // 1 x Nn
+    int_t *uasChanged;  // 1 x Nn
     int_t *blockChanged;  // 1 x Np
     #endif
 

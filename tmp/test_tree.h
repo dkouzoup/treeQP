@@ -16,8 +16,6 @@ typedef struct stage_QP_ {
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     struct d_strmat *Wdiag;  // diagonal nx x nx block of dual Hessian that corresponds to node
-    int_t xasChanged;
-    int_t uasChanged;
     #endif
 
     struct d_strmat *M;  // MAX(nx, nu) x MAX(nx, nu) matrix to store intermediate results
