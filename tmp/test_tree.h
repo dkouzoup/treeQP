@@ -19,8 +19,7 @@ typedef struct stage_QP_ {
     int_t xasChanged;
     int_t uasChanged;
     #endif
-    struct d_strvec *QinvCal;
-    struct d_strvec *RinvCal;
+
     struct d_strmat *M;  // MAX(nx, nu) x MAX(nx, nu) matrix to store intermediate results
 
     real_t fval;

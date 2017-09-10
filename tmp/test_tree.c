@@ -133,6 +133,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
     struct d_strvec *sr = (struct d_strvec *) qp_in->r;
     struct d_strvec *sQinv = work->sQinv;
     struct d_strvec *sRinv = work->sRinv;
+    struct d_strvec *sQinvCal = work->sQinvCal;
+    struct d_strvec *sRinvCal = work->sRinvCal;
     struct d_strvec *sqmod = work->sqmod;
     struct d_strvec *srmod = work->srmod;
 
@@ -197,7 +199,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
         dveccl_mask_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0, &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        dvecze_libstr(nx, &sxas[kk], 0, &sQinv[kk], 0, QP[kk].QinvCal, 0);
+        dvecze_libstr(nx, &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
 
         if (tree[kk].nkids > 0) {
             // u[k] = R[k]^-1 .* rmod[k]
@@ -207,7 +209,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
                 &suas[kk], 0);
 
             // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-            dvecze_libstr(nu, &suas[kk], 0, &sRinv[kk], 0, QP[kk].RinvCal, 0);
+            dvecze_libstr(nu, &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
         }
     }
 
@@ -215,13 +217,13 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, stage_QP *QP, 
     for (kk = 0; kk < Nn; kk++) {
         d_cvt_strvec2vec(nx, &sqmod[kk], 0, &hmod[indh]);
         d_cvt_strvec2vec(nx, &sx[kk], 0, &xit[indx]);
-        d_cvt_strvec2vec(nx, QP[kk].QinvCal, 0, &QinvCal[indx]);
+        d_cvt_strvec2vec(nx, &sQinvCal[kk], 0, &QinvCal[indx]);
         indh += nx;
         indx += nx;
         if (tree[kk].nkids > 0) {
             d_cvt_strvec2vec(nu, &srmod[kk], 0, &hmod[indh]);
             d_cvt_strvec2vec(nu, &su[kk], 0, &uit[indu]);
-            d_cvt_strvec2vec(nx, QP[kk].RinvCal, 0, &RinvCal[indu]);
+            d_cvt_strvec2vec(nx, &sRinvCal[kk], 0, &RinvCal[indu]);
             indh += nu;
             indu += nu;
         }
@@ -338,6 +340,9 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
     struct node *tree = (struct node *)qp_in->tree;
 
+    struct d_strvec *sQinvCal = work->sQinvCal;
+    struct d_strvec *sRinvCal = work->sRinvCal;
+
     struct d_strvec *sx = work->sx;
     struct d_strvec *su = work->su;
     // struct d_strvec *sxas = work->sxas;
@@ -430,7 +435,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, QP[idxdad].QinvCal, 0, 0.0,
+        dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
             QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
         // --- hessian contribution of parent (Ut)
@@ -452,7 +457,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, QP[idxdad].RinvCal, 0, 0.0,
+        dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
             QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
@@ -460,7 +465,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
-        ddiaad_libstr(nx, 1.0, QP[kk].QinvCal, 0, &sW[idxdad], idxpos, idxpos);
+        ddiaad_libstr(nx, 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += regMat (regularization)
         ddiaad_libstr(nx, 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
@@ -481,7 +486,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
             if (idxsib == kk) break;  // completed all preceding siblings
 
             // M = A[idxsib] * Qinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, QP[idxdad].QinvCal, 0, 0.0,
+            dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
                 QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
@@ -489,7 +494,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, stage_QP *QP,
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
 
             // M = B[idxsib]*Rinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, QP[idxdad].RinvCal, 0, 0.0,
+            dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
                 QP[kk].M, 0, 0, QP[kk].M, 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
@@ -965,8 +970,8 @@ int_t treeqp_tdunes_solve(stage_QP *stage_QPs,
 
     // TEMP!!
     for (int_t ii = 0; ii < Nn; ii++) {
-        // stage_QPs[ii].qmod = &work->sqmod[ii];
-        // stage_QPs[ii].rmod = &work->srmod[ii];
+        // stage_QPs[ii].QinvCal = &work->sQinvCal[ii];
+        // stage_QPs[ii].RinvCal = &work->sRinvCal[ii];
     }
 
     // dual Newton iterations
@@ -1057,7 +1062,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     #endif
 
     // struct pointers
-    bytes += 4*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, qmod, rmod
+    bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
     bytes += 1*sizeof(struct d_strvec);  // regMat
     bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
@@ -1077,8 +1082,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
-        bytes += 2*d_size_strvec(qp_in->nx[ii]);  // Qinv, qmod
-        bytes += 2*d_size_strvec(qp_in->nu[ii]);  // Rinv, rmod
+        bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
+        bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
 
         bytes += 2*d_size_strvec(nx);  // x, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1142,6 +1147,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(struct d_strvec);
 
     work->sRinv = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->sQinvCal = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->sRinvCal = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
     work->sqmod = (struct d_strvec *) c_ptr;
@@ -1208,6 +1219,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->sRinv[ii], &c_ptr);
+        init_strvec(qp_in->nx[ii], &work->sQinvCal[ii], &c_ptr);
+        init_strvec(qp_in->nu[ii], &work->sRinvCal[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sqmod[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->srmod[ii], &c_ptr);
 
@@ -1335,9 +1348,6 @@ int main(int argc, char const *argv[]) {
 
     stage_QP *stage_QPs = malloc(Nn*sizeof(stage_QP));
 
-    struct d_strvec *sQinvCal = malloc(Nn*sizeof(struct d_strvec));
-    struct d_strvec *sRinvCal = malloc(Np*sizeof(struct d_strvec));
-
     #ifdef _CHECK_LAST_ACTIVE_SET_
     struct d_strmat *sWdiag = malloc(Nn*sizeof(struct d_strmat));
     #endif
@@ -1362,11 +1372,7 @@ int main(int argc, char const *argv[]) {
             #ifdef _CHECK_LAST_ACTIVE_SET_
             init_strmat(nx, nx, &sWdiag[kk], &blasfeoPtr);
             #endif
-            init_strvec(nx, &sQinvCal[kk], &blasfeoPtr);
             init_strmat(MAX(nx, nu), MAX(nx, nu), &sM[kk], &blasfeoPtr);
-        if (kk < Np) {
-            init_strvec(nu, &sRinvCal[kk], &blasfeoPtr);  // WHY NOT ALSO Nn??
-        }
     }
 
     // build stage_QPs
@@ -1375,16 +1381,7 @@ int main(int argc, char const *argv[]) {
         #ifdef _CHECK_LAST_ACTIVE_SET_
         stage_QPs[kk].Wdiag = &sWdiag[kk];
         #endif
-        stage_QPs[kk].QinvCal = &sQinvCal[kk];
         stage_QPs[kk].M = &sM[kk];
-
-        if (kk < Np) {
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            #endif
-            stage_QPs[kk].RinvCal = &sRinvCal[kk];
-        } else {
-            stage_QPs[kk].RinvCal = NULL;
-        }
     }
 
     // ----------------------- OLD STUFF ABOVE -----------------------------------------------------
@@ -1418,8 +1415,6 @@ int main(int argc, char const *argv[]) {
     free_tree(md, Nr, Nh, Nn, tree);
     free(tree);
     free(stage_QPs);
-    free(sQinvCal);
-    free(sRinvCal);
     #ifdef _CHECK_LAST_ACTIVE_SET_
     free(sWdiag);
     #endif

@@ -51,6 +51,8 @@ typedef struct treeqp_tdunes_workspace_ {
 
     struct d_strvec *sQinv;  // 1 x Nn
     struct d_strvec *sRinv;  // 1 x Nn
+    struct d_strvec *sQinvCal;  // 1 x Nn
+    struct d_strvec *sRinvCal;  // 1 x Nn
     struct d_strvec *sqmod;  // 1 x Nn
     struct d_strvec *srmod;  // 1 x Nn
 
