@@ -1035,7 +1035,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     #endif
 
     // real_t pointers
-    bytes += Nn*sizeof(real_t);  // fval, cmod
+    bytes += 2*Nn*sizeof(real_t);  // fval, cmod
 
     // struct pointers
     bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod

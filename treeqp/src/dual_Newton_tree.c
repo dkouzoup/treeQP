@@ -1019,7 +1019,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     #endif
 
     // real_t pointers
-    bytes += Nn*sizeof(real_t);  // fval, cmod
+    bytes += 2*Nn*sizeof(real_t);  // fval, cmod
 
     // struct pointers
     bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
@@ -1254,8 +1254,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     char *ptrStart = (char *) ptr;
     char *ptrEnd = c_ptr;
     int_t bytes = treeqp_tdunes_calculate_size(qp_in);
-    // TODO(dimitris): FIX THIS!
-    // assert(ptrEnd <= ptrStart + bytes);
+    assert(ptrEnd <= ptrStart + bytes);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
     // exit(1);

@@ -245,8 +245,7 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
         // scale objective function with number of nodes per stage
         if (tree[ii].stage > currentStage) {
             scalingFactor = numberOfLeaves/nodesInStage;
-            // scalingFactor = 1;
-            printf("--- detected %d nodes on stage %d (scaling factor = %f)\n", nodesInStage, currentStage, scalingFactor);
+            // printf("--- detected %d nodes on stage %d (scaling factor = %f)\n", nodesInStage, currentStage, scalingFactor);
             for (int_t jj = 1; jj <= nodesInStage; jj++) {
                 // printf("- scaling node %d with %f\n", ii-jj, scalingFactor);
                 dvecsc_libstr(sQ[ii-jj].m, scalingFactor, &sQ[ii-jj], 0);
