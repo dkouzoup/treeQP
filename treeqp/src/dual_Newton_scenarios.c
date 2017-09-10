@@ -1627,7 +1627,7 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += Ns*d_size_strmat(nu*Nr, Nh*nx);  // Ut
     bytes += Ns*d_size_strmat(nu*Nr, nu*Nr);  // K
 
-    bytes += (bytes + 63)/64*64;  // make multiple of typical cache line size
+    bytes = (bytes + 63)/64*64;  // make multiple of typical cache line size
     bytes += 64;  // align to typical cache line size
 
     return bytes;
@@ -1931,7 +1931,7 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         reset_accumulative_timers(NewtonIter);
         #endif
 
-        // ------ solve stage QPs
+        // --- solve stage QPs
         // - calculate unconstrained solution of stage QPs
         // - clip solution
         // - calculate Zbar
@@ -1944,7 +1944,7 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
-        // ------ calculate dual gradient
+        // --- calculate dual gradient
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
@@ -1977,23 +1977,23 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         treeqp_tic(&tmr);
         #endif
 
-        // ------ factorize Newton system
+        // --- factorize Newton system
         factorize_Lambda(Ns, Nh, opts, work);
         form_K(Ns, Nh, Nr, work);
         form_and_factorize_Jay(Ns, nu, opts, work);
 
-        // ------ calculate multipliers of non-anticipativity constraints
+        // --- calculate multipliers of non-anticipativity constraints
         form_RHS_non_anticipaticity(Ns, Nh, Nr, md, work);
         calculate_delta_lambda(Ns, Nr, md, work);
 
-        // ------ calculate multipliers of dynamics
+        // --- calculate multipliers of dynamics
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
         newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
-        // ------ line search
+        // --- line search
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
@@ -2004,7 +2004,7 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
-        // ------ reset data for next iteration
+        // --- reset data for next iteration
         // TODO(dimitris): check if it's worth parallelizing!
         for (int_t ii = 0; ii < Ns-1; ii++) {
             dgese_libstr(sJayD[ii].m, sJayD[ii].n, 0.0, &sJayD[ii], 0, 0);
@@ -2021,6 +2021,7 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         #endif
     }
 
+    // ------ copy solution to qp_out
     for (int_t ii = 0; ii < Ns; ii++) {
         for (int_t kk = 0; kk < Nh; kk++) {
             if (work->boundsRemoved[ii][kk+1] == 0) {
@@ -2032,7 +2033,6 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
             }
         }
     }
-
     qp_out->info.iter = NewtonIter;
 
     if (qp_out->info.iter == opts->maxIter)
