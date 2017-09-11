@@ -1316,11 +1316,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
 // write dual initial point to workspace ( _AFTER_ creating it )
 void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspace *work) {
-    // TODO(dimitris): THIS IS WRONG (place holder, add qp_in to input)
-    int_t nx = 0;
-
-    // NOTE(dimitris): we skip lambda[0] which is zero by convention
-    int_t indx = nx;
+    int_t indx = 0;
 
     for (int_t ii = 0; ii < work->Np; ii++) {
         d_cvt_vec2strvec(work->slambda[ii].m, &lambda[indx], &work->slambda[ii], 0);
