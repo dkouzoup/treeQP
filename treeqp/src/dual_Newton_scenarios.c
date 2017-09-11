@@ -28,16 +28,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>  // for sqrt in 2-norm
-
+#ifdef PARALLEL
+#include <omp.h>
+#endif
 #ifdef RUNTIME_CHECKS
 #include <assert.h>
 #endif
 
 // TODO(dimitris): Check if merging all loops wrt scenarios improves openmp siginficantly
-
-#ifdef PARALLEL
-#include <omp.h>
-#endif
 
 #include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
@@ -131,7 +129,7 @@ int_t get_size_of_JayL(int_t Ns, int_t nu, int_t *commonNodes) {
 
 
 void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, kk;
     int_t nu = work->su[0][0].m;
@@ -191,7 +189,7 @@ void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md,
 
 
 void write_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
-    int_t NewtonIter, treeqp_dune_scenarios_workspace *work) {
+    int_t NewtonIter, treeqp_sdunes_workspace *work) {
 
     int ii, kk;
 
@@ -300,7 +298,7 @@ int_t compare_with_previous_active_set(int_t n, struct d_strvec *asNow, struct d
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
 static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_qp_in *qp_in,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, kk, idx, idxp1, idxm1;
     int_t nu = work->su[0][0].m;
@@ -505,7 +503,7 @@ static void solve_stage_problems(int_t Ns, int_t Nh, int_t NewtonIter, tree_ocp_
 
 
 static void calculate_residuals(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, kk, idx0, idxm1;
     int_t nu = work->su[0][0].m;
@@ -543,7 +541,7 @@ static void calculate_residuals(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in,
 }
 
 
-static void calculate_last_residual(int_t Ns, int_t Nh, treeqp_dune_scenarios_workspace *work) {
+static void calculate_last_residual(int_t Ns, int_t Nh, treeqp_sdunes_workspace *work) {
     int_t ii, kk;
     int_t acc = 0;
     int_t nu = work->su[0][0].m;
@@ -615,7 +613,7 @@ static void factorize_with_reg_opts(struct d_strmat *M, struct d_strmat *CholM,
 #ifdef _CHECK_LAST_ACTIVE_SET_
 
 static void find_starting_point_of_factorization(int_t Ns, int_t Nh, int_t *idxStart,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, kk;
 
@@ -637,7 +635,7 @@ static void find_starting_point_of_factorization(int_t Ns, int_t Nh, int_t *idxS
 
 #endif
 
-static void factorize_Lambda(int_t Ns, int_t Nh, treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
+static void factorize_Lambda(int_t Ns, int_t Nh, treeqp_dune_options_t *opts, treeqp_sdunes_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
 
@@ -749,7 +747,7 @@ static void factorize_Lambda(int_t Ns, int_t Nh, treeqp_dune_options_t *opts, tr
 }
 
 
-void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work) {
+void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_sdunes_workspace *work) {
     int_t ii, jj, kk;
     int_t indZ, indRinvCal;
     int_t nx = work->sx[0][0].m;
@@ -832,7 +830,7 @@ void form_K(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work)
 }
 
 
-void form_and_factorize_Jay(int_t Ns, int_t nu, treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
+void form_and_factorize_Jay(int_t Ns, int_t nu, treeqp_dune_options_t *opts, treeqp_sdunes_workspace *work) {
     int_t ii, dim, dimNxt;
     int_t *commonNodes = work->commonNodes;
 
@@ -910,7 +908,7 @@ void form_and_factorize_Jay(int_t Ns, int_t nu, treeqp_dune_options_t *opts, tre
 }
 
 
-void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_dune_scenarios_workspace *work) {
+void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_sdunes_workspace *work) {
     // NOTE: RHS has the opposite sign (corected when solving for Deltalambda later)
 
     int_t ii, jj, kk;
@@ -1040,7 +1038,7 @@ void form_RHS_non_anticipaticity(int_t Ns, int_t Nh, int_t Nr, int_t md, treeqp_
 
 
 
-void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_dune_scenarios_workspace *work) {
+void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_sdunes_workspace *work) {
     int_t ii, dim, dimNxt;
     int_t *commonNodes = work->commonNodes;
     int_t nu = work->su[0][0].m;
@@ -1115,7 +1113,7 @@ void calculate_delta_lambda(int_t Ns, int_t Nr, int_t md, treeqp_dune_scenarios_
 }
 
 
-void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_workspace *work) {
+void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_sdunes_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
     int_t nu = work->su[0][0].m;
@@ -1243,7 +1241,7 @@ void calculate_delta_mu(int_t Ns, int_t Nh, int_t Nr, treeqp_dune_scenarios_work
 }
 
 
-real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_dune_scenarios_workspace *work) {
+real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_sdunes_workspace *work) {
     int_t ii, kk;
     int_t nx = work->sx[0][0].m;
     real_t ans = 0;
@@ -1264,7 +1262,7 @@ real_t gradient_trans_times_direction(int_t Ns, int_t Nh, treeqp_dune_scenarios_
 }
 
 
-real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_dune_scenarios_workspace *work) {
+real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_workspace *work) {
     int_t *commonNodes = work->commonNodes;
     real_t *fvals = work->fvals;
 
@@ -1421,7 +1419,7 @@ real_t evaluate_dual_function(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_
 
 
 int_t line_search(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, jj, kk;
     real_t dotProduct, fval, fval0;
@@ -1488,7 +1486,7 @@ int_t line_search(int_t Ns, int_t Nh, tree_ocp_qp_in *qp_in, treeqp_dune_options
 
 // TODO(dimitris): time and see if it's worth to parallelize
 real_t calculate_error_in_residuals(int_t Ns, int_t Nh, termination_t condition,
-    treeqp_dune_scenarios_workspace *work) {
+    treeqp_sdunes_workspace *work) {
 
     int_t ii, jj, kk;
     real_t error = 0;
@@ -1635,7 +1633,7 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
 
 
 void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
-    treeqp_dune_scenarios_workspace *work, void *ptr) {
+    treeqp_sdunes_workspace *work, void *ptr) {
 
     struct node *tree = (struct node *) qp_in->tree;
     int_t nx = qp_in->nx[1];
@@ -1858,7 +1856,7 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
 
 
 int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_dune_options_t *opts, treeqp_dune_scenarios_workspace *work) {
+    treeqp_dune_options_t *opts, treeqp_sdunes_workspace *work) {
 
     int_t NewtonIter, lsIter;
     real_t error;
@@ -2039,4 +2037,27 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
 
     return status;
+}
+
+
+void treeqp_sdunes_set_dual_initialization(real_t *lam, real_t *mu, treeqp_sdunes_workspace *work) {
+    int_t Ns = work->Ns;
+    int_t Nh = work->Nh;
+    int_t nu = work->su[0][0].m;
+    int_t nx = work->sx[0][1].m;
+    int_t indx;
+
+    indx = 0;
+    for (int_t ii = 0; ii < Ns-1; ii++) {
+        d_cvt_vec2strvec(work->slambda[ii].m, &lam[indx], &work->slambda[ii], 0);
+        indx += work->slambda[ii].m;
+    }
+
+    indx = 0;
+    for (int_t ii = 0; ii < Ns; ii++) {
+        for (int_t kk = 0; kk < Nh; kk++) {
+            d_cvt_vec2strvec(nx, &mu[indx], &work->smu[ii][kk], 0);
+            indx += nx;
+        }
+    }
 }
