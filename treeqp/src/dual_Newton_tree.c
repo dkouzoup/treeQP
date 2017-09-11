@@ -208,11 +208,11 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
             indu += nu;
         }
     }
-    write_double_vector_to_txt(hmod, Nn*(nx+nu), "data_tree/hmod.txt");
-    write_double_vector_to_txt(xit, Nn*nx, "data_tree/xit.txt");
-    write_double_vector_to_txt(uit, Nn*nu, "data_tree/uit.txt");
-    write_double_vector_to_txt(QinvCal, Nn*nx, "data_tree/Qinvcal.txt");
-    write_double_vector_to_txt(RinvCal, Nn*nu, "data_tree/Rinvcal.txt");
+    write_double_vector_to_txt(hmod, Nn*(nx+nu), "examples/data_spring_mass/hmod.txt");
+    write_double_vector_to_txt(xit, Nn*nx, "examples/data_spring_mass/xit.txt");
+    write_double_vector_to_txt(uit, Nn*nu, "examples/data_spring_mass/uit.txt");
+    write_double_vector_to_txt(QinvCal, Nn*nx, "examples/data_spring_mass/Qinvcal.txt");
+    write_double_vector_to_txt(RinvCal, Nn*nu, "examples/data_spring_mass/Rinvcal.txt");
     free(hmod);
     #endif
 }
@@ -516,9 +516,9 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
             indUt += sUt[kk-1].m*sUt[kk-1].n;
         }
     }
-    write_double_vector_to_txt(res, (Nn-1)*nx, "data_tree/res.txt");
-    write_double_vector_to_txt(W, dimW, "data_tree/W.txt");
-    write_double_vector_to_txt(Ut, dimUt, "data_tree/Ut.txt");
+    write_double_vector_to_txt(res, (Nn-1)*nx, "examples/data_spring_mass/res.txt");
+    write_double_vector_to_txt(W, dimW, "examples/data_spring_mass/W.txt");
+    write_double_vector_to_txt(Ut, dimUt, "examples/data_spring_mass/Ut.txt");
     #endif
 
     return TREEQP_OK;
@@ -681,7 +681,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
         d_cvt_strvec2vec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
         indlam += sDeltalambda[kk].m;
     }
-    write_double_vector_to_txt(deltalambda, dimlam, "data_tree/deltalambda.txt");
+    write_double_vector_to_txt(deltalambda, dimlam, "examples/data_spring_mass/deltalambda.txt");
     #endif
 }
 
@@ -875,10 +875,10 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
         d_cvt_strvec2vec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;
     }
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/lambda_opt.txt");
-    write_double_vector_to_txt(&dotProduct, 1, "data_tree/dotProduct.txt");
-    write_double_vector_to_txt(&fval0, 1, "data_tree/fval0.txt");
-    write_int_vector_to_txt(&jj, 1, "data_tree/lsiter.txt");
+    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/lambda_opt.txt");
+    write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
+    write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
+    write_int_vector_to_txt(&jj, 1, "examples/data_spring_mass/lsiter.txt");
     #endif
 
     return jj;
@@ -923,11 +923,11 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
         ind += slambda[kk].m;
     }
 
-    write_double_vector_to_txt(x, Nn*nx, "data_tree/x_opt.txt");
-    write_double_vector_to_txt(u, Np*nu, "data_tree/u_opt.txt");
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/deltalambda_opt.txt");
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/lambda_opt.txt");
-    write_int_vector_to_txt(&iter, 1, "data_tree/iter.txt");
+    write_double_vector_to_txt(x, Nn*nx, "examples/data_spring_mass/x_opt.txt");
+    write_double_vector_to_txt(u, Np*nu, "examples/data_spring_mass/u_opt.txt");
+    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/deltalambda_opt.txt");
+    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/lambda_opt.txt");
+    write_int_vector_to_txt(&iter, 1, "examples/data_spring_mass/iter.txt");
 
     #if PROFILE > 0
     write_timers_to_txt();

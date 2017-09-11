@@ -49,9 +49,7 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-// TODO(dimitris): unify those
-#include "tmp/data.c"
-// #include "examples/data_spring_mass/data.c"
+#include "examples/data_spring_mass/data.c"
 
 // TODO(dimitris): check that all these options are supported for tree version
 // TODO(dimitris): put this function in common file
@@ -65,12 +63,12 @@ treeqp_tdunes_options_t set_default_options(void) {
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.8;
+    opts.lineSearchBeta = 0.6;
 
     // TODO(dimitris): implement on the fly regularization
     opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
     // opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-6;
+    opts.regValue = 1.0e-8;
 
     return opts;
 }
@@ -87,12 +85,12 @@ int main( ) {
     // read initial point from txt file
     int_t nl = Nn*NX;
     real_t *lambda = malloc(nl*sizeof(real_t));
-    status = read_double_vector_from_txt(lambda, nl, "tmp/data_tree/lambda0.txt");
+    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0_tree.txt");
     if (status != TREEQP_OK) return -1;
 
     // read constraint on x0 from txt file
     real_t x0[NX];
-    status = read_double_vector_from_txt(x0, NX, "tmp/data_tree/x0.txt");
+    status = read_double_vector_from_txt(x0, NX, "examples/data_spring_mass/x0.txt");
     if (status != TREEQP_OK) return status;
 
     // setup scenario tree
@@ -179,7 +177,7 @@ int main( ) {
     print_timers(qp_out.info.iter);
     #endif
 
-    for (int_t ii = 0; ii < 5; ii++) {
+    for (int_t ii = 1; ii < 5; ii++) {
         d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 

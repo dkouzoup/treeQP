@@ -113,9 +113,9 @@ int main() {
     // read initial point from txt file
     real_t *mu = malloc(Ns*Nh*NX*sizeof(real_t));
     real_t *lambda = malloc(nl*sizeof(real_t));
-    status = read_double_vector_from_txt(mu, Ns*Nh*NX, "examples/data_spring_mass/mu0.txt");
+    status = read_double_vector_from_txt(mu, Ns*Nh*NX, "examples/data_spring_mass/mu0_scen.txt");
     if (status != 0) return -1;
-    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0.txt");
+    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0_scen.txt");
     if (status != 0) return -1;
 
     // read constraint on x0 from txt file
