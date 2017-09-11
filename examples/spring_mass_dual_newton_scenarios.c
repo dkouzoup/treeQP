@@ -74,32 +74,7 @@ treeqp_dune_options_t set_default_options(void) {
 }
 
 
-void write_dual_initial_point_to_workspace(int_t Ns, int_t Nh, real_t *lambda, real_t *mu,
-    treeqp_dune_scenarios_workspace *work) {
-
-    int_t ii, kk, indx;
-    int_t nu = work->su[0][0].m;
-    int_t nx = work->sx[0][1].m;
-
-    indx = 0;
-    for (ii = 0; ii < Ns-1; ii++) {
-        d_cvt_vec2strvec(nu*work->commonNodes[ii], &lambda[indx], &work->slambda[ii], 0);
-        indx += nu*work->commonNodes[ii];
-    }
-
-    indx = 0;
-    for (ii = 0; ii < Ns; ii++) {
-        for (kk = 0; kk < Nh; kk++) {
-            d_cvt_vec2strvec(nx, &mu[indx], &work->smu[ii][kk], 0);
-            indx += nx;
-        }
-    }
-}
-
-
 int main() {
-    int_t ii, jj, kk;
-    int_t real;
     return_t status;
 
     int_t nl = calculate_dimension_of_lambda(Nr, md, NU);
@@ -113,9 +88,9 @@ int main() {
     // read initial point from txt file
     real_t *mu = malloc(Ns*Nh*NX*sizeof(real_t));
     real_t *lambda = malloc(nl*sizeof(real_t));
-    status = read_double_vector_from_txt(mu, Ns*Nh*NX, "examples/data_spring_mass/mu0.txt");
+    status = read_double_vector_from_txt(mu, Ns*Nh*NX, "examples/data_spring_mass/mu0_scen.txt");
     if (status != 0) return -1;
-    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0.txt");
+    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0_scen.txt");
     if (status != 0) return -1;
 
     // read constraint on x0 from txt file
@@ -133,7 +108,7 @@ int main() {
     int_t *nx = malloc(Nn*sizeof(int_t));
     int_t *nu = malloc(Nn*sizeof(int_t));
 
-    for (ii = 0; ii < Nn; ii++) {
+    for (int_t ii = 0; ii < Nn; ii++) {
         // state and input dimensions on each node (only different at root/leaves)
         if (ii > 0) {
             nx[ii] = NX;
@@ -160,7 +135,7 @@ int main() {
     // exit(1);
 
     // setup QP solver
-    treeqp_dune_scenarios_workspace work;
+    treeqp_sdunes_workspace work;
 
     int_t treeqp_size = treeqp_dune_scenarios_calculate_size(&qp_in);
     void *qp_solver_memory = malloc(treeqp_size);
@@ -181,8 +156,8 @@ int main() {
     initialize_timers();
     #endif
 
-    for (jj = 0; jj < NRUNS; jj++) {
-        write_dual_initial_point_to_workspace(Ns, Nh, lambda, mu, &work);
+    for (int_t jj = 0; jj < NRUNS; jj++) {
+        treeqp_sdunes_set_dual_initialization(lambda, mu, &work);
 
         #if PROFILE > 0
         treeqp_tic(&tot_tmr);
