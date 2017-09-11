@@ -88,7 +88,6 @@ typedef struct treeqp_tdunes_workspace_ {
     struct d_strvec *suasPrev;  // 1 x Np
     struct d_strmat *sWdiag;  // 1 x Nn
     #endif
-
 } treeqp_tdunes_workspace;
 
 // Options of QP solver

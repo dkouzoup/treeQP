@@ -1,4 +1,28 @@
-// TODO(dimitris): HEADER
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*    This file is part of treeQP.                                                                  *
+*                                                                                                  *
+*    treeQP -- A toolbox of tree-sparse Quadratic Programming solvers.                             *
+*    Copyright (C) 2017 by Dimitris Kouzoupis.                                                     *
+*    Developed at IMTEK (University of Freiburg) under the supervision of Moritz Diehl.            *
+*    All rights reserved.                                                                          *
+*                                                                                                  *
+*    treeQP is free software; you can redistribute it and/or                                       *
+*    modify it under the terms of the GNU Lesser General Public                                    *
+*    License as published by the Free Software Foundation; either                                  *
+*    version 3 of the License, or (at your option) any later version.                              *
+*                                                                                                  *
+*    treeQP is distributed in the hope that it will be useful,                                     *
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of                                *
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU                             *
+*    Lesser General Public License for more details.                                               *
+*                                                                                                  *
+*    You should have received a copy of the GNU Lesser General Public                              *
+*    License along with treeQP; if not, write to the Free Software Foundation,                     *
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA                            *
+*                                                                                                  *
+*    Author: Dimitris Kouzoupis, dimitris.kouzoupis (at) imtek.uni-freiburg.de                     *
+*                                                                                                  *
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +30,6 @@
 #ifdef PARALLEL
 #include <omp.h>
 #endif
-
 #ifdef RUNTIME_CHECKS
 #include <assert.h>
 #endif
@@ -21,8 +44,10 @@
 // TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
 
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/tree_ocp_qp_common.h"
 
 #include "treeqp/flags.h"
+
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/blasfeo_utils.h"
 #include "treeqp/utils/profiling_utils.h"
@@ -100,7 +125,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
 
     #if DEBUG == 1
     int_t indh, indx, indu;
-    real_t hmod[Nn*(nx+nu)];
+    real_t *hmod = malloc(Nn*(nx+nu)*sizeof(real_t));
     real_t xit[Nn*nx];
     real_t uit[Nn*nu];
     real_t QinvCal[Nn*nx];
@@ -188,6 +213,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
     write_double_vector_to_txt(uit, Nn*nu, "data_tree/uit.txt");
     write_double_vector_to_txt(QinvCal, Nn*nx, "data_tree/Qinvcal.txt");
     write_double_vector_to_txt(RinvCal, Nn*nu, "data_tree/Rinvcal.txt");
+    free(hmod);
     #endif
 }
 
@@ -804,6 +830,7 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
     int_t jj, kk;
 
     #if DEBUG == 1
+    int_t nx = qp_in->nx[1];
     real_t lambda[(Nn-1)*nx];
     int_t indlam = 0;
     #endif
@@ -903,7 +930,7 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
     write_int_vector_to_txt(&iter, 1, "data_tree/iter.txt");
 
     #if PROFILE > 0
-    write_timers_to_txt( );
+    write_timers_to_txt();
     #endif
 
     free(x);
@@ -968,7 +995,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
         if (status == TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND) {
             // if (ll == NRUNS-1) {
-            //     printf("Convergence achieved in %d iterations \t(error %5.2e)\n", NewtonIter, error);
+            //     printf("Convergence achieved in %d iterations \t(error %5.2e)\n",
+            //         NewtonIter, error);
             // }
             // printf("optimal solution found\n", 1);
             break;
@@ -1061,7 +1089,6 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += d_size_strvec(regDim);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
-
         bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
         bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
 
@@ -1252,7 +1279,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         #endif
 
         if (ii < Np) {
-
             dim = 0;
             for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
                 idxkid = tree[ii].kids[jj];
@@ -1290,7 +1316,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
 // write dual initial point to workspace ( _AFTER_ creating it )
 void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspace *work) {
-
     // TODO(dimitris): THIS IS WRONG (place holder, add qp_in to input)
     int_t nx = 0;
 
