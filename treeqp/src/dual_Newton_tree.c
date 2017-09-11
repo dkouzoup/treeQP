@@ -51,6 +51,24 @@ static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
 }
 
 
+static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
+    int_t maxDim = 0;
+    int_t currDim, idxkid;
+
+    for (int_t ii = 0; ii < qp_in->N; ii++) {
+        currDim = 0;
+        for (int_t jj = 0; jj < qp_in->tree[ii].nkids; jj++) {
+            idxkid = qp_in->tree[ii].kids[jj];
+            currDim += qp_in->nx[idxkid];
+        }
+        // printf("dim = max(%d, %d) = ", maxDim, currDim);
+        maxDim = MAX(maxDim, currDim);
+        // printf("%d\n", maxDim);
+    }
+    return maxDim;
+}
+
+
 static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *tree, treeqp_tdunes_workspace *work) {
     int_t ii, jj, kk, idxkid, idxdad, idxpos;
 
@@ -1001,18 +1019,16 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
 int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     struct node *tree = (struct node *) qp_in->tree;
+    int_t bytes = 0;
     int_t Nn = qp_in->N;
     int_t Nh = tree[Nn-1].stage;
     int_t Np = get_number_of_parent_nodes(Nn, tree);
-    int_t md = tree[0].nkids;  // TODO(dimitris): take max for arbitrary trees (to build regmat)
-    int_t bytes = 0;
-    int_t dim;
-
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t regDim = maximum_hessian_block_dimension(qp_in);
+    int_t dim, idxkid;
 
     // int pointers
     bytes += Nh*sizeof(int_t);  // npar
+
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += 2*Nn*sizeof(int_t);  // xasChanged, uasChanged
     bytes += Np*sizeof(int_t);  // blockChanged
@@ -1034,37 +1050,44 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     // TODO(dimitris): allow nu[N] > 0?
     bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
-    bytes += 2*Np*sizeof(struct d_strvec);  // u, uas
+    bytes += 2*Nn*sizeof(struct d_strvec);  // u, uas
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += Nn*sizeof(struct d_strvec);  // xasPrev
-    bytes += Np*sizeof(struct d_strvec);  // uasPrev
+    bytes += Nn*sizeof(struct d_strvec);  // uasPrev
     #endif
 
     // structs
-    bytes += d_size_strvec(md*nx);  // regMat
+    bytes += d_size_strvec(regDim);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
         bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
         bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
 
-        bytes += 2*d_size_strvec(nx);  // x, xas
+        bytes += 2*d_size_strvec(qp_in->nx[ii]);  // x, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        bytes += d_size_strmat(nx, nx);  // Wdiag
-        bytes += d_size_strvec(nx);  // xasPrev
+        bytes += d_size_strmat(qp_in->nx[ii], qp_in->nx[ii]);  // Wdiag
+        bytes += d_size_strvec(qp_in->nx[ii]);  // xasPrev
+        #endif
+
+        bytes += 2*d_size_strvec(qp_in->nu[ii]);  // u, uas
+        #ifdef _CHECK_LAST_ACTIVE_SET_
+        bytes += d_size_strvec(qp_in->nu[ii]);  // uasPrev
         #endif
 
         bytes +=  // M
             d_size_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]));
 
         if (ii < Np) {
-            bytes += 2*d_size_strvec(nu);  // u, uas
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            bytes += d_size_strvec(nu);  // uasPrev
-            #endif
+            // NOTE(dimitris): for constant dimensions dim = tree[ii].nkids*nx
+            // TODO(dimitris): check that this is correct for varying dimensions
+            dim = 0;
+            for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
+                idxkid = tree[ii].kids[jj];
+                dim += qp_in->nx[idxkid];
+            }
 
-            dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
             bytes += 2*d_size_strmat(dim + 1, dim);  // W, CholW
             #else
@@ -1072,7 +1095,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
             #endif
             bytes += 4*d_size_strvec(dim);  // res, resMod, lambda, Deltalambda
             if (ii > 0) {
-                bytes += 2*d_size_strmat(nx, dim);  // Ut, CholUt
+                bytes += 2*d_size_strmat(qp_in->nx[ii], dim);  // Ut, CholUt
             }
         }
     }
@@ -1091,11 +1114,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     int_t Nn = qp_in->N;
     int_t Nh = tree[Nn-1].stage;
     int_t Np = get_number_of_parent_nodes(Nn, tree);
-    int_t md = tree[0].nkids;
-    int_t dim;
-
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t regDim = maximum_hessian_block_dimension(qp_in);
+    int_t dim, idxkid;
 
     // save some useful dimensions to workspace
     work->Nn = Nn;
@@ -1177,20 +1197,20 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(struct d_strvec);
 
     work->su = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    c_ptr += Nn*sizeof(struct d_strvec);
 
     work->sxas = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
     work->suas = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    c_ptr += Nn*sizeof(struct d_strvec);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->sxasPrev = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
     work->suasPrev = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    c_ptr += Nn*sizeof(struct d_strvec);
     #endif
 
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
@@ -1205,8 +1225,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(real_t);
 
     // TODO(dimitris): asserts for mem. alignment
-    init_strvec(md*nx, work->regMat, &c_ptr);
-    dvecse_libstr(md*nx, opts->regValue, work->regMat, 0);
+    init_strvec(regDim, work->regMat, &c_ptr);
+    dvecse_libstr(regDim, opts->regValue, work->regMat, 0);
 
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
@@ -1216,23 +1236,29 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(qp_in->nx[ii], &work->sqmod[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->srmod[ii], &c_ptr);
 
-        init_strvec(nx, &work->sx[ii], &c_ptr);  // TODO(dimitris): NOT FIXED NX
-        init_strvec(nx, &work->sxas[ii], &c_ptr);
+        init_strvec(qp_in->nx[ii], &work->sx[ii], &c_ptr);
+        init_strvec(qp_in->nx[ii], &work->sxas[ii], &c_ptr);
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        init_strvec(nx, &work->sxasPrev[ii], &c_ptr);
-        init_strmat(nx, nx, &work->sWdiag[ii], &c_ptr);
+        init_strvec(qp_in->nx[ii], &work->sxasPrev[ii], &c_ptr);
+        init_strmat(qp_in->nx[ii], qp_in->nx[ii], &work->sWdiag[ii], &c_ptr);
         #endif
         init_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]),
             &work->sM[ii], &c_ptr);
 
-        if (ii < Np) {
-            init_strvec(nu, &work->su[ii], &c_ptr);
-            init_strvec(nu, &work->suas[ii], &c_ptr);
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            init_strvec(nu, &work->suasPrev[ii], &c_ptr);
-            #endif
+        init_strvec(qp_in->nu[ii], &work->su[ii], &c_ptr);
+        init_strvec(qp_in->nu[ii], &work->suas[ii], &c_ptr);
+        #ifdef _CHECK_LAST_ACTIVE_SET_
+        init_strvec(qp_in->nu[ii], &work->suasPrev[ii], &c_ptr);
+        #endif
 
-            dim = tree[ii].nkids*nx;
+        if (ii < Np) {
+
+            dim = 0;
+            for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
+                idxkid = tree[ii].kids[jj];
+                dim += qp_in->nx[idxkid];
+            }
+
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
             init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
             init_strmat(dim+1, dim, &work->sCholW[ii], &c_ptr);
@@ -1245,8 +1271,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             init_strvec(dim, &work->slambda[ii], &c_ptr);
             init_strvec(dim, &work->sDeltalambda[ii], &c_ptr);
             if (ii > 0) {
-                init_strmat(nx, dim, &work->sUt[ii-1], &c_ptr);
-                init_strmat(nx, dim, &work->sCholUt[ii-1], &c_ptr);
+                init_strmat(qp_in->nx[ii], dim, &work->sUt[ii-1], &c_ptr);
+                init_strmat(qp_in->nx[ii], dim, &work->sCholUt[ii-1], &c_ptr);
             }
         }
     }
