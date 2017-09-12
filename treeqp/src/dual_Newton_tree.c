@@ -34,6 +34,7 @@
 #include <assert.h>
 #endif
 
+// TODO(dimitris): test variable dimensions and pruned trees
 // TODO(dimitris): VALGRIND CODE
 // TODO(dimitris): Try open MPI interface (message passing)
 // TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1)
@@ -64,15 +65,16 @@
 
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
+
 static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
-    int kk;
-
-    for (kk = 0; kk < Nh; kk++) npar[kk] = 0;
-
-    for (kk = 0; kk < Nn; kk++) {
+    // initialize vector to zero
+    for (int_t kk = 0; kk < Nh; kk++) {
+        npar[kk] = 0;
+    }
+    // enumerate nodes per stage
+    for (int_t kk = 0; kk < Nn; kk++) {
         npar[tree[kk].stage]++;
     }
-
 }
 
 
@@ -86,9 +88,7 @@ static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
             idxkid = qp_in->tree[ii].kids[jj];
             currDim += qp_in->nx[idxkid];
         }
-        // printf("dim = max(%d, %d) = ", maxDim, currDim);
         maxDim = MAX(maxDim, currDim);
-        // printf("%d\n", maxDim);
     }
     return maxDim;
 }
@@ -97,10 +97,10 @@ static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
 static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work) {
     int_t idxkid, idxdad, idxpos;
     int_t Nn = qp_in->N;
-    struct node *tree = (struct node *)qp_in->tree;
-
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
+
+    struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sx = (struct d_strvec *) work->sx;
@@ -140,7 +140,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     #endif
 
     #ifdef PARALLEL
-    #pragma omp parallel for private(ii, jj, idxkid, idxdad, idxpos)
+    #pragma omp parallel for private(idxkid, idxdad, idxpos)
     #endif
     for (int_t kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
@@ -337,7 +337,7 @@ static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdune
 static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
-    int_t ii, kk, idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
+    int_t idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
     real_t error;
 
     int_t *nx = (int_t *)qp_in->nx;
@@ -378,7 +378,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     real_t res[dimres];
     int_t dimW = 0;
     int_t dimUt = 0;
-    for (kk = 0; kk < Np; kk++) {
+    for (int_t kk = 0; kk < Np; kk++) {
         dimW += sW[kk].n*sW[kk].n;  // NOTE(dimitris): not m, as it may be equal to n+1
         if (kk > 0) dimUt += sUt[kk-1].m*sUt[kk-1].n;
     }
@@ -389,7 +389,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     // TODO(dimitris): check if it's worth to parallelize
-    for (kk = Nn-1; kk >= 0; kk--) {
+    for (int_t kk = Nn-1; kk >= 0; kk--) {
         isLeaf = (tree[kk].nkids > 0 ? 0:1);
         // NOTE(dimitris): updates both xasChanged/uasChanged and xasPrev/uasPrev
         compare_with_previous_active_set(isLeaf, kk, work);
@@ -403,7 +403,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     #endif
     // Calculate dual gradient
     // TODO(dimitris): can we merge with solution of stage QPs without problems in parallelizing?
-    for (kk = Nn-1; kk > 0; kk--) {
+    for (int_t kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
         idxpos = 0;
         for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
@@ -433,10 +433,10 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
     }
     #ifdef PARALLEL
-    #pragma omp parallel for private(ii, idxdad, idxpos, idxsib, idxii, ns, asDadChanged)
+    #pragma omp parallel for private(idxdad, idxpos, idxsib, idxii, ns, asDadChanged)
     #endif
     // Calculate dual Hessian
-    for (kk = Nn-1; kk > 0; kk--) {
+    for (int_t kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
         idxpos = 0;
         for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
@@ -505,7 +505,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         #endif
         ns = tree[idxdad].nkids - 1;  // number of siblings
         idxii = 0;
-        for (ii = 0; ii < ns; ii++) {
+        for (int_t ii = 0; ii < ns; ii++) {
             idxsib = tree[idxdad].kids[ii];
             if (idxsib == kk) break;  // completed all preceding siblings
 
@@ -541,7 +541,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     }
 
     #if DEBUG == 1
-    for (kk = 0; kk < Np; kk++) {
+    for (int_t kk = 0; kk < Np; kk++) {
         d_cvt_strvec2vec(sres[kk].m, &sres[kk], 0, &res[indres]);
         indres += sres[kk].m;
         d_cvt_strmat2mat(sW[kk].n, sW[kk].n, &sW[kk], 0, 0, &W[indW], sW[kk].n);
@@ -561,12 +561,16 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 }
 
 
-static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, int_t idxFactorStart, int_t *npar,
-    struct node *tree, treeqp_tdunes_workspace *work) {
+static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t idxFactorStart,
+    treeqp_tdunes_workspace *work) {
 
-    int_t ii, kk, idxdad, idxpos;
+    struct node *tree = (struct node *)qp_in->tree;
+    int_t idxdad, idxpos;
+    int_t Nn = qp_in->N;
+    int_t Nh = tree[Nn-1].stage;
+    int_t Np = work->Np;
     int_t icur = Np-1;
-
+    int_t *npar = work->npar;
     int_t *nx = (int_t *)qp_in->nx;
 
     struct d_strmat *sW = work->sW;
@@ -584,14 +588,14 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
 
     // --- Cholesky factorization merged with backward substitution
 
-    for (kk = Nh-1; kk > 0; kk--) {
+    for (int_t kk = Nh-1; kk > 0; kk--) {
         #if PRINT_LEVEL > 2
         printf("\n--------- New (parallel) factorization branch  ---------\n");
         #endif
         #ifdef PARALLEL
         #pragma omp parallel for private(idxdad, idxpos)
         #endif
-        for (ii = icur; ii > icur-npar[kk]; ii--) {
+        for (int_t ii = icur; ii > icur-npar[kk]; ii--) {
 
             // NOTE(dimitris): result of backward substitution saved in deltalambda
             // NOTE(dimitris): substitution for free if dual[ii].W not multiple of 4 (in LA=HP)
@@ -678,11 +682,11 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
 
     dtrsv_ltn_libstr(sDeltalambda[0].m, &sCholW[0], 0, 0, &sDeltalambda[0], 0, &sDeltalambda[0], 0);
 
-    for (kk = 1; kk < Nh; kk++) {
+    for (int_t kk = 1; kk < Nh; kk++) {
         #ifdef PARALLEL
         #pragma omp parallel for private(idxdad, idxpos)
         #endif
-        for (ii = icur; ii < icur+npar[kk]; ii++) {
+        for (int_t ii = icur; ii < icur+npar[kk]; ii++) {
             idxdad = tree[ii].dad;
             idxpos = 0;
             for (int_t jj = 0; jj < tree[ii].idxkid; jj++) {
@@ -699,28 +703,28 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
     }
 
     #if PRINT_LEVEL > 2
-    for (ii = 0; ii < Np; ii++) {
+    for (int_t ii = 0; ii < Np; ii++) {
         printf("\nCholesky factor of diagonal block #%d as strmat: \n\n", ii+1);
         d_print_strmat( sCholW[ii].m, sCholW[ii].n, &sCholW[ii], 0, 0);
     }
-    for (ii = 1; ii < Np; ii++) {
+    for (int_t ii = 1; ii < Np; ii++) {
         printf("\nTransposed Cholesky factor of parent block #%d as strmat: \n\n", ii+1);
         d_print_strmat(sCholUt[ii-1].m, sCholUt[ii-1].n, &sCholUt[ii-1], 0, 0);
     }
 
     printf("\nResult of backward substitution:\n\n");
-    for (ii = 0; ii < Np; ii++) {
+    for (int_t ii = 0; ii < Np; ii++) {
         d_print_strvec(sDeltalambda[0].m, &sDeltalambda[0], 0);
     }
 
     printf("\nResult of forward substitution (aka final result):\n\n");
-    for (ii = 0; ii < Np; ii++) {
+    for (int_t ii = 0; ii < Np; ii++) {
         d_print_strvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0);
     }
     #endif
 
     #if DEBUG == 1
-    for (kk = 0; kk < Np; kk++) {
+    for (int_t kk = 0; kk < Np; kk++) {
         d_cvt_strvec2vec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
         indlam += sDeltalambda[kk].m;
     }
@@ -875,9 +879,13 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 }
 
 
-static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node *tree,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
-    int_t jj, kk;
+static int_t line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
+    treeqp_tdunes_workspace *work) {
+
+    int_t Nn = qp_in->N;
+    int_t Np = work->Np;
+
+    struct node *tree = (struct node *)qp_in->tree;
 
     #if DEBUG == 1
     int_t dimlam = number_of_states(qp_in) - qp_in->nx[0];
@@ -897,23 +905,25 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
     // printf(" dot_product = %f\n", dotProduct);
     // printf(" dual_function = %f\n", fval0);
 
-    for (jj = 1; jj <= opts->lineSearchMaxIter; jj++) {
+    int_t lsIter;
+
+    for (lsIter = 1; lsIter <= opts->lineSearchMaxIter; lsIter++) {
         // update multipliers
         #ifdef PARALLEL
         #pragma omp parallel for
         #endif
-        for (kk = 0; kk < Np; kk++) {
+        for (int_t kk = 0; kk < Np; kk++) {
             daxpy_libstr( sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
                 &slambda[kk], 0);
         }
 
         // evaluate dual function
         fval = evaluate_dual_function(qp_in, work);
-        // printf("LS iteration #%d (fval = %f <? %f )\n", jj, fval, fval0 + opts->lineSearchGamma*tau*dotProduct);
+        // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dotProduct);
 
         // check condition
         if (fval < fval0 + opts->lineSearchGamma*tau*dotProduct) {
-            // printf("Condition satisfied at iteration %d\n", jj);
+            // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
         } else {
             tauPrev = tau;
@@ -921,18 +931,18 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
         }
     }
     #if DEBUG == 1
-    for (kk = 0; kk < Np; kk++) {
+    for (int_t kk = 0; kk < Np; kk++) {
         d_cvt_strvec2vec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;
     }
     write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/lambda_opt.txt");
     write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
     write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
-    write_int_vector_to_txt(&jj, 1, "examples/data_spring_mass/lsiter.txt");
+    write_int_vector_to_txt(&lsIter, 1, "examples/data_spring_mass/lsiter.txt");
     free(lambda);
     #endif
 
-    return jj;
+    return lsIter;
 }
 
 
@@ -995,7 +1005,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
     int status;
-    int idxFactorStart;
+    int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
     int_t NewtonIter;
@@ -1058,7 +1068,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        calculate_delta_lambda(qp_in, Np, Nh, idxFactorStart, npar, tree, work);
+        calculate_delta_lambda(qp_in, idxFactorStart, work);
         #if PROFILE > 2
         newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
@@ -1068,7 +1078,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        lsIter = line_search(qp_in, Nn, Np, tree, opts, work);
+        lsIter = line_search(qp_in, opts, work);
         #if PROFILE > 2
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
