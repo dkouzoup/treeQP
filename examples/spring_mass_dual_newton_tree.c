@@ -122,8 +122,7 @@ int main( ) {
         if (ii > 0) {
             nx[ii] = NX;
         } else {
-            // TODO(dimitris): support both with and without eliminating x0
-            nx[ii] = NX;
+            nx[ii] = 0;
         }
 
         if (tree[ii].nkids > 0) {  // not a leaf
@@ -191,7 +190,7 @@ int main( ) {
     print_timers(qp_out.info.iter);
     #endif
 
-    for (int_t ii = 1; ii < 5; ii++) {
+    for (int_t ii = 0; ii < 5; ii++) {
         d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 

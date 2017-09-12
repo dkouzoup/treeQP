@@ -94,11 +94,13 @@ static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
 }
 
 
-static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *tree, treeqp_tdunes_workspace *work) {
-    int_t ii, jj, kk, idxkid, idxdad, idxpos;
+static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work) {
+    int_t idxkid, idxdad, idxpos;
+    int_t Nn = qp_in->N;
+    struct node *tree = (struct node *)qp_in->tree;
 
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
 
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sx = (struct d_strvec *) work->sx;
@@ -124,96 +126,117 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
     struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
 
     #if DEBUG == 1
-    int_t indh, indx, indu;
-    real_t *hmod = malloc(Nn*(nx+nu)*sizeof(real_t));
-    real_t xit[Nn*nx];
-    real_t uit[Nn*nu];
-    real_t QinvCal[Nn*nx];
-    real_t RinvCal[Nn*nu];
-    indh = 0; indx = 0; indu = 0;
+    int_t indh = 0;
+    int_t indx = 0;
+    int_t indu = 0;
+    int_t dimh = number_of_primal_variables(qp_in);
+    int_t dimx = number_of_states(qp_in);
+    int_t dimu = number_of_controls(qp_in);
+    real_t *hmod = malloc(dimh*sizeof(real_t));
+    real_t *xit = malloc(dimx*sizeof(real_t));
+    real_t *uit = malloc(dimu*sizeof(real_t));
+    real_t *QinvCal = malloc(dimx*sizeof(real_t));
+    real_t *RinvCal = malloc(dimu*sizeof(real_t));
     #endif
 
     #ifdef PARALLEL
     #pragma omp parallel for private(ii, jj, idxkid, idxdad, idxpos)
     #endif
-    for (kk = 0; kk < Nn; kk++) {
+    for (int_t kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
-        idxpos = tree[kk].idxkid*nx;
+
+        // TODO(dimitris): check that idxpos here, below and in LS is correct for varying dimensions
+        idxpos = 0;
+        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
+            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+        }
+        // int_t idxposOLD = tree[kk].idxkid*qp_in->nx[1];
+        // assert(idxpos == idxposOLD);
+
         // --- update QP gradient
 
         // qmod[k] = - q[k] + lambda[k]
         if (kk == 0) {
             // lambda[0] = 0
-            for (jj = 0; jj < nx; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
+            for (int_t jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
+            daxpy_libstr(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
+            daxpy_libstr(nx[kk], -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
         }
 
         // rmod[k] = - r[k]
         if (tree[kk].nkids > 0) {
-            dveccp_libstr(nu, &sr[kk], 0, &srmod[kk], 0);
-            dvecsc_libstr(nu, -1.0, &srmod[kk], 0);
+            dveccp_libstr(nu[kk], &sr[kk], 0, &srmod[kk], 0);
+            dvecsc_libstr(nu[kk], -1.0, &srmod[kk], 0);
         }
 
-        for (ii = 0; ii < tree[kk].nkids; ii++) {
+        for (int_t ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
-            idxpos = tree[idxkid].idxkid*nx;
+            idxpos = 0;
+            for (int_t ii = 0; ii < tree[idxkid].idxkid; ii++) {
+                idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+            }
+            // idxposOLD = tree[idxkid].idxkid*qp_in->nx[1];
+            // assert(idxpos == idxposOLD);
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
-                &sqmod[kk], 0, &sqmod[kk], 0);
+            dgemv_t_libstr(nx[idxkid], nx[idxdad], -1.0, &sA[idxkid-1], 0, 0,
+                &slambda[idxdad], idxpos, 1.0, &sqmod[kk], 0, &sqmod[kk], 0);
             if (tree[kk].nkids > 0) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
-                    &srmod[kk], 0, &srmod[kk], 0);
+                dgemv_t_libstr(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
+                    &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
             }
         }
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        dvecmuldot_libstr(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        dveccl_mask_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0, &sxas[kk], 0);
+        dveccl_mask_libstr(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0,
+            &sx[kk], 0, &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        dvecze_libstr(nx, &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
+        dvecze_libstr(nx[kk], &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
 
         if (tree[kk].nkids > 0) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+            dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax), uas[k] = active set
-            dveccl_mask_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
+            dveccl_mask_libstr(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
                 &suas[kk], 0);
 
             // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-            dvecze_libstr(nu, &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
+            dvecze_libstr(nu[kk], &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
         }
     }
 
     #if DEBUG == 1
-    for (kk = 0; kk < Nn; kk++) {
-        d_cvt_strvec2vec(nx, &sqmod[kk], 0, &hmod[indh]);
-        d_cvt_strvec2vec(nx, &sx[kk], 0, &xit[indx]);
-        d_cvt_strvec2vec(nx, &sQinvCal[kk], 0, &QinvCal[indx]);
-        indh += nx;
-        indx += nx;
-        if (tree[kk].nkids > 0) {
-            d_cvt_strvec2vec(nu, &srmod[kk], 0, &hmod[indh]);
-            d_cvt_strvec2vec(nu, &su[kk], 0, &uit[indu]);
-            d_cvt_strvec2vec(nx, &sRinvCal[kk], 0, &RinvCal[indu]);
-            indh += nu;
-            indu += nu;
-        }
+    for (int_t kk = 0; kk < Nn; kk++) {
+        d_cvt_strvec2vec(sqmod[kk].m, &sqmod[kk], 0, &hmod[indh]);
+        d_cvt_strvec2vec(sx[kk].m, &sx[kk], 0, &xit[indx]);
+        d_cvt_strvec2vec(sQinvCal[kk].m, &sQinvCal[kk], 0, &QinvCal[indx]);
+        indh += sqmod[kk].m;
+        indx += sx[kk].m;
+        d_cvt_strvec2vec(srmod[kk].m, &srmod[kk], 0, &hmod[indh]);
+        d_cvt_strvec2vec(su[kk].m, &su[kk], 0, &uit[indu]);
+        d_cvt_strvec2vec(sRinvCal[kk].m, &sRinvCal[kk], 0, &RinvCal[indu]);
+        indh += srmod[kk].m;
+        indu += su[kk].m;
     }
-    write_double_vector_to_txt(hmod, Nn*(nx+nu), "examples/data_spring_mass/hmod.txt");
-    write_double_vector_to_txt(xit, Nn*nx, "examples/data_spring_mass/xit.txt");
-    write_double_vector_to_txt(uit, Nn*nu, "examples/data_spring_mass/uit.txt");
-    write_double_vector_to_txt(QinvCal, Nn*nx, "examples/data_spring_mass/Qinvcal.txt");
-    write_double_vector_to_txt(RinvCal, Nn*nu, "examples/data_spring_mass/Rinvcal.txt");
+    // printf("dimh = %d, indh = %d\n", dimh, indh);
+    write_double_vector_to_txt(hmod, dimh, "examples/data_spring_mass/hmod.txt");
+    write_double_vector_to_txt(xit, dimx, "examples/data_spring_mass/xit.txt");
+    write_double_vector_to_txt(uit, dimu, "examples/data_spring_mass/uit.txt");
+    write_double_vector_to_txt(QinvCal, dimx, "examples/data_spring_mass/Qinvcal.txt");
+    write_double_vector_to_txt(RinvCal, dimu, "examples/data_spring_mass/Rinvcal.txt");
     free(hmod);
+    free(xit);
+    free(uit);
+    free(QinvCal);
+    free(RinvCal);
     #endif
 }
 
@@ -314,11 +337,11 @@ static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdune
 static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
-    int_t ii, kk, idxdad, idxpos, idxsib, ns, isLeaf, asDadChanged;
+    int_t ii, kk, idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
     real_t error;
 
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int_t *xasChanged = work->xasChanged;
@@ -351,7 +374,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 
     #if DEBUG == 1
     int_t indres = 0;
-    real_t res[(Nn-1)*nx];
+    int_t dimres = number_of_states(qp_in) - qp_in->nx[0];
+    real_t res[dimres];
     int_t dimW = 0;
     int_t dimUt = 0;
     for (kk = 0; kk < Np; kk++) {
@@ -381,24 +405,26 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     // TODO(dimitris): can we merge with solution of stage QPs without problems in parallelizing?
     for (kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
-        idxpos = tree[kk].idxkid*nx;
+        idxpos = 0;
+        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
+            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+        }
 
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
         // res[k] = b[k] - x[k]
-        daxpy_libstr(nx, -1.0, &sx[kk], 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
+        daxpy_libstr(nx[kk], -1.0, &sx[kk], 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
 
         // res[k] += A[k]*x[idxdad]
-        dgemv_n_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sx[idxdad], 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx[kk], nx[idxdad], 1.0, &sA[kk-1], 0, 0, &sx[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
-        dgemv_n_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &su[idxdad], 0, 1.0, &sres[idxdad],
+        dgemv_n_libstr(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &su[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // resMod[k] = res[k]
-        dveccp_libstr(nx, &sres[idxdad], idxpos, &sresMod[idxdad], idxpos);
-
+        dveccp_libstr(nx[kk], &sres[idxdad], idxpos, &sresMod[idxdad], idxpos);
     }
 
     // Check termination condition
@@ -407,12 +433,16 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
     }
     #ifdef PARALLEL
-    #pragma omp parallel for private(ii, idxdad, idxpos, idxsib, ns, asDadChanged)
+    #pragma omp parallel for private(ii, idxdad, idxpos, idxsib, idxii, ns, asDadChanged)
     #endif
     // Calculate dual Hessian
     for (kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
-        idxpos = tree[kk].idxkid*nx;
+        idxpos = 0;
+        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
+            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+        }
+
         #ifdef _CHECK_LAST_ACTIVE_SET_
         asDadChanged = xasChanged[idxdad] | uasChanged[idxdad];
         #endif
@@ -427,7 +457,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
+        dgemm_r_diag_libstr(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
             &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // --- hessian contribution of parent (Ut)
@@ -438,33 +468,34 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         if (tree[idxdad].dad >= 0) {
         #endif
             // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
-            dgetr_libstr(nx, nx, &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
-            dgesc_libstr(nx, nx, -1.0, &sUt[idxdad-1], 0, idxpos);
+            // TODO(dimitris): check that this is correct for varying dimensions
+            dgetr_libstr(nx[kk], nx[idxdad], &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
+            dgesc_libstr(nx[idxdad], nx[kk], -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
         // --- hessian contribution of node (diagonal block of W)
 
         // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[k]'
-        dsyrk_ln_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx[kk], nx[idxdad], 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
+        dgemm_r_diag_libstr(nx[kk], nu[idxdad], 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
             &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
-        dsyrk_ln_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
+        dsyrk_ln_libstr(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
-        ddiaad_libstr(nx, 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
+        ddiaad_libstr(nx[kk], 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += regMat (regularization)
-        ddiaad_libstr(nx, 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
+        ddiaad_libstr(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // save diagonal block that will be overwritten in factorization
-        dgecp_libstr(nx, nx, &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
+        dgecp_libstr(nx[kk], nx[kk], &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
         #endif
 
         // --- hessian contribution of preceding siblings (off-diagonal blocks of W)
@@ -473,25 +504,30 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         if (asDadChanged) {
         #endif
         ns = tree[idxdad].nkids - 1;  // number of siblings
+        idxii = 0;
         for (ii = 0; ii < ns; ii++) {
             idxsib = tree[idxdad].kids[ii];
             if (idxsib == kk) break;  // completed all preceding siblings
 
             // M = A[idxsib] * Qinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
-                &sM[kk], 0, 0, &sM[kk], 0, 0);
+            dgemm_r_diag_libstr(nx[idxsib], nx[idxdad], 1.0,  &sA[idxsib-1], 0, 0,
+                &sQinvCal[idxdad], 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
-            dgemm_nt_libstr(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
-                idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
+            dgemm_nt_libstr(nx[kk], nx[idxsib], nx[idxdad], 1.0, &sA[kk-1], 0, 0,
+                &sM[kk], 0, 0, 0.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
 
             // M = B[idxsib]*Rinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
-                &sM[kk], 0, 0, &sM[kk], 0, 0);
+            dgemm_r_diag_libstr(nx[idxsib], nu[idxdad], 1.0, &sB[idxsib-1], 0, 0,
+                &sRinvCal[idxdad], 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
-            dgemm_nt_libstr(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
-                idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
+            dgemm_nt_libstr(nx[kk], nx[idxsib], nu[idxdad], 1.0, &sB[kk-1], 0, 0,
+                &sM[kk], 0, 0, 1.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
+
+            // TODO(dimitris): check that this is correct with varying dims
+            assert(idxii == ii*qp_in->nx[1]);
+            idxii += nx[idxsib];
         }
         #ifdef _CHECK_LAST_ACTIVE_SET_
         }
@@ -499,7 +535,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         } else {
-            dgecp_libstr(nx, nx, &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
+            dgecp_libstr(nx[kk], nx[kk], &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
         }
         #endif
     }
@@ -516,7 +552,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
             indUt += sUt[kk-1].m*sUt[kk-1].n;
         }
     }
-    write_double_vector_to_txt(res, (Nn-1)*nx, "examples/data_spring_mass/res.txt");
+    write_double_vector_to_txt(res, dimres, "examples/data_spring_mass/res.txt");
     write_double_vector_to_txt(W, dimW, "examples/data_spring_mass/W.txt");
     write_double_vector_to_txt(Ut, dimUt, "examples/data_spring_mass/Ut.txt");
     #endif
@@ -530,7 +566,8 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
 
     int_t ii, kk, idxdad, idxpos;
     int_t icur = Np-1;
-    int_t nx = qp_in->nx[1];
+
+    int_t *nx = (int_t *)qp_in->nx;
 
     struct d_strmat *sW = work->sW;
     struct d_strmat *sUt = work->sUt;
@@ -540,10 +577,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
     struct d_strvec *sDeltalambda = work->sDeltalambda;
 
     #if DEBUG == 1
-    int_t dimlam = 0;  // aka (Nn-1)*nx
-    for (kk = 0; kk < Np; kk++) {
-        dimlam += sDeltalambda[kk].m;
-    }
+    int_t dimlam = number_of_states(qp_in) - qp_in->nx[0];
     real_t deltalambda[dimlam];
     int_t indlam = 0;
     #endif
@@ -607,7 +641,12 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
             // Symmetric matrix multiplication to update diagonal block of parent
             // NOTE(dimitris): use dgemm_nt_libstr if dsyrk not implemented yet
             idxdad = tree[ii].dad;
-            idxpos = tree[ii].idxkid*nx;
+            // TODO(dimitris): either store this somewhere or put it in a function
+            idxpos = 0;
+            for (int_t jj = 0; jj < tree[ii].idxkid; jj++) {
+                idxpos += qp_in->nx[tree[idxdad].kids[jj]];
+            }
+
             dsyrk_ln_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0,
                 &sCholUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0, 1.0,
                 &sW[idxdad], idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
@@ -645,7 +684,11 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
         #endif
         for (ii = icur; ii < icur+npar[kk]; ii++) {
             idxdad = tree[ii].dad;
-            idxpos = tree[ii].idxkid*nx;
+            idxpos = 0;
+            for (int_t jj = 0; jj < tree[ii].idxkid; jj++) {
+                idxpos += qp_in->nx[tree[idxdad].kids[jj]];
+            }
+
             dgemv_t_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
                 &sDeltalambda[idxdad], idxpos, 1.0, &sDeltalambda[ii], 0, &sDeltalambda[ii], 0);
 
@@ -706,8 +749,8 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
 
     real_t *fvals = work->fval;
     real_t *cmod = work->cmod;
@@ -747,22 +790,26 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     // - with calculating modified constant term
     for (kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
-        idxpos = tree[kk].idxkid*nx;
+        idxpos = 0;
+        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
+            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+        }
+
         // --- update QP gradient
 
         // qmod[k] = - q[k] + lambda[k]
         if (kk == 0) {
             // lambda[0] = 0
-            for (jj = 0; jj < nx; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
+            for (jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
+            daxpy_libstr(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
+            daxpy_libstr(nx[kk], -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
         }
 
         // rmod[k] = - r[k]
         if (kk < Np) {
-            dveccp_libstr(nu, &sr[kk], 0, &srmod[kk], 0);
-            dvecsc_libstr(nu, -1.0, &srmod[kk], 0);
+            dveccp_libstr(nu[kk], &sr[kk], 0, &srmod[kk], 0);
+            dvecsc_libstr(nu[kk], -1.0, &srmod[kk], 0);
         }
 
         // cmod[k] = 0
@@ -771,35 +818,38 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         for (ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
-            idxpos = tree[idxkid].idxkid*nx;
+            idxpos = 0;
+            for (int_t ii = 0; ii < tree[idxkid].idxkid; ii++) {
+                idxpos += qp_in->nx[tree[idxdad].kids[ii]];
+            }
 
             // cmod[k] += b[jj]' * lambda[jj]
-            cmod[kk] += ddot_libstr(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
+            cmod[kk] += ddot_libstr(nx[kk], &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
 
             // return x^T * y
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
-                &sqmod[kk], 0, &sqmod[kk], 0);
+            dgemv_t_libstr(nx[idxkid], nx[idxdad], -1.0, &sA[idxkid-1], 0, 0,
+                &slambda[idxdad], idxpos, 1.0, &sqmod[kk], 0, &sqmod[kk], 0);
             if (kk < Np) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
-                    &srmod[kk], 0, &srmod[kk], 0);
+                dgemv_t_libstr(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
+                    &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
             }
         }
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        dvecmuldot_libstr(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax)
-        dveccl_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
+        dveccl_libstr(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+            dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax)
-            dveccl_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
+            dveccl_libstr(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
         }
 
         // --- calculate dual function term
@@ -807,15 +857,15 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
         // NOTE: qmod[k] has already a minus sign
         // NOTE: xas used as workspace
-        dvecmuldot_libstr(nx, &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
-        fvals[kk] = -0.5*ddot_libstr(nx, &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
-        fvals[kk] += ddot_libstr(nx, &sqmod[kk], 0, &sx[kk], 0);
+        dvecmuldot_libstr(nx[kk], &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
+        fvals[kk] = -0.5*ddot_libstr(nx[kk], &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
+        fvals[kk] += ddot_libstr(nx[kk], &sqmod[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-            dvecmuldot_libstr(nu, &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
-            fvals[kk] -= 0.5*ddot_libstr(nu, &suas[kk], 0, &su[kk], 0);
-            fvals[kk] += ddot_libstr(nu, &srmod[kk], 0, &su[kk], 0);
+            dvecmuldot_libstr(nu[kk], &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
+            fvals[kk] -= 0.5*ddot_libstr(nu[kk], &suas[kk], 0, &su[kk], 0);
+            fvals[kk] += ddot_libstr(nu[kk], &srmod[kk], 0, &su[kk], 0);
         }
     }
 
@@ -830,8 +880,8 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
     int_t jj, kk;
 
     #if DEBUG == 1
-    int_t nx = qp_in->nx[1];
-    real_t lambda[(Nn-1)*nx];
+    int_t dimlam = number_of_states(qp_in) - qp_in->nx[0];
+    real_t *lambda = malloc(dimlam*sizeof(real_t));
     int_t indlam = 0;
     #endif
 
@@ -875,10 +925,11 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
         d_cvt_strvec2vec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;
     }
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/lambda_opt.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/lambda_opt.txt");
     write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
     write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
     write_int_vector_to_txt(&jj, 1, "examples/data_spring_mass/lsiter.txt");
+    free(lambda);
     #endif
 
     return jj;
@@ -891,8 +942,9 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
     int_t kk, indx, indu, ind;
 
     int_t Nn = qp_in->N;
-    int_t nx = qp_in->nx[1];
-    int_t nu = qp_in->nu[0];
+    int_t dimx = number_of_states(qp_in);
+    int_t dimu = number_of_controls(qp_in);
+    int_t dimlam = dimx - qp_in->nx[0];
 
     struct d_strvec *sx = work->sx;
     struct d_strvec *su = work->su;
@@ -901,18 +953,18 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
     struct d_strvec *sDeltalambda = work->sDeltalambda;
 
     // TODO(dimitris): maybe use Np for u instead of Nn in other places too to avoid confusion
-    real_t *x = malloc(Nn*nx*sizeof(real_t));
-    real_t *u = malloc(Np*nu*sizeof(real_t));
-    real_t *deltalambda = malloc((Nn-1)*nx*sizeof(real_t));
-    real_t *lambda = malloc((Nn-1)*nx*sizeof(real_t));
+    real_t *x = malloc(dimx*sizeof(real_t));
+    real_t *u = malloc(dimu*sizeof(real_t));
+    real_t *deltalambda = malloc(dimlam*sizeof(real_t));
+    real_t *lambda = malloc(dimlam*sizeof(real_t));
 
     indx = 0; indu = 0;
     for (kk = 0; kk < Nn; kk++) {
-        d_cvt_strvec2vec(nx, &sx[kk], 0, &x[indx]);
-        indx += nx;
+        d_cvt_strvec2vec(sx[kk].m, &sx[kk], 0, &x[indx]);
+        indx += sx[kk].m;
         if (kk < Np) {
-            d_cvt_strvec2vec(nu, &su[kk], 0, &u[indu]);
-            indu += nu;
+            d_cvt_strvec2vec(su[kk].m, &su[kk], 0, &u[indu]);
+            indu += su[kk].m;
         }
     }
 
@@ -923,10 +975,10 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
         ind += slambda[kk].m;
     }
 
-    write_double_vector_to_txt(x, Nn*nx, "examples/data_spring_mass/x_opt.txt");
-    write_double_vector_to_txt(u, Np*nu, "examples/data_spring_mass/u_opt.txt");
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/deltalambda_opt.txt");
-    write_double_vector_to_txt(lambda, (Nn-1)*nx, "examples/data_spring_mass/lambda_opt.txt");
+    write_double_vector_to_txt(x, dimx, "examples/data_spring_mass/x_opt.txt");
+    write_double_vector_to_txt(u, dimu, "examples/data_spring_mass/u_opt.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/deltalambda_opt.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/lambda_opt.txt");
     write_int_vector_to_txt(&iter, 1, "examples/data_spring_mass/iter.txt");
 
     #if PROFILE > 0
@@ -980,7 +1032,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(qp_in, Nn, tree, work);
+        solve_stage_problems(qp_in, work);
         #if PROFILE > 2
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif

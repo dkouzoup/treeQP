@@ -366,6 +366,32 @@ real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_o
 }
 
 
+int_t number_of_states(tree_ocp_qp_in *qp_in) {
+    int_t nx = 0;
+
+    for (int_t ii = 0; ii < qp_in->N; ii++) {
+        nx += qp_in->nx[ii];
+    }
+    return nx;
+}
+
+
+int_t number_of_controls(tree_ocp_qp_in *qp_in) {
+    int_t nu = 0;
+
+    for (int_t ii = 0; ii < qp_in->N; ii++) {
+        nu += qp_in->nu[ii];
+    }
+    return nu;
+}
+
+
+int_t number_of_primal_variables(tree_ocp_qp_in *qp_in) {
+    // simply return the sum of states and controls
+    return number_of_controls(qp_in) + number_of_states(qp_in);
+}
+
+
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
     int_t ii, jj;
     int_t Nn = qp_in->N;
