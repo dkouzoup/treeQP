@@ -122,7 +122,7 @@ int main( ) {
         if (ii > 0) {
             nx[ii] = NX;
         } else {
-            nx[ii] = 0;
+            nx[ii] = NX;
         }
 
         if (tree[ii].nkids > 0) {  // not a leaf
