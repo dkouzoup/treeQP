@@ -30,9 +30,7 @@
 #ifdef PARALLEL
 #include <omp.h>
 #endif
-#ifdef RUNTIME_CHECKS
 #include <assert.h>
-#endif
 
 // TODO(dimitris): test variable dimensions and pruned trees
 // TODO(dimitris): VALGRIND CODE
@@ -1056,10 +1054,6 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
         if (status == TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND) {
-            // if (ll == NRUNS-1) {
-            //     printf("Convergence achieved in %d iterations \t(error %5.2e)\n",
-            //         NewtonIter, error);
-            // }
             // printf("optimal solution found\n", 1);
             break;
         }
@@ -1084,8 +1078,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
 
         #if PRINT_LEVEL > 1
-        if (NewtonIter == 0) printf("\n--- RUN #%d ---\n\n", ll+1);
-        printf("iteration #%d: %d ls iterations \t\t(error %5.2e)\n", NewtonIter, lsIter, error);
+        printf("iteration #%d: %d ls iterations\n", NewtonIter, lsIter);
         #endif
         #if PROFILE > 1
         iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
