@@ -1105,12 +1105,17 @@ static void update_M_dimensions(int_t idx, tree_ocp_qp_in *qp_in, int_t *rowsM, 
     int_t idxdad = qp_in->tree[idx].dad;
     int_t idxsib;
 
-    *colsM = MAX(qp_in->nx[idxdad], qp_in->nu[idxdad]);
-    *rowsM = 0;
+    if (idx == 0) {
+        *rowsM = 0;
+        *colsM = 0;
+    } else {
+        *colsM = MAX(qp_in->nx[idxdad], qp_in->nu[idxdad]);
+        *rowsM = 0;
 
-    for (int_t jj = 0; jj < qp_in->tree[idxdad].nkids; jj++) {
-        idxsib = qp_in->tree[idxdad].kids[jj];
-        *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
+        for (int_t jj = 0; jj < qp_in->tree[idxdad].nkids; jj++) {
+            idxsib = qp_in->tree[idxdad].kids[jj];
+            *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
+        }
     }
 }
 
