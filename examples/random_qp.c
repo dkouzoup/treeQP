@@ -43,7 +43,6 @@
 
 #include "examples/data_random_qp/data.c"
 
-
 int main() {
     // build a small, asymemtric tree
     //
@@ -112,7 +111,7 @@ int main() {
     // TODO(dimitris): print_ocp_qp_out function
     int_t indx = 0;
     int_t indu = 0;
-    for (int_t ii = 0; ii < 5; ii++) {
+    for (int_t ii = 0; ii < qp_in.N; ii++) {
         printf("--------\n");
         printf(" Node %d\n", ii);
         printf("--------\n");
@@ -128,6 +127,7 @@ int main() {
         d_print_mat(1, qp_in.nu[ii], &uopt[indu], 1);
         indu += qp_in.nu[ii];
     }
+    printf("ITERS = %d\n", qp_out.info.iter);
 
     free(qp_solver_memory);
     free(qp_out_memory);
