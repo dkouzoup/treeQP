@@ -186,7 +186,7 @@ int main() {
         #endif
     }  // end NRUNS
 
-    write_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
+    write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
     printf("\nMaximum violation of dynamic constraints: %2.2e\n", err);

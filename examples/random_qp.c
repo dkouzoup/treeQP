@@ -41,7 +41,7 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#include "examples/data_random_qp/data.c"
+#include "examples/random_qp_utils/data.c"
 
 int main() {
     // build a small, asymemtric tree

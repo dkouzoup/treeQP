@@ -105,7 +105,9 @@ void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
     for (int_t ii = 0; ii < Nn; ii++) {
 
         tree[ii].nkids = nkids[ii];
-        tree[ii].kids = (int_t *) malloc(nkids[ii]*sizeof(int_t));
+        if (nkids[ii] > 0) {
+            tree[ii].kids = (int_t *) malloc(nkids[ii]*sizeof(int_t));
+        }
 
         // identify where children nodes start
         idxkids = 0;
@@ -204,7 +206,9 @@ void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *
 
 void free_tree(int_t Nn, struct node *tree) {
     for (int_t ii = 0; ii < Nn; ii++) {
-        free(tree[ii].kids);
+        if (tree[ii].nkids > 0) {
+            free(tree[ii].kids);
+        }
     }
 }
 

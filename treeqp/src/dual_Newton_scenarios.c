@@ -188,7 +188,7 @@ void save_stage_problems(int_t Ns, int_t Nh, int_t Nr, int_t md,
 #endif
 
 
-void write_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
+void write_scenarios_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
     int_t NewtonIter, treeqp_sdunes_workspace *work) {
 
     int ii, kk;
