@@ -455,10 +455,10 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-        dgemm_r_diag_libstr(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
+                dgemm_r_diag_libstr(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
             &sM[kk], 0, 0, &sM[kk], 0, 0);
 
-        // --- hessian contribution of parent (Ut)
+            // --- hessian contribution of parent (Ut)
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         if (asDadChanged && tree[idxdad].dad >= 0) {
@@ -1100,6 +1100,21 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 }
 
 
+static void update_M_dimensions(int_t idx, tree_ocp_qp_in *qp_in, int_t *rowsM, int_t *colsM){
+
+    int_t idxdad = qp_in->tree[idx].dad;
+    int_t idxsib;
+
+    *colsM = MAX(qp_in->nx[idxdad], qp_in->nu[idxdad]);
+    *rowsM = 0;
+
+    for (int_t jj = 0; jj < qp_in->tree[idxdad].nkids; jj++) {
+        idxsib = qp_in->tree[idxdad].kids[jj];
+        *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
+    }
+}
+
+
 int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     struct node *tree = (struct node *) qp_in->tree;
     int_t bytes = 0;
@@ -1108,6 +1123,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     int_t Np = get_number_of_parent_nodes(Nn, tree);
     int_t regDim = maximum_hessian_block_dimension(qp_in);
     int_t dim, idxkid;
+    int_t rowsM, colsM;
 
     // int pointers
     bytes += Nh*sizeof(int_t);  // npar
@@ -1158,8 +1174,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         bytes += d_size_strvec(qp_in->nu[ii]);  // uasPrev
         #endif
 
-        bytes +=  // M
-            d_size_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]));
+        update_M_dimensions(ii, qp_in, &rowsM, &colsM);
+        bytes += d_size_strmat(rowsM, colsM);  // M
 
         if (ii < Np) {
             // NOTE(dimitris): for constant dimensions dim = tree[ii].nkids*nx
@@ -1198,6 +1214,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     int_t Np = get_number_of_parent_nodes(Nn, tree);
     int_t regDim = maximum_hessian_block_dimension(qp_in);
     int_t dim, idxkid;
+    int_t rowsM, colsM;
 
     // save some useful dimensions to workspace
     work->Nn = Nn;
@@ -1324,8 +1341,9 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(qp_in->nx[ii], &work->sxasPrev[ii], &c_ptr);
         init_strmat(qp_in->nx[ii], qp_in->nx[ii], &work->sWdiag[ii], &c_ptr);
         #endif
-        init_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]),
-            &work->sM[ii], &c_ptr);
+
+        update_M_dimensions(ii, qp_in, &rowsM, &colsM);
+        init_strmat(rowsM, colsM, &work->sM[ii], &c_ptr);
 
         init_strvec(qp_in->nu[ii], &work->su[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->suas[ii], &c_ptr);
