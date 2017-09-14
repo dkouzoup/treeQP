@@ -27,10 +27,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#ifdef RUNTIME_CHECKS
 #include <assert.h>
-#endif
+#include <assert.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/blasfeo_utils.h"
@@ -460,4 +458,84 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
             d_print_tran_strvec(qp_in->nx[ii], (struct d_strvec *) &qp_in->b[ii-1], 0);
         }
     }
+}
+
+
+void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree_ocp_qp_in *qp_in) {
+
+    int_t Nn = qp_in->N;
+
+    struct d_strmat *sA = (struct d_strmat *)qp_in->A;
+    struct d_strmat *sB = (struct d_strmat *)qp_in->B;
+    struct d_strvec *sb = (struct d_strvec *)qp_in->b;
+
+    int_t idxA = 0;
+    int_t idxB = 0;
+    int_t idxb = 0;
+
+    for(int_t ii = 0; ii < Nn-1; ii++) {
+        d_cvt_mat2strmat(sA[ii].m, sA[ii].n, &A[idxA], sA[ii].m, &sA[ii], 0, 0);
+        idxA += sA[ii].m * sA[ii].n;
+        assert(sA[ii].m == qp_in->nx[ii+1]);
+        assert(sA[ii].n == qp_in->nx[qp_in->tree[ii+1].dad]);
+
+        d_cvt_mat2strmat(sB[ii].m, sB[ii].n, &B[idxB], sB[ii].m, &sB[ii], 0, 0);
+        idxB += sB[ii].m * sB[ii].n;
+        assert(sB[ii].m == qp_in->nx[ii+1]);
+        assert(sB[ii].n == qp_in->nu[qp_in->tree[ii+1].dad]);
+
+        d_cvt_vec2strvec(sb[ii].m, &b[idxb], &sb[ii], 0);
+        idxb += sb[ii].m;
+        assert(sb[ii].m == qp_in->nx[ii+1]);
+    }
+}
+
+
+void tree_ocp_qp_in_read_objective_diag_colmajor(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
+    tree_ocp_qp_in *qp_in) {
+
+    int_t Nn = qp_in->N;
+
+    struct d_strvec *sQ = (struct d_strvec *)qp_in->Q;
+    struct d_strvec *sq = (struct d_strvec *)qp_in->q;
+    struct d_strvec *sR = (struct d_strvec *)qp_in->R;
+    struct d_strvec *sr = (struct d_strvec *)qp_in->r;
+
+    int_t idxQ = 0;
+    int_t idxR = 0;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        d_cvt_vec2strvec(sQ[ii].m, &Qd[idxQ], &sQ[ii], 0);
+        d_cvt_vec2strvec(sq[ii].m, &q[idxQ], &sq[ii], 0);
+        idxQ += sQ[ii].m;
+        assert(sQ[ii].m == qp_in->nx[ii]);
+
+        d_cvt_vec2strvec(sR[ii].m, &Rd[idxR], &sR[ii], 0);
+        d_cvt_vec2strvec(sr[ii].m, &r[idxR], &sr[ii], 0);
+        idxR += sR[ii].m;
+        assert(sR[ii].m == qp_in->nu[ii]);
+    }
+}
+
+
+void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in) {
+
+    real_t inf = 1e12;
+    int_t Nn = qp_in->N;
+
+    struct d_strvec *sxmax = (struct d_strvec *)qp_in->xmax;
+    struct d_strvec *sxmin = (struct d_strvec *)qp_in->xmin;
+    struct d_strvec *sumax = (struct d_strvec *)qp_in->umax;
+    struct d_strvec *sumin = (struct d_strvec *)qp_in->umin;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        dvecse_libstr(sxmax[ii].m, inf, &sxmax[ii], 0);
+        dvecse_libstr(sxmin[ii].m, -inf, &sxmin[ii], 0);
+        assert(sxmax[ii].m == qp_in->nx[ii]);
+
+        dvecse_libstr(sumax[ii].m, inf, &sumax[ii], 0);
+        dvecse_libstr(sumin[ii].m, -inf, &sumin[ii], 0);
+        assert(sumax[ii].m == qp_in->nu[ii]);
+    }
+
 }

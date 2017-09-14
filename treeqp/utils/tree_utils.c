@@ -72,22 +72,63 @@ int_t get_robust_horizon(int_t Nn, struct node *tree) {
 void print_node(struct node *tree) {
     int_t ii;
     printf("\n");
-    printf("idx = \t\t%d\n", tree[0].idx);
-    printf("dad = \t\t%d\n", tree[0].dad);
-    printf("nkids = \t%d\n", tree[0].nkids);
-    printf("kids = \t\t");
+    printf("idx    = \t%d\n", tree[0].idx);
+    printf("dad    = \t%d\n", tree[0].dad);
+    printf("nkids  = \t%d\n", tree[0].nkids);
+    printf("kids   = \t");
     for (ii = 0; ii < tree[0].nkids; ii++)
         printf("%d\t", tree[0].kids[ii]);
     printf("\n");
-    printf("stage = \t%d\n", tree[0].stage);
-    printf("realization = \t%d\n", tree[0].real);
-    printf("index as a kid = \t%d\n", tree[0].idxkid);
+    printf("stage  = \t%d\n", tree[0].stage);
+    printf("real   = \t%d\n", tree[0].real);
+    printf("idxkid = \t%d\n", tree[0].idxkid);
     printf("\n");
     return;
 }
 
 
-void setup_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
+void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
+    // initialize nodes to 'unassigned'
+    for (int_t ii = 0; ii < Nn; ii++) {
+        tree[ii].stage = -1;
+        tree[ii].real = -1;
+    }
+
+    // initialize root
+    tree[0].idx = 0;
+    tree[0].dad = -1;
+    tree[0].stage = 0;
+    tree[0].idxkid = 0;
+
+    // set up tree
+    int_t idxkids;
+    for (int_t ii = 0; ii < Nn; ii++) {
+
+        tree[ii].nkids = nkids[ii];
+        tree[ii].kids = (int_t *) malloc(nkids[ii]*sizeof(int_t));
+
+        // identify where children nodes start
+        idxkids = 0;
+        for (int_t jj = ii; jj < Nn; jj++) {
+            if (tree[jj].stage == -1) {
+                idxkids = jj;
+                break;
+            }
+        }
+
+        // assign data to children nodes
+        for (int_t jj = idxkids; jj < idxkids + nkids[ii]; jj++) {
+            tree[ii].kids[jj - idxkids] = jj;
+            tree[jj].idx = jj;
+            tree[jj].dad = ii;
+            tree[jj].stage = tree[ii].stage +1;
+            tree[jj].idxkid = jj - idxkids;
+        }
+    }
+}
+
+
+void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
     int_t ii;
     int_t idx, dad, stage, real, nkids, idxkid;
     // root
@@ -161,36 +202,43 @@ void setup_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
 }
 
 
-void free_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
-    int_t ii;
-    int_t idx, dad, stage, real, nkids, idxkid;
-    // root
-    idx = 0;
-    dad = -1;
-    stage = 0;
-    real = -1;
-    if (stage < Nr)
-        nkids = md;
-    else if (stage < Nh)
-        nkids = 1;
-    else
-        nkids = 0;
-    if (nkids > 0) {
-        free(tree[idx].kids);
+void free_tree(int_t Nn, struct node *tree) {
+    for (int_t ii = 0; ii < Nn; ii++) {
+        free(tree[ii].kids);
     }
-    // kids
-    for (idx = 1; idx < Nn; idx++) {
-        stage = tree[tree[idx].dad].stage+1;
-        if (stage < Nr)
-            nkids = md;
-        else if (stage < Nh)
-            nkids = 1;
-        else
-            nkids = 0;
-        if (nkids > 0) {
-            free(tree[idx].kids);
-        }
-    }
-    // return
-    return;
 }
+
+// TODO(dimitris): Check with valgrind that new version is equivalent and then delete code below
+// void free_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
+//     int_t ii;
+//     int_t idx, dad, stage, real, nkids, idxkid;
+//     // root
+//     idx = 0;
+//     dad = -1;
+//     stage = 0;
+//     real = -1;
+//     if (stage < Nr)
+//         nkids = md;
+//     else if (stage < Nh)
+//         nkids = 1;
+//     else
+//         nkids = 0;
+//     if (nkids > 0) {
+//         free(tree[idx].kids);
+//     }
+//     // kids
+//     for (idx = 1; idx < Nn; idx++) {
+//         stage = tree[tree[idx].dad].stage+1;
+//         if (stage < Nr)
+//             nkids = md;
+//         else if (stage < Nh)
+//             nkids = 1;
+//         else
+//             nkids = 0;
+//         if (nkids > 0) {
+//             free(tree[idx].kids);
+//         }
+//     }
+//     // return
+//     return;
+// }

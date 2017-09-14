@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>  // for sqrt in 2-norm
 
 // NOTE(dimitris): Current limitations
 // - simple bounds, diagonal weights
@@ -114,7 +113,7 @@ int main() {
 
     // setup scenario tree
     struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_tree(md, Nr, Nh, Nn, tree);
+    setup_multistage_tree(md, Nr, Nh, Nn, tree);
 
     // setup QP
     tree_ocp_qp_in qp_in;
@@ -208,7 +207,7 @@ int main() {
     free(qp_solver_memory);
     free(qp_out_memory);
 
-    free_tree(md, Nr, Nh, Nn, tree);
+    free_tree(Nn, tree);
     free(tree);
 
     free(mu);

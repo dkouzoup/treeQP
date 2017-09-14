@@ -48,9 +48,10 @@ struct node {
 int_t calculate_number_of_nodes(int_t md, int_t Nr, int_t Nh);
 int_t get_number_of_parent_nodes(int_t Nn, struct node *tree);
 int_t get_robust_horizon(int_t Nn, struct node *tree);
-void print_t_node(struct node *tree);
-void setup_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
-void free_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
+void print_node(struct node *tree);
+void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
+void setup_tree(int_t Nn, int_t *nkids, struct node *tree);
+void free_tree(int_t Nn, struct node *tree);
 
 
 #ifdef __cplusplus
