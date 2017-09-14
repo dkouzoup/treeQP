@@ -143,7 +143,6 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     for (int_t kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
 
-        // TODO(dimitris): check that idxpos here, below and in LS is correct for varying dimensions
         idxpos = 0;
         for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
             idxpos += qp_in->nx[tree[idxdad].kids[ii]];
@@ -466,7 +465,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         if (tree[idxdad].dad >= 0) {
         #endif
             // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
-            // TODO(dimitris): check that this is correct for varying dimensions
             dgetr_libstr(nx[kk], nx[idxdad], &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
             dgesc_libstr(nx[idxdad], nx[kk], -1.0, &sUt[idxdad-1], 0, idxpos);
         }
@@ -523,8 +521,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
             dgemm_nt_libstr(nx[kk], nx[idxsib], nu[idxdad], 1.0, &sB[kk-1], 0, 0,
                 &sM[kk], 0, 0, 1.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
 
-            // TODO(dimitris): check that this is correct with varying dims
-            assert(idxii == ii*qp_in->nx[1]);
+            // idxiiOLD = ii*qp_in->nx[1];
             idxii += nx[idxsib];
         }
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -960,7 +957,6 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sDeltalambda = work->sDeltalambda;
 
-    // TODO(dimitris): maybe use Np for u instead of Nn in other places too to avoid confusion
     real_t *x = malloc(dimx*sizeof(real_t));
     real_t *u = malloc(dimu*sizeof(real_t));
     real_t *deltalambda = malloc(dimlam*sizeof(real_t));
@@ -1184,7 +1180,6 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
         if (ii < Np) {
             // NOTE(dimitris): for constant dimensions dim = tree[ii].nkids*nx
-            // TODO(dimitris): check that this is correct for varying dimensions
             dim = 0;
             for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
                 idxkid = tree[ii].kids[jj];

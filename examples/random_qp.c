@@ -79,11 +79,11 @@ int main() {
     opts.maxIter = 10;
     opts.termCondition = TREEQP_INFNORM;
     opts.stationarityTolerance = 1.0e-12;
-    opts.lineSearchMaxIter = 100;
+    opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
     opts.lineSearchBeta = 0.8;
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    opts.regValue = 1.0e-8;
+    opts.regType  = TREEQP_NO_REGULARIZATION;
+    opts.regValue = 0.0;
 
     treeqp_tdunes_workspace work;
 
@@ -116,15 +116,15 @@ int main() {
         printf(" Node %d\n", ii);
         printf("--------\n");
         printf("x = \n");
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        d_print_e_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
         printf("xopt = \n");
-        d_print_mat(1, qp_in.nx[ii], &xopt[indx], 1);
+        d_print_e_mat(1, qp_in.nx[ii], &xopt[indx], 1);
         indx += qp_in.nx[ii];
 
         printf("u=\n");
-        d_print_tran_strvec(qp_in.nu[ii], &qp_out.u[ii], 0);
+        d_print_e_tran_strvec(qp_in.nu[ii], &qp_out.u[ii], 0);
         printf("uopt = \n");
-        d_print_mat(1, qp_in.nu[ii], &uopt[indu], 1);
+        d_print_e_mat(1, qp_in.nu[ii], &uopt[indu], 1);
         indu += qp_in.nu[ii];
     }
     printf("ITERS = %d\n", qp_out.info.iter);
