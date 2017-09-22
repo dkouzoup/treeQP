@@ -199,8 +199,6 @@ void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *
             }
         }
     }
-    // return
-    return;
 }
 
 

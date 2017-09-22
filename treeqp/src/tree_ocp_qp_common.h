@@ -93,7 +93,15 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree_ocp_qp_in *qp_in);
 void tree_ocp_qp_in_read_objective_diag_colmajor(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
     tree_ocp_qp_in *qp_in);
+
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_constant_bounds(real_t *xmin, real_t *xmax, real_t *umin, real_t *umax,
+    tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, real_t *x0);
+
+void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath);
 
 #ifdef __cplusplus
 }  /* extern "C" */

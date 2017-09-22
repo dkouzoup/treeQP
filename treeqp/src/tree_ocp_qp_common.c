@@ -523,19 +523,97 @@ void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in) {
     real_t inf = 1e12;
     int_t Nn = qp_in->N;
 
-    struct d_strvec *sxmax = (struct d_strvec *)qp_in->xmax;
     struct d_strvec *sxmin = (struct d_strvec *)qp_in->xmin;
-    struct d_strvec *sumax = (struct d_strvec *)qp_in->umax;
+    struct d_strvec *sxmax = (struct d_strvec *)qp_in->xmax;
     struct d_strvec *sumin = (struct d_strvec *)qp_in->umin;
+    struct d_strvec *sumax = (struct d_strvec *)qp_in->umax;
 
     for (int_t ii = 0; ii < Nn; ii++) {
-        dvecse_libstr(sxmax[ii].m, inf, &sxmax[ii], 0);
         dvecse_libstr(sxmin[ii].m, -inf, &sxmin[ii], 0);
+        dvecse_libstr(sxmax[ii].m, inf, &sxmax[ii], 0);
         assert(sxmax[ii].m == qp_in->nx[ii]);
 
-        dvecse_libstr(sumax[ii].m, inf, &sumax[ii], 0);
         dvecse_libstr(sumin[ii].m, -inf, &sumin[ii], 0);
+        dvecse_libstr(sumax[ii].m, inf, &sumax[ii], 0);
         assert(sumax[ii].m == qp_in->nu[ii]);
     }
 
+}
+
+
+void tree_ocp_qp_in_set_constant_bounds(real_t *xmin, real_t *xmax, real_t *umin, real_t *umax,
+    tree_ocp_qp_in *qp_in) {
+
+    int_t Nn = qp_in->N;
+
+    struct d_strvec *sxmin = (struct d_strvec *)qp_in->xmin;
+    struct d_strvec *sxmax = (struct d_strvec *)qp_in->xmax;
+    struct d_strvec *sumin = (struct d_strvec *)qp_in->umin;
+    struct d_strvec *sumax = (struct d_strvec *)qp_in->umax;
+
+    #ifdef RUNTIME_CHECKS
+        int_t nx = qp_in->nx[1];
+        int_t nu = qp_in->nu[0];
+        for (int_t ii = 0; ii < Nn; ii++) {
+            assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
+            assert(sxmax[ii].m == qp_in->nx[ii]);
+            assert(qp_in->nu[ii] == nu || qp_in->nu[ii] == 0);
+            assert(sumax[ii].m == qp_in->nu[ii]);
+        }
+    #endif
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        d_cvt_vec2strvec(sxmin[ii].m, xmin, &sxmin[ii], 0);
+        d_cvt_vec2strvec(sxmax[ii].m, xmax, &sxmax[ii], 0);
+
+        d_cvt_vec2strvec(sumin[ii].m, umin, &sumin[ii], 0);
+        d_cvt_vec2strvec(sumax[ii].m, umax, &sumax[ii], 0);
+    }
+
+}
+
+
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, real_t *x0) {
+
+    struct d_strvec *sxmin = (struct d_strvec *)qp_in->xmin;
+    struct d_strvec *sxmax = (struct d_strvec *)qp_in->xmax;
+
+    d_cvt_vec2strvec(sxmin[0].m, x0, &sxmin[0], 0);
+    d_cvt_vec2strvec(sxmax[0].m, x0, &sxmax[0], 0);
+}
+
+
+void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath) {
+
+    int_t Nn = qp_in->N;
+    int_t dimx = number_of_states(qp_in);
+    int_t dimu = number_of_controls(qp_in);
+    int_t iter = qp_out->info.iter;
+
+    // TODO(dimitris): also write multipliers
+    struct d_strvec *sx = qp_out->x;
+    struct d_strvec *su = qp_out->u;
+
+    real_t *x = malloc(dimx*sizeof(real_t));
+    real_t *u = malloc(dimu*sizeof(real_t));
+
+    int_t indx = 0, indu = 0;
+
+    for (int_t kk = 0; kk < Nn; kk++) {
+        d_cvt_strvec2vec(sx[kk].m, &sx[kk], 0, &x[indx]);
+        indx += sx[kk].m;
+        d_cvt_strvec2vec(su[kk].m, &su[kk], 0, &u[indu]);
+        indu += su[kk].m;
+    }
+
+    char fname[100];
+    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "xopt");
+    write_double_vector_to_txt(x, dimx, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "uopt");
+    write_double_vector_to_txt(u, dimu, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "iter");
+    write_int_vector_to_txt(&iter, 1, fname);
+
+    free(x);
+    free(u);
 }

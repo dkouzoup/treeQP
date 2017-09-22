@@ -1,5 +1,5 @@
 
-% Generate a tree with arbitrary structure, solve it with yalmip and code 
+% Generate a tree with arbitrary structure, solve it with yalmip and code
 % generate data to be solved in treeQP
 
 clear all; clc
@@ -15,13 +15,13 @@ nx = [2 2 2 1 4];  % number of states of each node
 nu = [2 2 2 0 0];  % number of controls of each node
 
 if sum(nc) ~= length(nc) - 1
-   error('wrong data in nc') 
+   error('wrong data in nc')
 end
 if length(nc) ~= length(nx)
-   error('wrong dimension of nx') 
+   error('wrong dimension of nx')
 end
 if length(nc) ~= length(nu)
-   error('wrong dimension of nu') 
+   error('wrong dimension of nu')
 end
 
 %% generate random tree
@@ -30,7 +30,7 @@ agents = generate_random_tree(nc, nx, nu);
 
 for ii = 1:length(agents)
     disp(['Node ' num2str(ii)])
-    agents(ii) 
+    agents(ii)
 end
 
 %% solve with yalmip
@@ -41,7 +41,7 @@ for ii = 1:length(agents)
 end
 
 con = [];
-for ii = 2:length(agents) 
+for ii = 2:length(agents)
     dad = agents(ii).dad;
     con = [con; x{ii} == agents(ii).A*x{dad} + agents(ii).B*u{dad} + agents(ii).b];
 end

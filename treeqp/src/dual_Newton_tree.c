@@ -162,10 +162,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         }
 
         // rmod[k] = - r[k]
-        if (tree[kk].nkids > 0) {
-            dveccp_libstr(nu[kk], &sr[kk], 0, &srmod[kk], 0);
-            dvecsc_libstr(nu[kk], -1.0, &srmod[kk], 0);
-        }
+        dveccp_libstr(nu[kk], &sr[kk], 0, &srmod[kk], 0);
+        dvecsc_libstr(nu[kk], -1.0, &srmod[kk], 0);
 
         for (int_t ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
@@ -180,11 +178,9 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
             // qmod[k] -= A[jj]' * lambda[jj]
             dgemv_t_libstr(nx[idxkid], nx[idxdad], -1.0, &sA[idxkid-1], 0, 0,
                 &slambda[idxdad], idxpos, 1.0, &sqmod[kk], 0, &sqmod[kk], 0);
-            if (tree[kk].nkids > 0) {
-                // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
-                    &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
-            }
+            // rmod[k] -= B[jj]' * lambda[jj]
+            dgemv_t_libstr(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
+                &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
         }
 
         // --- solve QP
@@ -198,16 +194,14 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
         dvecze_libstr(nx[kk], &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
 
-        if (tree[kk].nkids > 0) {
-            // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
-            // u[k] = median(umin, u[k], umax), uas[k] = active set
-            dveccl_mask_libstr(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
-                &suas[kk], 0);
+        // u[k] = R[k]^-1 .* rmod[k]
+        dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+        // u[k] = median(umin, u[k], umax), uas[k] = active set
+        dveccl_mask_libstr(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
+            &suas[kk], 0);
 
-            // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-            dvecze_libstr(nu[kk], &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
-        }
+        // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
+        dvecze_libstr(nu[kk], &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
     }
 
     #if DEBUG == 1
@@ -1148,7 +1142,6 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
     bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
 
-    // TODO(dimitris): allow nu[N] > 0?
     bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
     bytes += 2*Nn*sizeof(struct d_strvec);  // u, uas
 

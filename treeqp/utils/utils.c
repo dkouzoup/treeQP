@@ -82,7 +82,7 @@ return_t read_double_vector_from_txt(double *vec, int n, const char *filename) {
 }
 
 
-return_t write_double_vector_to_txt(double *vec, int n, char *filename) {
+return_t write_double_vector_to_txt(double *vec, int n, const char *filename) {
     int i, c;
     FILE *myFile;
     myFile = fopen(filename, "wr");
@@ -102,7 +102,7 @@ return_t write_double_vector_to_txt(double *vec, int n, char *filename) {
 }
 
 
-return_t write_int_vector_to_txt(int *vec, int n, char *filename) {
+return_t write_int_vector_to_txt(int *vec, int n, const char *filename) {
     int i, c;
     FILE *myFile;
     myFile = fopen(filename, "wr");
