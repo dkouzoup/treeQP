@@ -35,6 +35,7 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree_utils.h"
 #include "treeqp/utils/utils.h"
+#include "treeqp/utils/timing.h"
 
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
@@ -47,7 +48,10 @@
 
 int main() {
 
-    int_t MPCsteps = 10;
+    int_t MPCsteps = 50;
+
+    treeqp_timer timer;
+    real_t cputime;
 
     real_t *stateTrajectory = malloc(nx[0]*(MPCsteps+1)*sizeof(real_t));
     real_t *inputTrajectory = malloc(nu[0]*MPCsteps*sizeof(real_t));
@@ -76,14 +80,14 @@ int main() {
     // set up QP solver
     treeqp_tdunes_options_t opts;
 
-    opts.maxIter = 100;
+    opts.maxIter = 200;
     opts.termCondition = TREEQP_INFNORM;
-    opts.stationarityTolerance = 1.0e-12;
-    opts.lineSearchMaxIter = 50;
+    opts.stationarityTolerance = 1.0e-8;
+    opts.lineSearchMaxIter = 100;
     opts.lineSearchGamma = 0.1;
     opts.lineSearchBeta = 0.8;
-    opts.regType  = TREEQP_NO_REGULARIZATION;
-    opts.regValue = 0.0;
+    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+    opts.regValue = 1e-10;
 
     treeqp_tdunes_workspace work;
 
@@ -104,7 +108,9 @@ int main() {
     for (int_t tt = 0; tt < MPCsteps; tt++) {
 
         // solve QP
+        treeqp_tic(&timer);
         treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
+        cputime = treeqp_toc(&timer);
 
         // check that x0 constraint is satisfied
         for (int_t jj = 0; jj < nx[0]; jj++) {
@@ -112,6 +118,7 @@ int main() {
         }
 
         // simulate system
+        // TODO(dimitris): change n_springs online, switch between different trees on solver
         for (int_t ii = 0; ii < nx[0]; ii++) {
             x0[ii] = b[ii];
             for (int_t jj = 0; jj < nx[0]; jj++) {
@@ -124,20 +131,20 @@ int main() {
         // print iteration results
         err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
 
-        printf("----------------------------------------------------\n");
-        printf("\n MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_out.info.iter);
-        printf(" Max. violation of dynamic constraints: %2.2e\n", err);
-        printf("----------------------------------------------------\n");
-        printf("x = \n");
+        printf("-------------------------------------------------------------------------------\n");
+        printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_out.info.iter);
+        printf("\tproblem solved in %f ms\n\n", cputime*1e3);
+        printf("\tmax. violation of dynamic constraints: %2.2e\n\n", err);
+        printf("\tx = ");
         d_print_e_tran_strvec(nx[0], &qp_out.x[0], 0);
-        printf("u = \n");
+        printf("\tu = ");
         d_print_e_tran_strvec(nu[0], &qp_out.u[0], 0);
 
         if (qp_out.info.iter == opts.maxIter) {
             printf("Maximum number of iterations reached!\n");
             exit(1);
         }
-        if (err > 1e-10) {
+        if (err > opts.stationarityTolerance) {
             printf("Violation of dynamic constraints too high!\n");
             exit(1);
         }
