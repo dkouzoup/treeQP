@@ -33,7 +33,7 @@ obj: $(OBJS)
 	$(CC) -o mass_spring_sdunes.out spring_mass_dual_newton_scenarios.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o mass_spring_tdunes.out spring_mass_dual_newton_tree.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o random_qp.out random_qp.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o fault_tolerance.out fault_tolerance.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
+	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/load_data.c -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f *.o *.exe *.out

@@ -1,6 +1,16 @@
 
+# output of solver
 iter.txt
 xopt.txt
 uopt.txt
 xMPC.txt
 uMPC.txt
+cpuTimes.txt
+n_masses.txt
+
+# code generated files from python
+load_data.c
+markov_sim.c
+markov_tree_*.c
+transition_matrix.c
+markov_nominal.c
