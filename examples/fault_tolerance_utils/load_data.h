@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#define NOMINAL_MPC
+// #define NOMINAL_MPC
 
 #include "treeqp/utils/types.h"
 

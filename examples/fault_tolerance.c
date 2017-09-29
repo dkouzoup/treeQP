@@ -59,12 +59,6 @@ int_t sample_from_markov_chain(real_t *transition_matrix, int_t curr_state, int_
     real_t accsum = 0;
     int_t next_state;
 
-    // printf("row=\n");
-    // for (int_t ii = 0; ii < n_realizations; ii++) {
-    //     printf("%2.5e\t", matrix_row[ii]);
-    // }
-    // printf("\n");
-
     for (int_t ii = 0; ii < n_realizations; ii++) {
         accsum += matrix_row[ii];
         // printf("i = %d, accsum = %2.2e, number = %2.2e, accsum >= u = %d\n", ii, accsum, u, accsum >= u);
@@ -74,6 +68,27 @@ int_t sample_from_markov_chain(real_t *transition_matrix, int_t curr_state, int_
         }
     }
     return next_state;
+}
+
+
+real_t calculate_closed_loop_objective(int_t MPCsteps, int_t nx, int_t nu, real_t *Q, real_t *q,
+    real_t *R, real_t *r, real_t *states, real_t *controls) {
+
+    real_t obj = 0;
+    real_t xj, uj;
+
+    // NOTE(dimitris): Q, R are assumed constant and diagonal. x0 does not contribute to cost.
+    for (int_t ii = 0; ii < MPCsteps; ii++) {
+        for (int_t jj = 0; jj < nx; jj++) {
+            xj = states[(ii+1)*nx + jj];
+            obj += xj*Q[jj]*xj + xj*q[jj];
+        }
+        for (int_t jj = 0; jj < nu; jj++) {
+            uj = controls[ii*nu + jj];
+            obj += uj*R[jj]*xj + uj*r[jj];
+        }
+    }
+    return obj;
 }
 
 
@@ -105,12 +120,12 @@ int_t main() {
     real_t *umin = malloc(nx*sizeof(real_t));
     real_t *umax = malloc(nx*sizeof(real_t));
 
-    real_t Pmin = -5;
-    real_t Pmax = 5;
-    real_t Vmin = -10;
-    real_t Vmax = 10;
-    real_t Fmin = -1;
-    real_t Fmax = 1;
+    real_t Pmin = -3;
+    real_t Pmax = 2.5;
+    real_t Vmin = -8;
+    real_t Vmax = 8;
+    real_t Fmin = -10;
+    real_t Fmax = 10;
 
     for (int_t ii = 0; ii < nx; ii++) {
         if (ii < nx/2) {
@@ -120,14 +135,12 @@ int_t main() {
             xmin[ii] = Vmin;
             xmax[ii] = Vmax;
         }
-        x0[ii] = 1;
     }
-    x0[1] = -1;
 
-    // x0[0] = 1;
-    // x0[1] = -1;
-    // x0[2] = 3;
-    // x0[3] = -5;
+    for (int_t ii = 0; ii < n_masses; ii++) {
+        x0[ii] = 0;
+        x0[n_masses+ii] = 0;
+    }
 
     for (int_t ii = 0; ii < nu; ii++) {
         umin[ii] = Fmin;
@@ -139,6 +152,7 @@ int_t main() {
     real_t *stateTrajectory = malloc(nx*(MPCsteps+1)*sizeof(real_t));
     real_t *inputTrajectory = malloc(nu*MPCsteps*sizeof(real_t));
     real_t *cpuTimes = malloc(MPCsteps*sizeof(real_t));
+    real_t *spring_configs = malloc((MPCsteps+1)*sizeof(real_t));
 
     for (int_t jj = 0; jj < nx; jj++) {
         stateTrajectory[jj] = x0[jj];
@@ -204,6 +218,8 @@ int_t main() {
     // NOTE(dimitris): get rid of first random number which gives too low probability
     random_real( );
 
+    spring_configs[0] = sim_config;
+
     // MPC loop
     for (int_t tt = 0; tt < MPCsteps; tt++) {
 
@@ -220,6 +236,10 @@ int_t main() {
 
         err = maximum_error_in_dynamic_constraints(&qp_ins[mpc_config], &qp_outs[mpc_config]);
         assert(err <= opts.stationarityTolerance && "violation of dynamic constraints too high");
+
+        // apply disturbance
+        if (tt % 10 == 0)
+            dvecse_libstr(nu, Fmax, &qp_outs[mpc_config].u[0], 0);
 
         // simulate system
         A = sim[sim_config].A;
@@ -264,7 +284,18 @@ int_t main() {
         sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
         // NOTE(dimitris): take care that mpc_config is generated (line below segfaults if not)
         // mpc_config = sim_config;
+        spring_configs[tt+1] = sim_config;
     }
+
+    // print some results
+    real_t *Q = data[mpc_config].Qd;
+    real_t *q = data[mpc_config].q;
+    real_t *R = data[mpc_config].Rd;
+    real_t *r = data[mpc_config].r;
+    real_t obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
+        stateTrajectory, inputTrajectory);
+
+    printf("\nClosed loop objective: %f\n\n", obj);
 
     // store results in txt files
     char cwd[1024];
@@ -307,6 +338,7 @@ int_t main() {
     free(stateTrajectory);
     free(inputTrajectory);
     free(cpuTimes);
+    free(spring_configs);
 
     free(x0);
     free(xmin);
