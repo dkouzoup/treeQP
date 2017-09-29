@@ -76,6 +76,25 @@ static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
 }
 
 
+static void setup_idxpos(tree_ocp_qp_in *qp_in, int_t *idxpos) {
+    int_t Nn = qp_in->N;
+    int_t idxdad;
+
+    struct node *tree = (struct node *)qp_in->tree;
+
+    for (int_t kk = 0; kk < Nn; kk++) {
+        idxdad = tree[kk].dad;
+        idxpos[kk] = 0;
+        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
+            idxpos[kk] += qp_in->nx[tree[idxdad].kids[ii]];
+        }
+    }
+    // for (int_t kk = 0; kk < Nn; kk++) {
+    //     printf("kk = %d, idxpos = %d\n", kk, idxpos[kk]);
+    // }
+}
+
+
 static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
     int_t maxDim = 0;
     int_t currDim, idxkid;
@@ -142,13 +161,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     #endif
     for (int_t kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
-
-        idxpos = 0;
-        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
-            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-        }
-        // int_t idxposOLD = tree[kk].idxkid*qp_in->nx[1];
-        // assert(idxpos == idxposOLD);
+        idxpos = work->idxpos[kk];
 
         // --- update QP gradient
 
@@ -168,12 +181,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         for (int_t ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
-            idxpos = 0;
-            for (int_t ii = 0; ii < tree[idxkid].idxkid; ii++) {
-                idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-            }
-            // idxposOLD = tree[idxkid].idxkid*qp_in->nx[1];
-            // assert(idxpos == idxposOLD);
+            idxpos = work->idxpos[idxkid];
 
             // qmod[k] -= A[jj]' * lambda[jj]
             dgemv_t_libstr(nx[idxkid], nx[idxdad], -1.0, &sA[idxkid-1], 0, 0,
@@ -396,10 +404,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     // TODO(dimitris): can we merge with solution of stage QPs without problems in parallelizing?
     for (int_t kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
-        idxpos = 0;
-        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
-            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-        }
+        idxpos = work->idxpos[kk];
 
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
@@ -429,10 +434,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     // Calculate dual Hessian
     for (int_t kk = Nn-1; kk > 0; kk--) {
         idxdad = tree[kk].dad;
-        idxpos = 0;
-        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
-            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-        }
+        idxpos = work->idxpos[kk];
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         asDadChanged = xasChanged[idxdad] | uasChanged[idxdad];
@@ -634,11 +636,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t idxFactorStart,
             // Symmetric matrix multiplication to update diagonal block of parent
             // NOTE(dimitris): use dgemm_nt_libstr if dsyrk not implemented yet
             idxdad = tree[ii].dad;
-            // TODO(dimitris): either store this somewhere or put it in a function
-            idxpos = 0;
-            for (int_t jj = 0; jj < tree[ii].idxkid; jj++) {
-                idxpos += qp_in->nx[tree[idxdad].kids[jj]];
-            }
+            idxpos = work->idxpos[ii];
 
             dsyrk_ln_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0,
                 &sCholUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0, 1.0,
@@ -677,10 +675,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t idxFactorStart,
         #endif
         for (int_t ii = icur; ii < icur+npar[kk]; ii++) {
             idxdad = tree[ii].dad;
-            idxpos = 0;
-            for (int_t jj = 0; jj < tree[ii].idxkid; jj++) {
-                idxpos += qp_in->nx[tree[idxdad].kids[jj]];
-            }
+            idxpos = work->idxpos[ii];
 
             dgemv_t_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
                 &sDeltalambda[idxdad], idxpos, 1.0, &sDeltalambda[ii], 0, &sDeltalambda[ii], 0);
@@ -783,10 +778,7 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     // - with calculating modified constant term
     for (kk = 0; kk < Nn; kk++) {
         idxdad = tree[kk].dad;
-        idxpos = 0;
-        for (int_t ii = 0; ii < tree[kk].idxkid; ii++) {
-            idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-        }
+        idxpos = work->idxpos[kk];
 
         // --- update QP gradient
 
@@ -811,10 +803,7 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         for (ii = 0; ii < tree[kk].nkids; ii++) {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
-            idxpos = 0;
-            for (int_t ii = 0; ii < tree[idxkid].idxkid; ii++) {
-                idxpos += qp_in->nx[tree[idxdad].kids[ii]];
-            }
+            idxpos = work->idxpos[idxkid];
 
             // cmod[k] += b[jj]' * lambda[jj]
             cmod[kk] += ddot_libstr(nx[kk], &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
@@ -1122,6 +1111,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
 
     // int pointers
     bytes += Nh*sizeof(int_t);  // npar
+    bytes += Nn*sizeof(int_t);  // idxpos
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += 2*Nn*sizeof(int_t);  // xasChanged, uasChanged
@@ -1220,6 +1210,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->npar = (int_t *) c_ptr;
     c_ptr += Nh*sizeof(int_t);
     setup_npar(Nh, Nn, tree, work->npar);
+
+    work->idxpos = (int_t *) c_ptr;
+    c_ptr += Nn*sizeof(int_t);
+    setup_idxpos(qp_in, work->idxpos);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->xasChanged = (int_t *) c_ptr;
