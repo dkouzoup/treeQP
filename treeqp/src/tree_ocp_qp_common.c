@@ -378,6 +378,11 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
     int_t nz = number_of_primal_variables(qp_in);
     real_t *res = malloc(nz*sizeof(real_t));
 
+    // initialize to NaN
+    for (int_t ii = 0; ii < nz; ii++) {
+        res[ii] = 0.0/0.0;
+    }
+
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
 
@@ -394,7 +399,7 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
     int_t idxkid;
     int_t idx = 0;
 
-    // TODO(dimitris): extend for inequality constraints and nondiagonal weights
+    // TODO(dimitris): extend for nondiagonal weights
     for (int_t ii = 0; ii < Nn; ii++) {
 
         d_allocate_strvec(nx[ii], &tmp_x);
@@ -404,12 +409,16 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
         dvecmuldot_libstr(nx[ii], &sQ[ii], 0, &qp_out->x[ii], 0, &tmp_x, 0);
         // tmp_x += q[ii]
         daxpy_libstr(nx[ii], 1.0, &sq[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        // tmp_x += mu_x[ii]
+        daxpy_libstr(nx[ii], 1.0, &qp_out->mu_x[ii], 0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += lam[ii]
         daxpy_libstr(nx[ii], -1.0, &qp_out->lam[ii], 0, &tmp_x, 0, &tmp_x, 0);
         // tmp_u = R[ii].*u[ii]
         dvecmuldot_libstr(nu[ii], &sR[ii], 0, &qp_out->u[ii], 0, &tmp_u, 0);
         // tmp_u += r[ii]
         daxpy_libstr(nu[ii], 1.0, &sr[ii], 0, &tmp_u, 0, &tmp_u, 0);
+        // tmp_u += mu_u[ii]
+        daxpy_libstr(nu[ii], 1.0, &qp_out->mu_u[ii], 0, &tmp_u, 0, &tmp_u, 0);
 
         for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
             idxkid = tree[ii].kids[jj];

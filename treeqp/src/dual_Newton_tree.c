@@ -122,6 +122,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     struct d_strvec *slambda = work->slambda;
     struct d_strvec *sx = (struct d_strvec *) work->sx;
     struct d_strvec *su = (struct d_strvec *) work->su;
+    struct d_strvec *sxUnc = (struct d_strvec *) work->sxUnc;
+    struct d_strvec *suUnc = (struct d_strvec *) work->suUnc;
     struct d_strvec *sxas = (struct d_strvec *) work->sxas;
     struct d_strvec *suas = (struct d_strvec *) work->suas;
 
@@ -193,19 +195,20 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        dvecmuldot_libstr(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sxUnc[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        dveccl_mask_libstr(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0,
+        dveccl_mask_libstr(nx[kk], &sxmin[kk], 0, &sxUnc[kk], 0, &sxmax[kk], 0,
             &sx[kk], 0, &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
         dvecze_libstr(nx[kk], &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
 
         // u[k] = R[k]^-1 .* rmod[k]
-        dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+        dvecmuldot_libstr(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &suUnc[kk], 0);
+
         // u[k] = median(umin, u[k], umax), uas[k] = active set
-        dveccl_mask_libstr(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
+        dveccl_mask_libstr(nu[kk], &sumin[kk], 0, &suUnc[kk], 0, &sumax[kk], 0, &su[kk], 0,
             &suas[kk], 0);
 
         // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
@@ -1066,15 +1069,24 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
 
     // ------ copy solution to qp_out
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
+    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
+    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
+
     for (int_t kk = 0; kk < Nn; kk++) {
-        dveccp_libstr(qp_in->nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
-        dveccp_libstr(qp_in->nu[kk], &work->su[kk], 0, &qp_out->u[kk], 0);
+        dveccp_libstr(nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
+        dveccp_libstr(nu[kk], &work->su[kk], 0, &qp_out->u[kk], 0);
 
         if (kk > 0) {
-            dveccp_libstr(qp_in->nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
+            dveccp_libstr(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
                 &qp_out->lam[kk], 0);
         }
-        // TODO(dimitris): calculate and set mu_x, mu_u
+        // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
+        daxpy_libstr(nx[kk], -1.0, &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
+        daxpy_libstr(nu[kk], -1.0, &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
+        dvecmuldot_libstr(nx[kk], &sQ[kk], 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
+        dvecmuldot_libstr(nu[kk], &sR[kk], 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
     }
     qp_out->info.iter = NewtonIter;
 
@@ -1141,8 +1153,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
     bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
 
-    bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
-    bytes += 2*Nn*sizeof(struct d_strvec);  // u, uas
+    bytes += 3*Nn*sizeof(struct d_strvec);  // x, xUnc, xas
+    bytes += 3*Nn*sizeof(struct d_strvec);  // u, uUnc, uas
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += Nn*sizeof(struct d_strvec);  // xasPrev
@@ -1156,13 +1168,13 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
         bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
 
-        bytes += 2*d_size_strvec(qp_in->nx[ii]);  // x, xas
+        bytes += 3*d_size_strvec(qp_in->nx[ii]);  // x, xUnc, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
         bytes += d_size_strmat(qp_in->nx[ii], qp_in->nx[ii]);  // Wdiag
         bytes += d_size_strvec(qp_in->nx[ii]);  // xasPrev
         #endif
 
-        bytes += 2*d_size_strvec(qp_in->nu[ii]);  // u, uas
+        bytes += 3*d_size_strvec(qp_in->nu[ii]);  // u, uUnc, uas
         #ifdef _CHECK_LAST_ACTIVE_SET_
         bytes += d_size_strvec(qp_in->nu[ii]);  // uasPrev
         #endif
@@ -1294,6 +1306,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->su = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
+    work->sxUnc = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->suUnc = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
     work->sxas = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
@@ -1332,6 +1350,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(qp_in->nu[ii], &work->srmod[ii], &c_ptr);
 
         init_strvec(qp_in->nx[ii], &work->sx[ii], &c_ptr);
+        init_strvec(qp_in->nx[ii], &work->sxUnc[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sxas[ii], &c_ptr);
         #ifdef _CHECK_LAST_ACTIVE_SET_
         init_strvec(qp_in->nx[ii], &work->sxasPrev[ii], &c_ptr);
@@ -1342,6 +1361,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strmat(rowsM, colsM, &work->sM[ii], &c_ptr);
 
         init_strvec(qp_in->nu[ii], &work->su[ii], &c_ptr);
+        init_strvec(qp_in->nu[ii], &work->suUnc[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->suas[ii], &c_ptr);
         #ifdef _CHECK_LAST_ACTIVE_SET_
         init_strvec(qp_in->nu[ii], &work->suasPrev[ii], &c_ptr);
