@@ -67,7 +67,7 @@ int main() {
     create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_read_dynamics_colmajor(A, B, b, &qp_in);
-    tree_ocp_qp_in_read_objective_diag_colmajor(Qd, Rd, q, r, &qp_in);
+    tree_ocp_qp_in_read_objective_diag(Qd, Rd, q, r, &qp_in);
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
 
     print_tree_ocp_qp_in(&qp_in);

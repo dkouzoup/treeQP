@@ -91,7 +91,8 @@ int_t number_of_primal_variables(tree_ocp_qp_in *qp_in);
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree_ocp_qp_in *qp_in);
-void tree_ocp_qp_in_read_objective_diag_colmajor(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
+
+void tree_ocp_qp_in_read_objective_diag(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
     tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);

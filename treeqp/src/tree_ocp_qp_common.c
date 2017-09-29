@@ -491,7 +491,7 @@ void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree
 }
 
 
-void tree_ocp_qp_in_read_objective_diag_colmajor(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
+void tree_ocp_qp_in_read_objective_diag(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
     tree_ocp_qp_in *qp_in) {
 
     int_t Nn = qp_in->N;
@@ -573,6 +573,7 @@ void tree_ocp_qp_in_set_constant_bounds(real_t *xmin, real_t *xmax, real_t *umin
 }
 
 
+// TODO(dimitris): extend to set b instead if nx[0] = 0
 void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, real_t *x0) {
 
     struct d_strvec *sxmin = (struct d_strvec *)qp_in->xmin;
