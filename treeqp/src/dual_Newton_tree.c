@@ -1066,11 +1066,20 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
 
     // ------ copy solution to qp_out
-    for (int_t ii = 0; ii < Nn; ii++) {
-        dveccp_libstr(qp_in->nx[ii], &work->sx[ii], 0, &qp_out->x[ii], 0);
-        dveccp_libstr(qp_in->nu[ii], &work->su[ii], 0, &qp_out->u[ii], 0);
+    for (int_t kk = 0; kk < Nn; kk++) {
+        dveccp_libstr(qp_in->nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
+        dveccp_libstr(qp_in->nu[kk], &work->su[kk], 0, &qp_out->u[kk], 0);
+
+        if (kk > 0) {
+            dveccp_libstr(qp_in->nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
+                &qp_out->lam[kk], 0);
+        }
+        // TODO(dimitris): calculate and set mu_x, mu_u
     }
     qp_out->info.iter = NewtonIter;
+
+    // real_t *kktres = calculate_KKT_residuals(qp_in, qp_out);
+    // free(kktres);
 
     if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
