@@ -45,7 +45,7 @@ typedef struct {
 
 // input to solver
 typedef struct {
-    int_t N;
+    int_t N;  // TODO(dimitris): think again about convention of N and N+1
     const int_t *nx;
     const int_t *nu;
     const struct d_strmat *A;
@@ -76,6 +76,9 @@ typedef struct {
     treeqp_info_t info;
     struct d_strvec *x;
     struct d_strvec *u;
+    struct d_strvec *lam;  // multipliers of equality constraints
+    struct d_strvec *mu_x;  // multipliers of state bounds (+: upper bound active, -: lower bound)
+    struct d_strvec *mu_u;  // multipliers of input bounds
 } tree_ocp_qp_out;
 
 int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);
@@ -83,6 +86,7 @@ int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);
 void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_out, void *ptr);
 
 real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
 int_t number_of_states(tree_ocp_qp_in *qp_in);
 int_t number_of_controls(tree_ocp_qp_in *qp_in);

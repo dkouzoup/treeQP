@@ -277,12 +277,11 @@ void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, do
 
 int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu) {
 
-    int_t bytes = 2*Nn*sizeof(struct d_strvec);  // x, u
+    int_t bytes = 5*Nn*sizeof(struct d_strvec);  // x, u, lam, mu_x, mu_u
 
-    // TODO(dimitris): think again about convention of N and N+1
     for (int_t kk = 0; kk < Nn; kk++) {
-        bytes += d_size_strvec(nx[kk]);
-        bytes += d_size_strvec(nu[kk]);
+        bytes += 3*d_size_strvec(nx[kk]);  // x, lam, mu_x
+        bytes += 2*d_size_strvec(nu[kk]);  // u, mu_u
     }
 
     bytes = (bytes + 63)/64*64;
@@ -301,6 +300,12 @@ void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_
     c_ptr += Nn*sizeof(struct d_strvec);
     qp_out->u = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
+    qp_out->lam = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    qp_out->mu_x = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+    qp_out->mu_u = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
 
     long long l_ptr = (long long) c_ptr;
 	l_ptr = (l_ptr+63)/64*64;
@@ -309,6 +314,9 @@ void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_
     for (int_t kk = 0; kk < Nn; kk++) {
         init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->u[kk], &c_ptr);
+        init_strvec(nx[kk], &qp_out->lam[kk], &c_ptr);
+        init_strvec(nx[kk], &qp_out->mu_x[kk], &c_ptr);
+        init_strvec(nu[kk], &qp_out->mu_u[kk], &c_ptr);
     }
 #ifdef  RUNTIME_CHECKS
     char *ptrStart = (char *) ptr;
@@ -361,6 +369,68 @@ real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_o
 
     d_free_strvec(&tmp);
     return error;
+}
+
+
+real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) {
+
+    int_t Nn = qp_in->N;
+    int_t nz = number_of_primal_variables(qp_in);
+    real_t *res = malloc(nz*sizeof(real_t));
+
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
+
+    struct d_strvec *sQ = (struct d_strvec *)qp_in->Q;
+    struct d_strvec *sR = (struct d_strvec *)qp_in->R;
+    struct d_strvec *sq = (struct d_strvec *)qp_in->q;
+    struct d_strvec *sr = (struct d_strvec *)qp_in->r;
+    struct d_strmat *sA = (struct d_strmat *)qp_in->A;
+    struct d_strmat *sB = (struct d_strmat *)qp_in->B;
+    struct node *tree = (struct node *) qp_in->tree;
+
+    struct d_strvec tmp_x, tmp_u;
+
+    int_t idxkid;
+    int_t idx = 0;
+
+    // TODO(dimitris): extend for inequality constraints and nondiagonal weights
+    for (int_t ii = 0; ii < Nn; ii++) {
+
+        d_allocate_strvec(nx[ii], &tmp_x);
+        d_allocate_strvec(nu[ii], &tmp_u);
+
+        // tmp_x = Q[ii].*x[ii]
+        dvecmuldot_libstr(nx[ii], &sQ[ii], 0, &qp_out->x[ii], 0, &tmp_x, 0);
+        // tmp_x += q[ii]
+        daxpy_libstr(nx[ii], 1.0, &sq[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        // tmp_x += lam[ii]
+        daxpy_libstr(nx[ii], -1.0, &qp_out->lam[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        // tmp_u = R[ii].*u[ii]
+        dvecmuldot_libstr(nu[ii], &sR[ii], 0, &qp_out->u[ii], 0, &tmp_u, 0);
+        // tmp_u += r[ii]
+        daxpy_libstr(nu[ii], 1.0, &sr[ii], 0, &tmp_u, 0, &tmp_u, 0);
+
+        for (int_t jj = 0; jj < tree[ii].nkids; jj++) {
+            idxkid = tree[ii].kids[jj];
+            // tmp_x -= A[s(ii)]' * lam[s(ii)]
+            dgemv_t_libstr(nx[idxkid], nx[ii], 1.0, &sA[idxkid-1], 0, 0, &qp_out->lam[idxkid], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
+            // tmp_u -= B[s(ii)]' * lam[s(ii)]
+            dgemv_t_libstr(nx[idxkid], nu[ii], 1.0, &sB[idxkid-1], 0, 0, &qp_out->lam[idxkid], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
+        }
+
+        d_cvt_strvec2vec(nx[ii], &tmp_x, 0, &res[idx]);
+        idx += nx[ii];
+        d_cvt_strvec2vec(nu[ii], &tmp_u, 0, &res[idx]);
+        idx += nu[ii];
+
+        d_free_strvec(&tmp_x);
+        d_free_strvec(&tmp_u);
+    }
+
+    // d_print_e_mat(nz, 1, res, nz);
+
+    return res;
 }
 
 
