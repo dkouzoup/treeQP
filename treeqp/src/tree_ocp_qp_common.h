@@ -51,8 +51,9 @@ typedef struct {
     const struct d_strmat *A;
     const struct d_strmat *B;
     const struct d_strvec *b;
-    const struct d_strvec *Q;  // NOTE(dimitris): currently only supporting diag. weights
-    const struct d_strvec *R;
+    const struct d_strmat *Q;
+    const struct d_strmat *R;
+    const struct d_strmat *S;
     const struct d_strvec *q;
     const struct d_strvec *r;
     const struct d_strvec *xmin;
@@ -66,10 +67,6 @@ int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node 
 
 void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree,
     tree_ocp_qp_in *qp_in, void *ptr);
-
-void tree_ocp_qp_in_fill_lti_data(double *A, double *B, double *b, double *Q, double *q, double *P,
-    double *p, double *R, double *r, double *xmin, double *xmax, double *umin, double *umax,
-    double *x0, tree_ocp_qp_in *qp_in);
 
 // output of solver
 typedef struct {
@@ -93,6 +90,10 @@ int_t number_of_controls(tree_ocp_qp_in *qp_in);
 int_t number_of_primal_variables(tree_ocp_qp_in *qp_in);
 
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
+    double *Q, double *q, double *P, double *p, double *R, double *r,
+    double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree_ocp_qp_in *qp_in);
 

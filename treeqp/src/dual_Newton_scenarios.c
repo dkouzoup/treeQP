@@ -1873,8 +1873,8 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
     struct d_strmat *sJayD = work->sJayD;
     struct d_strmat *sJayL = work->sJayL;
 
-    struct d_strvec *sQnonScaled = (struct d_strvec*)qp_in->Q;
-    struct d_strvec *sRnonScaled = (struct d_strvec*)qp_in->R;
+    struct d_strmat *sQnonScaled = (struct d_strmat*)qp_in->Q;
+    struct d_strmat *sRnonScaled = (struct d_strmat*)qp_in->R;
     struct d_strvec *sqnonScaled = (struct d_strvec*)qp_in->q;
     struct d_strvec *srnonScaled = (struct d_strvec*)qp_in->r;
 
@@ -1885,10 +1885,19 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
     for (int_t jj = 0; jj < Nn; jj++) {
         // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
         scalingFactor = (real_t)ipow(md, MIN(qp_in->tree[jj].stage, Nr))/ipow(md, Nr);
-        dveccp_libstr(qp_in->nx[jj], &sQnonScaled[jj], 0, &work->sQ[jj], 0);
+
+        // TODO(dimitris): write blasfeo function and replace this
+        for (int_t ii = 0; ii < qp_in->nx[jj]; ii++) {
+            DVECEL_LIBSTR(&work->sQ[jj], ii) = DMATEL_LIBSTR(&sQnonScaled[jj], ii, ii);
+        }
         dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sQ[jj], 0);
-        dveccp_libstr(qp_in->nu[jj], &sRnonScaled[jj], 0, &work->sR[jj], 0);
+
+        // TODO(dimitris): write blasfeo function and replace this
+        for (int_t ii = 0; ii < qp_in->nu[jj]; ii++) {
+            DVECEL_LIBSTR(&work->sR[jj], ii) = DMATEL_LIBSTR(&sRnonScaled[jj], ii, ii);
+        }
         dvecsc_libstr(qp_in->nu[jj], scalingFactor, &work->sR[jj], 0);
+
         dveccp_libstr(qp_in->nx[jj], &sqnonScaled[jj], 0, &work->sq[jj], 0);
         dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sq[jj], 0);
         dveccp_libstr(qp_in->nu[jj], &srnonScaled[jj], 0, &work->sr[jj], 0);

@@ -141,8 +141,8 @@ int main() {
     create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r, xmin, xmax,
-        umin, umax, x0, &qp_in);
+    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+        xmin, xmax, umin, umax, x0, &qp_in);
 
     // print_tree_ocp_qp_in(&qp_in);
     // exit(1);

@@ -95,13 +95,23 @@ static void setup_idxpos(tree_ocp_qp_in *qp_in, int_t *idxpos) {
 }
 
 
-static void setup_qp_solvers(tree_ocp_qp_in *qp_in, stage_qp_t *qp_solver) {
-    int_t Nn = qp_in->N;
-
-    // TODO(dimitris): check if S == 0 and Q, R diagonal to set to clipping
-    for (int_t kk = 0; kk < Nn; kk++) {
+static void setup_stage_qp_solvers(tree_ocp_qp_in *qp_in, stage_qp_t *qp_solver) {
+    // TODO(dimitris): add checks on polyhedral constraints
+    for (int_t kk = 0; kk < qp_in->N; kk++) {
         qp_solver[kk] = TREEQP_CLIPPING_SOLVER;
+
+        if (is_strmat_diagonal((struct d_strmat *)&qp_in->Q[kk]) == NO) {
+            qp_solver[kk] = TREEQP_DENSE_SOLVER;
+        }
+        if (is_strmat_diagonal((struct d_strmat *)&qp_in->R[kk]) == NO) {
+            qp_solver[kk] = TREEQP_DENSE_SOLVER;
+        }
+        if (is_strmat_zero((struct d_strmat *)&qp_in->S[kk]) == NO) {
+            qp_solver[kk] = TREEQP_DENSE_SOLVER;
+        }
+        // printf("stage QP solver [%d] : %d\n", kk, qp_solver[kk]);
     }
+    // printf("\nclipping:\t%d\ndense:\t\t%d\n", TREEQP_CLIPPING_SOLVER, TREEQP_DENSE_SOLVER);
 }
 
 
@@ -1015,11 +1025,15 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     for (int_t kk = 0; kk < Nn; kk++) {
 
         if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
-            // TODO(dimitris): extract diagonal instead of copying once implemented (IS IT THIS FUN?)
             // ddiaex_sp_libstr(nx[kk], 1.0, 0, &qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
             // ddiaex_sp_libstr(nu[kk], 1.0, 0, &qp_in->R[kk], 0, 0, &work->sR[kk], 0);
-            dveccp_libstr(nx[kk], &qp_in->Q[kk], 0, &work->sQ[kk], 0);
-            dveccp_libstr(nu[kk], &qp_in->R[kk], 0, &work->sR[kk], 0);
+            // TODO(dimitris): write blasfeo function and replace this
+            for (int_t jj = 0; jj < nx[kk]; jj++) {
+                DVECEL_LIBSTR(&work->sQ[kk], jj) = DMATEL_LIBSTR(&qp_in->Q[kk], jj, jj);
+            }
+            for (int_t jj = 0; jj < nu[kk]; jj++) {
+                DVECEL_LIBSTR(&work->sR[kk], jj) = DMATEL_LIBSTR(&qp_in->R[kk], jj, jj);
+            }
 
             for (int_t nn = 0; nn < qp_in->nx[kk]; nn++)
                 DVECEL_LIBSTR(&work->sQinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[kk], nn);
@@ -1260,7 +1274,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     work->qp_solver = (stage_qp_t *) c_ptr;
     c_ptr += Nn*sizeof(stage_qp_t);
-    setup_qp_solvers(qp_in, work->qp_solver);
+    setup_stage_qp_solvers(qp_in, work->qp_solver);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->xasChanged = (int_t *) c_ptr;

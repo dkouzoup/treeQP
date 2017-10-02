@@ -26,6 +26,7 @@
 
 
 #include <stdlib.h>
+#include <assert.h>
 
 #include "treeqp/utils/blasfeo_utils.h"
 #include "treeqp/utils/types.h"
@@ -252,4 +253,33 @@ real_t check_error_strvec(struct d_strvec *V1, struct d_strvec *V2) {
         exit(1);
     }
     return err;
+}
+
+
+answer_t is_strmat_diagonal(struct d_strmat *M) {
+    answer_t ans = YES;
+    assert(M->m == M->n);
+    for (int_t ii = 0; ii < M->m; ii++) {
+        for (int_t jj = 0; jj < M->n; jj++) {
+            if (ii != jj) {
+                if (DMATEL_LIBSTR(M, ii, jj) != 0) {
+                    ans = NO;
+                }
+            }
+        }
+    }
+    return ans;
+}
+
+
+answer_t is_strmat_zero(struct d_strmat *M) {
+    answer_t ans = YES;
+    for (int_t ii = 0; ii < M->m; ii++) {
+        for (int_t jj = 0; jj < M->n; jj++) {
+            if (DMATEL_LIBSTR(M, ii, jj) != 0) {
+                ans = NO;
+            }
+        }
+    }
+    return ans;
 }

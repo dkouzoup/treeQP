@@ -63,6 +63,9 @@ void create_double_ptr_int(int_t ***arr, int_t m, int_t n, char **ptr);
 real_t check_error_strmat(struct d_strmat *M1, struct d_strmat *M2);
 real_t check_error_strvec(struct d_strvec *V1, struct d_strvec *V2);
 
+answer_t is_strmat_diagonal(struct d_strmat *M);
+answer_t is_strmat_zero(struct d_strmat *M);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
