@@ -95,6 +95,16 @@ static void setup_idxpos(tree_ocp_qp_in *qp_in, int_t *idxpos) {
 }
 
 
+static void setup_qp_solvers(tree_ocp_qp_in *qp_in, stage_qp_t *qp_solver) {
+    int_t Nn = qp_in->N;
+
+    // TODO(dimitris): check if S == 0 and Q, R diagonal to set to clipping
+    for (int_t kk = 0; kk < Nn; kk++) {
+        qp_solver[kk] = TREEQP_CLIPPING_SOLVER;
+    }
+}
+
+
 static int_t maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
     int_t maxDim = 0;
     int_t currDim, idxkid;
@@ -755,8 +765,8 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     struct d_strmat *sB = (struct d_strmat *) qp_in->B;
     struct d_strvec *sb = (struct d_strvec *) qp_in->b;
 
-    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
-    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
+    struct d_strvec *sQ = (struct d_strvec *) work->sQ;
+    struct d_strvec *sR = (struct d_strvec *) work->sR;
     struct d_strvec *sq = (struct d_strvec *) qp_in->q;
     struct d_strvec *sr = (struct d_strvec *) qp_in->r;
     struct d_strvec *sQinv = work->sQinv;
@@ -988,6 +998,9 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
+
     int_t NewtonIter;
 
     struct node *tree = (struct node *)qp_in->tree;
@@ -999,16 +1012,26 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct d_strvec *regMat = work->regMat;
 
     // ------ initialization
-    for (int_t ii = 0; ii < Nn; ii++) {
-        for (int_t nn = 0; nn < qp_in->nx[ii]; nn++)
-            DVECEL_LIBSTR(&work->sQinv[ii], nn) = 1.0/DVECEL_LIBSTR(&qp_in->Q[ii], nn);
-        for (int_t nn = 0; nn < qp_in->nu[ii]; nn++)
-            DVECEL_LIBSTR(&work->sRinv[ii], nn) = 1.0/DVECEL_LIBSTR(&qp_in->R[ii], nn);
+    for (int_t kk = 0; kk < Nn; kk++) {
+
+        if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+            // TODO(dimitris): extract diagonal instead of copying once implemented (IS IT THIS FUN?)
+            // ddiaex_sp_libstr(nx[kk], 1.0, 0, &qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
+            // ddiaex_sp_libstr(nu[kk], 1.0, 0, &qp_in->R[kk], 0, 0, &work->sR[kk], 0);
+            dveccp_libstr(nx[kk], &qp_in->Q[kk], 0, &work->sQ[kk], 0);
+            dveccp_libstr(nu[kk], &qp_in->R[kk], 0, &work->sR[kk], 0);
+
+            for (int_t nn = 0; nn < qp_in->nx[kk]; nn++)
+                DVECEL_LIBSTR(&work->sQinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[kk], nn);
+            for (int_t nn = 0; nn < qp_in->nu[kk]; nn++)
+                DVECEL_LIBSTR(&work->sRinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sR[kk], nn);
+
+        }
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        dvecse_libstr(work->sxasPrev[ii].m, 0.0/0.0, &work->sxasPrev[ii], 0);
-        if (ii < Np)
-            dvecse_libstr(work->suasPrev[ii].m, 0.0/0.0, &work->suasPrev[ii], 0);
+        dvecse_libstr(work->sxasPrev[kk].m, 0.0/0.0, &work->sxasPrev[kk], 0);
+        if (kk < Np)
+            dvecse_libstr(work->suasPrev[kk].m, 0.0/0.0, &work->suasPrev[kk], 0);
         #endif
     }
 
@@ -1069,10 +1092,6 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
 
     // ------ copy solution to qp_out
-    int_t *nx = (int_t *)qp_in->nx;
-    int_t *nu = (int_t *)qp_in->nu;
-    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
-    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
 
     for (int_t kk = 0; kk < Nn; kk++) {
         dveccp_libstr(nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
@@ -1082,11 +1101,13 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             dveccp_libstr(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
                 &qp_out->lam[kk], 0);
         }
-        // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
-        daxpy_libstr(nx[kk], -1.0, &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
-        daxpy_libstr(nu[kk], -1.0, &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
-        dvecmuldot_libstr(nx[kk], &sQ[kk], 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
-        dvecmuldot_libstr(nu[kk], &sR[kk], 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
+        if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+            // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
+            daxpy_libstr(nx[kk], -1., &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
+            daxpy_libstr(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
+            dvecmuldot_libstr(nx[kk], &work->sQ[kk], 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
+            dvecmuldot_libstr(nu[kk], &work->sR[kk], 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
+        }
     }
     qp_out->info.iter = NewtonIter;
 
@@ -1133,6 +1154,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     // int pointers
     bytes += Nh*sizeof(int_t);  // npar
     bytes += Nn*sizeof(int_t);  // idxpos
+    bytes += Nn*sizeof(int_t);  // qp_solver
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += 2*Nn*sizeof(int_t);  // xasChanged, uasChanged
@@ -1143,7 +1165,7 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*Nn*sizeof(real_t);  // fval, cmod
 
     // struct pointers
-    bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
+    bytes += 8*Nn*sizeof(struct d_strvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += Nn*sizeof(struct d_strmat);  // Wdiag
     #endif
@@ -1165,8 +1187,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += d_size_strvec(regDim);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
-        bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
-        bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
+        bytes += 4*d_size_strvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal, qmod
+        bytes += 4*d_size_strvec(qp_in->nu[ii]);  // R, Rinv, RinvCal, rmod
 
         bytes += 3*d_size_strvec(qp_in->nx[ii]);  // x, xUnc, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1236,6 +1258,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(int_t);
     setup_idxpos(qp_in, work->idxpos);
 
+    work->qp_solver = (stage_qp_t *) c_ptr;
+    c_ptr += Nn*sizeof(stage_qp_t);
+    setup_qp_solvers(qp_in, work->qp_solver);
+
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->xasChanged = (int_t *) c_ptr;
     c_ptr += Nn*sizeof(int_t);
@@ -1246,6 +1272,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->blockChanged = (int_t *) c_ptr;
     c_ptr += Np*sizeof(int_t);
     #endif
+
+    work->sQ = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->sR = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
 
     work->sQinv = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
@@ -1342,6 +1374,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     dvecse_libstr(regDim, opts->regValue, work->regMat, 0);
 
     for (int_t ii = 0; ii < Nn; ii++) {
+        init_strvec(qp_in->nx[ii], &work->sQ[ii], &c_ptr);
+        init_strvec(qp_in->nu[ii], &work->sR[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->sRinv[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sQinvCal[ii], &c_ptr);

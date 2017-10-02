@@ -49,7 +49,6 @@ typedef enum {
     TREEQP_INFNORM,               // infinity norm
 } termination_t;
 
-
 // Exit codes
 typedef enum {
     TREEQP_OK = 0,
@@ -64,6 +63,11 @@ typedef enum {
     TREEQP_ERR_UNKNOWN_ERROR,
 } return_t;
 
+// Stage QP solvers
+typedef enum {
+    TREEQP_CLIPPING_SOLVER = 0,
+    TREEQO_QPOASES_SOLVER,  // TODO(dimitris): NOT IMPLEMENTED YET
+} stage_qp_t;
 
 // Regularization of dual Hessian
 typedef enum {

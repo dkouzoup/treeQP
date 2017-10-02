@@ -47,6 +47,8 @@ typedef struct treeqp_tdunes_workspace_ {
     int_t *npar;  // 1 x Nh: number of parallel factorizations per stage
     int_t *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
 
+    stage_qp_t *qp_solver;  // 1 x Nn: type of stage QP solver
+
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int_t *xasChanged;  // 1 x Nn
     int_t *uasChanged;  // 1 x Nn
@@ -56,6 +58,8 @@ typedef struct treeqp_tdunes_workspace_ {
     real_t *fval;  // 1 x Nn
     real_t *cmod;  // 1 x Nn
 
+    struct d_strvec *sQ;  // 1 x Nn
+    struct d_strvec *sR;  // 1 x Nn
     struct d_strvec *sQinv;  // 1 x Nn
     struct d_strvec *sRinv;  // 1 x Nn
     struct d_strvec *sQinvCal;  // 1 x Nn
