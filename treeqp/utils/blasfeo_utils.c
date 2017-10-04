@@ -283,3 +283,15 @@ answer_t is_strmat_zero(struct d_strmat *M) {
     }
     return ans;
 }
+
+void print_blasfeo_target() {
+    printf("\n");
+    #if defined(LA_HIGH_PERFORMANCE)
+    printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");
+    #elif defined(LA_REFERENCE)
+    printf("blasfeo compiled with LA = REFERENCE\n");
+    #elif defined(LA_BLAS)
+    printf("blasfeo compiled with LA = BLAS\n");
+    #endif
+    printf("\n");
+}

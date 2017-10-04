@@ -66,6 +66,8 @@ real_t check_error_strvec(struct d_strvec *V1, struct d_strvec *V2);
 answer_t is_strmat_diagonal(struct d_strmat *M);
 answer_t is_strmat_zero(struct d_strmat *M);
 
+void print_blasfeo_target();
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

@@ -136,5 +136,7 @@ int main() {
     free_tree(Nn, tree);
     free(tree);
 
+    // print_blasfeo_target();
+
     return 0;
 }
