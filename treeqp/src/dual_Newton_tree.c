@@ -1025,15 +1025,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     for (int_t kk = 0; kk < Nn; kk++) {
 
         if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
-            // ddiaex_sp_libstr(nx[kk], 1.0, 0, &qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
-            // ddiaex_sp_libstr(nu[kk], 1.0, 0, &qp_in->R[kk], 0, 0, &work->sR[kk], 0);
-            // TODO(dimitris): write blasfeo function and replace this
-            for (int_t jj = 0; jj < nx[kk]; jj++) {
-                DVECEL_LIBSTR(&work->sQ[kk], jj) = DMATEL_LIBSTR(&qp_in->Q[kk], jj, jj);
-            }
-            for (int_t jj = 0; jj < nu[kk]; jj++) {
-                DVECEL_LIBSTR(&work->sR[kk], jj) = DMATEL_LIBSTR(&qp_in->R[kk], jj, jj);
-            }
+            ddiaex_libstr(nx[kk], 1.0, (struct d_strmat *)&qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
+            ddiaex_libstr(nu[kk], 1.0, (struct d_strmat *)&qp_in->R[kk], 0, 0, &work->sR[kk], 0);
 
             for (int_t nn = 0; nn < qp_in->nx[kk]; nn++)
                 DVECEL_LIBSTR(&work->sQinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[kk], nn);
@@ -1377,12 +1370,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     l_ptr = (l_ptr+63)/64*64;
     c_ptr = (char *) l_ptr;
 
-    work->fval = (real_t *) c_ptr;
-    c_ptr += Nn*sizeof(real_t);
-
-    work->cmod = (real_t *) c_ptr;
-    c_ptr += Nn*sizeof(real_t);
-
     // TODO(dimitris): asserts for mem. alignment
     init_strvec(regDim, work->regMat, &c_ptr);
     dvecse_libstr(regDim, opts->regValue, work->regMat, 0);
@@ -1439,6 +1426,13 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             }
         }
     }
+
+    work->fval = (real_t *) c_ptr;
+    c_ptr += Nn*sizeof(real_t);
+
+    work->cmod = (real_t *) c_ptr;
+    c_ptr += Nn*sizeof(real_t);
+
     #ifdef  RUNTIME_CHECKS
     char *ptrStart = (char *) ptr;
     char *ptrEnd = c_ptr;

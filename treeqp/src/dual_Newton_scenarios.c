@@ -1886,17 +1886,8 @@ int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
         // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
         scalingFactor = (real_t)ipow(md, MIN(qp_in->tree[jj].stage, Nr))/ipow(md, Nr);
 
-        // TODO(dimitris): write blasfeo function and replace this
-        for (int_t ii = 0; ii < qp_in->nx[jj]; ii++) {
-            DVECEL_LIBSTR(&work->sQ[jj], ii) = DMATEL_LIBSTR(&sQnonScaled[jj], ii, ii);
-        }
-        dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sQ[jj], 0);
-
-        // TODO(dimitris): write blasfeo function and replace this
-        for (int_t ii = 0; ii < qp_in->nu[jj]; ii++) {
-            DVECEL_LIBSTR(&work->sR[jj], ii) = DMATEL_LIBSTR(&sRnonScaled[jj], ii, ii);
-        }
-        dvecsc_libstr(qp_in->nu[jj], scalingFactor, &work->sR[jj], 0);
+        ddiaex_libstr(qp_in->nx[jj], scalingFactor, &sQnonScaled[jj], 0, 0, &work->sQ[jj], 0);
+        ddiaex_libstr(qp_in->nu[jj], scalingFactor, &sRnonScaled[jj], 0, 0, &work->sR[jj], 0);
 
         dveccp_libstr(qp_in->nx[jj], &sqnonScaled[jj], 0, &work->sq[jj], 0);
         dvecsc_libstr(qp_in->nx[jj], scalingFactor, &work->sq[jj], 0);

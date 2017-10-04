@@ -428,7 +428,6 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
         printf("r[%d] = \n", ii);
         d_print_tran_strvec(qp_in->nu[ii], (struct d_strvec *) &qp_in->r[ii], 0);
 
-        // TODO(dimitris): add scaling factor for weights
         // printf("real = %d\n\n", qp_in->tree[ii].real);
         if (ii > 0) {
             // TODO(dimitris): check that .m/.n of structs coincide with nx/nu
