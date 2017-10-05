@@ -26,7 +26,7 @@
 
 
 OBJS=
-OBJS+=./treeqp/src/tree_ocp_qp_common.o ./treeqp/src/dual_Newton_scenarios.o ./treeqp/src/dual_Newton_tree.o
+OBJS+=./treeqp/src/tree_ocp_qp_common.o ./treeqp/src/dual_Newton_scenarios.o ./treeqp/src/dual_Newton_tree.o ./treeqp/src/hpmpc_tree.o
 OBJS+=./treeqp/utils/blasfeo_utils.o ./treeqp/utils/profiling_utils.o ./treeqp/utils/tree_utils.o
 OBJS+=./treeqp/utils/utils.o ./treeqp/utils/timing.o
 

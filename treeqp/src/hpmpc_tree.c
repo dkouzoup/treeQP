@@ -1,0 +1,190 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*    This file is part of treeQP.                                                                  *
+*                                                                                                  *
+*    treeQP -- A toolbox of tree-sparse Quadratic Programming solvers.                             *
+*    Copyright (C) 2017 by Dimitris Kouzoupis.                                                     *
+*    Developed at IMTEK (University of Freiburg) under the supervision of Moritz Diehl.            *
+*    All rights reserved.                                                                          *
+*                                                                                                  *
+*    treeQP is free software; you can redistribute it and/or                                       *
+*    modify it under the terms of the GNU Lesser General Public                                    *
+*    License as published by the Free Software Foundation; either                                  *
+*    version 3 of the License, or (at your option) any later version.                              *
+*                                                                                                  *
+*    treeQP is distributed in the hope that it will be useful,                                     *
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of                                *
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU                             *
+*    Lesser General Public License for more details.                                               *
+*                                                                                                  *
+*    You should have received a copy of the GNU Lesser General Public                              *
+*    License along with treeQP; if not, write to the Free Software Foundation,                     *
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA                            *
+*                                                                                                  *
+*    Author: Dimitris Kouzoupis, dimitris.kouzoupis (at) imtek.uni-freiburg.de                     *
+*                                                                                                  *
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#include <assert.h>
+
+#include "treeqp/src/hpmpc_tree.h"
+#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/utils/blasfeo_utils.h"
+#include "treeqp/utils/types.h"
+
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
+#include "blasfeo/include/blasfeo_d_aux.h"
+
+#define INF 1e10  // TODO(dimitris): option instead of hardcoded here?
+
+
+int_t number_of_bounds(const struct d_strvec *vmin, const struct d_strvec *vmax) {
+    int_t nb = 0;
+    int_t n = vmin->m;
+    assert(vmin->m == vmax->m);
+
+    for (int_t ii = 0; ii < n; ii++) {
+        if (DVECEL_LIBSTR(vmin, ii) > -INF ||
+            DVECEL_LIBSTR(vmax, ii) < INF) {
+            nb += 1;
+        }
+    }
+    return nb;
+}
+
+
+int_t get_size_idxb(tree_ocp_qp_in *qp_in) {
+    int_t size = 0;
+    int_t Nn = qp_in->N;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        size += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii]);
+        size += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii]);
+    }
+
+    return size;
+}
+
+
+void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb) {
+    int_t Nn = qp_in->N;
+    int_t kk;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        nb[ii] = 0;
+        kk = 0;
+        for (int_t jj = 0; jj < qp_in->nu[ii]; jj++) {
+            if (DVECEL_LIBSTR(&qp_in->umin[ii], jj) > -INF ||
+                DVECEL_LIBSTR(&qp_in->umax[ii], jj) < INF) {
+                nb[ii] += 1;
+                idxb[ii][kk++] = jj;
+            }
+        }
+        for (int_t jj = 0; jj < qp_in->nx[ii]; jj++) {
+            if (DVECEL_LIBSTR(&qp_in->xmin[ii], jj) > -INF ||
+                DVECEL_LIBSTR(&qp_in->xmax[ii], jj) < INF) {
+                nb[ii] += 1;
+                idxb[ii][kk++] = jj + qp_in->nu[ii];
+            }
+
+        }
+    }
+}
+
+
+void setup_ng(tree_ocp_qp_in *qp_in, int *ng) {
+    int_t Nn = qp_in->N;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        ng[ii] = 0;  // TODO(dimitris): update once polyhedral constraints are supported
+    }
+}
+
+
+void treeqp_hpmpc_set_default_options(treeqp_hpmpc_options_t *opts) {
+    opts->maxIter = 20;
+	opts->mu0 = 2.0;
+	opts->mu_tol = 1e-12;
+	opts->alpha_min = 1e-8;
+	opts->warm_start = 0;
+	opts->compute_mult = 1;
+}
+
+
+int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts) {
+    int_t bytes = 0;
+    int_t Nn = qp_in->N;
+
+    bytes += 2*Nn*sizeof(int);  // nb, ng
+
+    bytes += Nn*sizeof(int_t*);  // idxb
+    bytes += get_size_idxb(qp_in)*sizeof(int_t);
+
+    bytes += Nn*sizeof(struct d_strvec);  // sux
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        bytes += d_size_strvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
+    }
+
+    bytes += 5*opts->maxIter*sizeof(double);  // status
+
+    bytes = (bytes + 63)/64*64;
+    bytes += 64;
+
+    return bytes;
+}
+
+
+void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
+    treeqp_hpmpc_workspace *work, void *ptr) {
+
+    struct node *tree = (struct node *) qp_in->tree;
+    int_t Nn = qp_in->N;
+
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    // double pointers
+    work->idxb = (int **) c_ptr;
+    c_ptr += Nn*sizeof(int *);
+    for (int_t ii = 0; ii < Nn; ii++) {
+        work->idxb[ii] = (int *) c_ptr;
+        c_ptr += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii])*sizeof(int);
+        c_ptr += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii])*sizeof(int);
+    }
+
+    // pointers
+    work->nb = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    setup_nb_idxb(qp_in, work->nb, work->idxb);
+
+    work->ng = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
+    setup_ng(qp_in, work->ng);
+
+    work->sux = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    // move pointer for proper alignment of doubles and blasfeo matrices/vectors
+    long long l_ptr = (long long) c_ptr;
+    l_ptr = (l_ptr+63)/64*64;
+    c_ptr = (char *) l_ptr;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
+    }
+
+    work->status = (double *) c_ptr;
+    c_ptr += 5*opts->maxIter*sizeof(double);
+
+    #ifdef  RUNTIME_CHECKS
+    char *ptrStart = (char *) ptr;
+    char *ptrEnd = c_ptr;
+    int_t bytes = treeqp_hpmpc_calculate_size(qp_in, opts);
+    assert(ptrEnd <= ptrStart + bytes);
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    // exit(1);
+    #endif
+}

@@ -25,42 +25,53 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_TREE_UTILS_H_
-#define TREEQP_UTILS_TREE_UTILS_H_
+#ifndef TREEQP_SRC_HPMPC_TREE_H_
+#define TREEQP_SRC_HPMPC_TREE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/types.h"
 
-// TODO(dimitris): MAKE INDEPENDENT OF ORDER (now HPMPC header must come first)
-#ifndef TREE_MPC
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
 
-struct node {
-    int_t *kids;   // 64 bits
-    int_t idx;     // 32 bits
-    int_t dad;     // 32 bits
-    int_t nkids;   // 32 bits
-    int_t stage;   // 32 bits
-    int_t real;    // 32 bits
-    int_t idxkid;  // 32 bits
-    // total       256 bits
-};
+// Options of QP solver
+typedef struct {
 
-#endif
+	int maxIter;  // k_max
+	int mu0;  // max element value in cost function
+	double mu_tol;
+	double alpha_min;
+	int warm_start;  // read initial guess from x and u
+	int compute_mult;
 
-int_t calculate_number_of_nodes(int_t md, int_t Nr, int_t Nh);
-int_t get_number_of_parent_nodes(int_t Nn, struct node *tree);
-int_t get_robust_horizon(int_t Nn, struct node *tree);
-void print_node(struct node *tree);
-void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree);
-void setup_tree(int_t Nn, int_t *nkids, struct node *tree);
-void free_tree(int_t Nn, struct node *tree);
+} treeqp_hpmpc_options_t;
 
+void treeqp_hpmpc_set_default_options(treeqp_hpmpc_options_t *opts);
+
+
+typedef struct treeqp_hpmpc_workspace_ {
+
+    int *nb;
+    int **idxb;
+    int *ng;
+
+    struct d_strvec *sux;
+
+    double *status;
+
+} treeqp_hpmpc_workspace;
+
+int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts);
+
+void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
+    treeqp_hpmpc_workspace *work, void *ptr);
 
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_TREE_UTILS_H_
+#endif  // TREEQP_SRC_HPMPC_TREE_H_
