@@ -60,8 +60,13 @@ typedef struct treeqp_hpmpc_workspace_ {
     int *ng;
 
     struct d_strvec *sux;
+    struct d_strvec *slam;
+    struct d_strvec *sst;
+
+    struct d_strmat *sBAbt;
 
     double *status;
+    void *internal;
 
 } treeqp_hpmpc_workspace;
 

@@ -479,10 +479,6 @@ int main()
 		t_hidxb[ii] = hidxb[stage];
 		}
 
-	// sol
-	struct d_strvec *t_hslam = malloc(Nn*sizeof(struct d_strvec));
-	struct d_strvec *t_hst = malloc(Nn*sizeof(struct d_strvec));
-
 	// res
 	struct d_strvec *t_hsrrq = malloc(Nn*sizeof(struct d_strvec));
 	struct d_strvec *t_hsrb = malloc((Nn-1)*sizeof(struct d_strvec));
@@ -491,12 +487,9 @@ int main()
 
 	// work
 	struct d_strmat *t_hsL = malloc(Nn*sizeof(struct d_strmat));
-	void *t_work_ipm;
 	void *t_work_res;
 	for(ii=0; ii<Nn; ii++)
 		{
-		d_allocate_strvec(2*t_nb[ii]+2*t_ng[ii], &t_hslam[ii]);
-		d_allocate_strvec(2*t_nb[ii]+2*t_ng[ii], &t_hst[ii]);
 		d_allocate_strvec(t_nu[ii]+t_nx[ii], &t_hsrrq[ii]);
 		d_allocate_strvec(2*t_nb[ii]+2*t_ng[ii], &t_hsrd[ii]);
 		d_allocate_strvec(2*t_nb[ii]+2*t_ng[ii], &t_hsrm[ii]);
@@ -508,7 +501,6 @@ int main()
 			}
 		}
 
-	v_zeros_align(&t_work_ipm, d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree, t_nx, t_nu, t_nb, t_ng));
 	v_zeros_align(&t_work_res, d_tree_res_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree, t_nx, t_nu, t_nb, t_ng));
 
 	// IPM work space
@@ -563,7 +555,7 @@ for(ii=0; ii<N; ii++)
 	for(rep=0; rep<nrep; rep++) {
 		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,
 			opts.mu_tol, opts.alpha_min, opts.warm_start, work.status, qp_in.N, (struct node *) qp_in.tree,
-			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, t_hsBAbt, t_hsRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, t_hslam, t_hst, t_work_ipm);
+			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, t_hsBAbt, t_hsRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
 	}
 
 #ifdef TIC_TOC
@@ -728,12 +720,9 @@ for (ii = 0; ii < Nn; ii++) {
 	d_free_strmat(&hsL[ii]);
 
 	// tree MPC with tree HPMPC
-	d_free_align(t_work_ipm);
 	d_free_align(t_work_res);
 	for(ii=0; ii<Nn; ii++)
 		{
-		d_free_strvec(&t_hslam[ii]);
-		d_free_strvec(&t_hst[ii]);
 		d_free_strmat(&t_hsL[ii]);
 		}
 	free_tree(Nn, tree);
@@ -751,9 +740,6 @@ for (ii = 0; ii < Nn; ii++) {
 
 	free(t_hsDCt);
 	free(t_hsd);
-
-	free(t_hslam);
-	free(t_hst);
 
 	free(t_hsrrq);
 	free(t_hsrb);

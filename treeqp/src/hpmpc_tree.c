@@ -24,6 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdlib.h>
 #include <assert.h>
 
 #include "treeqp/src/hpmpc_tree.h"
@@ -34,6 +35,10 @@
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 #include "blasfeo/include/blasfeo_d_aux.h"
+
+#include "hpmpc/include/target.h"
+#include "hpmpc/include/tree.h"
+#include "hpmpc/include/mpc_solvers.h"
 
 #define INF 1e10  // TODO(dimitris): option instead of hardcoded here?
 
@@ -63,6 +68,17 @@ int_t get_size_idxb(tree_ocp_qp_in *qp_in) {
     }
 
     return size;
+}
+
+
+void setup_nb(tree_ocp_qp_in *qp_in, int *nb) {
+    int_t Nn = qp_in->N;
+
+    for (int_t ii = 0; ii < Nn; ii++) {
+        nb[ii] = 0;
+        nb[ii] += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii]);
+        nb[ii] += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii]);
+    }
 }
 
 
@@ -115,21 +131,34 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
     int_t bytes = 0;
     int_t Nn = qp_in->N;
 
+    // TODO(dimitris): can we avoid memory allocation in here?
+    int_t *nb = (int_t *)malloc(Nn*sizeof(int_t));
+    int_t *ng = (int_t *)malloc(Nn*sizeof(int_t));
+    setup_nb(qp_in, nb);
+    setup_ng(qp_in, ng);
+
     bytes += 2*Nn*sizeof(int);  // nb, ng
 
     bytes += Nn*sizeof(int_t*);  // idxb
     bytes += get_size_idxb(qp_in)*sizeof(int_t);
 
-    bytes += Nn*sizeof(struct d_strvec);  // sux
+    bytes += 3*Nn*sizeof(struct d_strvec);  // sux, slam, sst
 
     for (int_t ii = 0; ii < Nn; ii++) {
         bytes += d_size_strvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
+        bytes += 2*d_size_strvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
     }
 
     bytes += 5*opts->maxIter*sizeof(double);  // status
 
+    bytes += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn,
+        (struct node *) qp_in->tree, (int *) qp_in->nx, (int *) qp_in->nu, nb, ng);
+
     bytes = (bytes + 63)/64*64;
     bytes += 64;
+
+    free(nb);
+    free(ng);
 
     return bytes;
 }
@@ -166,6 +195,12 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     work->sux = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
+    work->slam = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
+    work->sst = (struct d_strvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strvec);
+
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
@@ -173,10 +208,18 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
 
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
+        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
+        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
     }
 
     work->status = (double *) c_ptr;
     c_ptr += 5*opts->maxIter*sizeof(double);
+
+    // TODO(dimitris): ******************* MAYBE REALLIGN NEEDED!
+
+    work->internal = (void *) c_ptr;
+    c_ptr += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
+        (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
 
     #ifdef  RUNTIME_CHECKS
     char *ptrStart = (char *) ptr;
