@@ -1029,6 +1029,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
+    treeqp_timer tmr;
+
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
 
@@ -1043,6 +1045,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct d_strvec *regMat = work->regMat;
 
     // ------ initialization
+    treeqp_tic(&tmr);
+
     for (int_t kk = 0; kk < Nn; kk++) {
 
         if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
@@ -1062,6 +1066,9 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             dvecse_libstr(work->suasPrev[kk].m, 0.0/0.0, &work->suasPrev[kk], 0);
         #endif
     }
+
+    qp_out->info.interface_time = treeqp_toc(&tmr);
+    treeqp_tic(&tmr);
 
     // ------ dual Newton iterations
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
@@ -1119,6 +1126,9 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
     }
 
+    qp_out->info.solver_time = treeqp_toc(&tmr);
+    treeqp_tic(&tmr);
+
     // ------ copy solution to qp_out
 
     for (int_t kk = 0; kk < Nn; kk++) {
@@ -1138,6 +1148,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         }
     }
     qp_out->info.iter = NewtonIter;
+
+    qp_out->info.interface_time += treeqp_toc(&tmr);
 
     // real_t *kktres = calculate_KKT_residuals(qp_in, qp_out);
     // free(kktres);

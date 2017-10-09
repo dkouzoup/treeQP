@@ -335,7 +335,6 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
 
     qp_out->info.interface_time = treeqp_toc(&tmr);
-
     treeqp_tic(&tmr);
 
     // solve QP
@@ -343,7 +342,6 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
             nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
             work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
-
 
     qp_out->info.solver_time = treeqp_toc(&tmr);
 

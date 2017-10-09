@@ -126,8 +126,11 @@ int main( ) {
 
     for (int_t jj = 0; jj < NRUNS; jj++) {
         treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
-
         treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+        printf("tdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
+        printf("solver time:\t %5.3f ms\n", qp_out.info.solver_time*1e3);
+        printf("interface time:\t %5.3f ms\n", qp_out.info.interface_time*1e3);
+        printf("overhead:\t %5.2f %% \n", 100*qp_out.info.interface_time/qp_out.info.solver_time);
     }
 
     real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
