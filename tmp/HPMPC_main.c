@@ -58,9 +58,7 @@ int main()
 ************************************************/
 
 	// IPM args
-	treeqp_hpmpc_options_t opts;
-	treeqp_hpmpc_set_default_options(&opts);
-
+	treeqp_hpmpc_options_t opts = treeqp_hpmpc_default_options();
 	int hpmpc_status;
 
 	// timing

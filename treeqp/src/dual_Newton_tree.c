@@ -63,6 +63,27 @@
 
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
+treeqp_tdunes_options_t treeqp_tdunes_default_options(void) {
+
+    treeqp_tdunes_options_t opts;
+    termination_t cond = TREEQP_INFNORM;
+
+    opts.maxIter = 100;
+    opts.termCondition = cond;
+    opts.stationarityTolerance = 1.0e-12;
+
+    opts.lineSearchMaxIter = 50;
+    opts.lineSearchGamma = 0.1;
+    opts.lineSearchBeta = 0.6;
+
+    // TODO(dimitris): implement on the fly regularization
+    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+    // opts.regTol   = 1.0e-12;
+    opts.regValue = 1.0e-8;
+
+    return opts;
+}
+
 
 static void setup_npar(int_t Nh, int_t Nn, struct node *tree, int_t *npar) {
     // initialize vector to zero

@@ -98,7 +98,7 @@ typedef struct treeqp_tdunes_workspace_ {
     #endif
 } treeqp_tdunes_workspace;
 
-// Options of QP solver
+
 typedef struct {
     // iterations
     int_t maxIter;
@@ -121,6 +121,7 @@ typedef struct {
     real_t lineSearchBeta;
 } treeqp_tdunes_options_t;
 
+treeqp_tdunes_options_t treeqp_tdunes_default_options(void);
 
 int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
 

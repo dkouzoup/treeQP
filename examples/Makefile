@@ -27,11 +27,12 @@
 
 include ../Makefile.rule
 
-OBJS = spring_mass_dual_newton_scenarios.o spring_mass_dual_newton_tree.o random_qp.o fault_tolerance.o
+OBJS = spring_mass_dual_newton_scenarios.o spring_mass_dual_newton_tree.o spring_mass.o random_qp.o fault_tolerance.o
 
 obj: $(OBJS)
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
+	$(CC) -o spring_mass.out spring_mass.o -ltreeqp -lhpmpc -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o random_qp.out random_qp.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/load_data.c -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 

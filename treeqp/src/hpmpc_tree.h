@@ -38,7 +38,6 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
-// Options of QP solver
 typedef struct {
 
 	int maxIter;  // k_max
@@ -50,8 +49,7 @@ typedef struct {
 
 } treeqp_hpmpc_options_t;
 
-void treeqp_hpmpc_set_default_options(treeqp_hpmpc_options_t *opts);
-
+treeqp_hpmpc_options_t treeqp_hpmpc_default_options();
 
 typedef struct treeqp_hpmpc_workspace_ {
 

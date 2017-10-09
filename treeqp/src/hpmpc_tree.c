@@ -30,6 +30,7 @@
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/blasfeo_utils.h"
+#include "treeqp/utils/timing.h"
 #include "treeqp/utils/types.h"
 
 #include "blasfeo/include/blasfeo_target.h"
@@ -41,6 +42,20 @@
 #include "hpmpc/include/mpc_solvers.h"
 
 #define INF 1e10 // TODO(dimitris): option instead of hardcoded here?
+
+
+treeqp_hpmpc_options_t treeqp_hpmpc_default_options() {
+    treeqp_hpmpc_options_t opts;
+
+    opts.maxIter = 20;
+	opts.mu0 = 2.0;
+	opts.mu_tol = 1e-12;
+	opts.alpha_min = 1e-8;
+	opts.warm_start = 0;
+    opts.compute_mult = 1;
+
+    return opts;
+}
 
 
 int_t number_of_bounds(const struct d_strvec *vmin, const struct d_strvec *vmax) {
@@ -114,16 +129,6 @@ void setup_ng(tree_ocp_qp_in *qp_in, int *ng) {
     for (int_t ii = 0; ii < Nn; ii++) {
         ng[ii] = 0;  // TODO(dimitris): update once polyhedral constraints are supported
     }
-}
-
-
-void treeqp_hpmpc_set_default_options(treeqp_hpmpc_options_t *opts) {
-    opts->maxIter = 20;
-	opts->mu0 = 2.0;
-	opts->mu_tol = 1e-12;
-	opts->alpha_min = 1e-8;
-	opts->warm_start = 0;
-	opts->compute_mult = 1;
 }
 
 
@@ -283,6 +288,8 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
 
+    treeqp_timer tmr;
+
     struct node *tree = (struct node *)qp_in->tree;
 
     struct d_strmat *sA = (struct d_strmat *) qp_in->A;
@@ -297,38 +304,59 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     // convert input to HPMPC format
     int_t idxp, idxb;
 
-    for (int_t kk = 0; kk < Nn; kk++) {
+    treeqp_tic(&tmr);
+
+    for (int_t ii = 0; ii < Nn; ii++) {
 
         // TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
-        dgecp_libstr(nu[kk], nu[kk], &sR[kk], 0, 0, &work->sRSQrq[kk], 0, 0);
-        dgecp_libstr(nx[kk], nx[kk], &sQ[kk], 0, 0, &work->sRSQrq[kk], nu[kk], nu[kk]);
+        dgecp_libstr(nu[ii], nu[ii], &sR[ii], 0, 0, &work->sRSQrq[ii], 0, 0);
+        dgecp_libstr(nx[ii], nx[ii], &sQ[ii], 0, 0, &work->sRSQrq[ii], nu[ii], nu[ii]);
 
-        drowin_libstr(nu[kk], 1.0, &sr[kk], 0, &work->sRSQrq[kk], nu[kk] + nx[kk], 0);
-        drowin_libstr(nx[kk], 1.0, &sq[kk], 0, &work->sRSQrq[kk], nu[kk] + nx[kk], nu[kk]);
+        drowin_libstr(nu[ii], 1.0, &sr[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], 0);
+        drowin_libstr(nx[ii], 1.0, &sq[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
 
-        if (kk > 0) {
-            idxp = tree[kk].dad;
-            dgetr_libstr(nx[kk], nu[idxp], &sB[kk-1], 0, 0, &work->sBAbt[kk-1], 0, 0);
-            dgetr_libstr(nx[kk], nx[idxp], &sA[kk-1], 0, 0, &work->sBAbt[kk-1], nu[idxp], 0);
-            drowin_libstr(nx[kk], 1.0, &sb[kk-1], 0, &work->sBAbt[kk-1], nx[idxp] + nu[idxp], 0);
+        if (ii > 0) {
+            idxp = tree[ii].dad;
+            dgetr_libstr(nx[ii], nu[idxp], &sB[ii-1], 0, 0, &work->sBAbt[ii-1], 0, 0);
+            dgetr_libstr(nx[ii], nx[idxp], &sA[ii-1], 0, 0, &work->sBAbt[ii-1], nu[idxp], 0);
+            drowin_libstr(nx[ii], 1.0, &sb[ii-1], 0, &work->sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
         }
 
-        for (int_t jj = 0; jj < work->nb[kk]; jj++) {
-            idxb = work->idxb[kk][jj];
-            if (idxb < nu[kk]) {
-                DVECEL_LIBSTR(&work->sd[kk], jj) = DVECEL_LIBSTR(&qp_in->umin[kk], idxb);
-                DVECEL_LIBSTR(&work->sd[kk], jj + work->nb[kk]) = DVECEL_LIBSTR(&qp_in->umax[kk], idxb);
+        for (int_t jj = 0; jj < work->nb[ii]; jj++) {
+            idxb = work->idxb[ii][jj];
+            if (idxb < nu[ii]) {
+                DVECEL_LIBSTR(&work->sd[ii], jj) = DVECEL_LIBSTR(&qp_in->umin[ii], idxb);
+                DVECEL_LIBSTR(&work->sd[ii], jj + work->nb[ii]) = DVECEL_LIBSTR(&qp_in->umax[ii], idxb);
             } else {
-                DVECEL_LIBSTR(&work->sd[kk], jj) = DVECEL_LIBSTR(&qp_in->xmin[kk], idxb - nu[kk]);
-                DVECEL_LIBSTR(&work->sd[kk], jj + work->nb[kk]) = DVECEL_LIBSTR(&qp_in->xmax[kk], idxb - nu[kk]);
+                DVECEL_LIBSTR(&work->sd[ii], jj) = DVECEL_LIBSTR(&qp_in->xmin[ii], idxb - nu[ii]);
+                DVECEL_LIBSTR(&work->sd[ii], jj + work->nb[ii]) = DVECEL_LIBSTR(&qp_in->xmax[ii], idxb - nu[ii]);
             }
         }
     }
 
+    qp_out->info.interface_time = treeqp_toc(&tmr);
+
+    treeqp_tic(&tmr);
+
+    // solve QP
     int_t status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
             nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
             work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
+
+
+    qp_out->info.solver_time = treeqp_toc(&tmr);
+
+    // copy results to qp_out struct
+    treeqp_tic(&tmr);
+
+    // TODO(dimitris): COPY ALSO MULTIPLIERS!
+    for (int_t ii = 0; ii < Nn; ii++) {
+        dveccp_libstr(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
+        dveccp_libstr(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
+    }
+
+    qp_out->info.interface_time += treeqp_toc(&tmr);
 
     return status;
 }

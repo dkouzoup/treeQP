@@ -20,7 +20,7 @@ endif
 CFLAGS=
 
 CFLAGS+=-DALG=$(ALG)
-# CFLAGS+=-DRUNTIME_CHECKS
+CFLAGS+=-DRUNTIME_CHECKS
 
 # Enable/disable openmp
 # NOTE(dimitris): to define maximum number of threads type in terminal:
@@ -42,10 +42,14 @@ TREEQP_ROOT_DIR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # blasfeo directory
 BLASFEO_INSTALL_DIR=/opt
+HPMPC_INSTALL_DIR=/opt
+
 
 CFLAGS+=-I$(TREEQP_ROOT_DIR)
 CFLAGS+=-I$(BLASFEO_INSTALL_DIR)
+CFLAGS+=-I$(HPMPC_INSTALL_DIR)
 
 LDFLAGS=
 LDFLAGS+=-L$(TREEQP_ROOT_DIR)
 LDFLAGS+=-L$(BLASFEO_INSTALL_DIR)/blasfeo/lib
+LDFLAGS+=-L$(HPMPC_INSTALL_DIR)/hpmpc/lib

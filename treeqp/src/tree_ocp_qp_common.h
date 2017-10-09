@@ -40,6 +40,8 @@ extern "C" {
 // info returned by solver
 typedef struct {
     int_t iter;
+    real_t solver_time;
+    real_t interface_time;
 } treeqp_info_t;
 
 
