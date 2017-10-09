@@ -46,7 +46,7 @@ clean:
 	make -C treeqp/src clean
 	make -C treeqp/utils clean
 	make -C examples clean
-	rm -f *.exe *.o *.a
+	rm -f *.a
 
 lint: # TODO(dimitris): fix for Linux, currently works only on mac
 	# Generate list of files and pass them to lint

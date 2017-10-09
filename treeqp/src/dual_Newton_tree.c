@@ -1029,7 +1029,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
-    treeqp_timer tmr;
+    treeqp_timer solver_tmr, interface_tmr;
 
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
@@ -1045,7 +1045,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct d_strvec *regMat = work->regMat;
 
     // ------ initialization
-    treeqp_tic(&tmr);
+    treeqp_tic(&interface_tmr);
 
     for (int_t kk = 0; kk < Nn; kk++) {
 
@@ -1067,8 +1067,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
     }
 
-    qp_out->info.interface_time = treeqp_toc(&tmr);
-    treeqp_tic(&tmr);
+    qp_out->info.interface_time = treeqp_toc(&interface_tmr);
+    treeqp_tic(&solver_tmr);
 
     // ------ dual Newton iterations
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
@@ -1126,8 +1126,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
     }
 
-    qp_out->info.solver_time = treeqp_toc(&tmr);
-    treeqp_tic(&tmr);
+    qp_out->info.solver_time = treeqp_toc(&solver_tmr);
+    treeqp_tic(&interface_tmr);
 
     // ------ copy solution to qp_out
 
@@ -1149,7 +1149,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
     qp_out->info.iter = NewtonIter;
 
-    qp_out->info.interface_time += treeqp_toc(&tmr);
+    qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
     // real_t *kktres = calculate_KKT_residuals(qp_in, qp_out);
     // free(kktres);

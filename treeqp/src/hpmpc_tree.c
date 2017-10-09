@@ -288,7 +288,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
 
-    treeqp_timer tmr;
+    treeqp_timer solver_tmr, interface_tmr;
 
     struct node *tree = (struct node *)qp_in->tree;
 
@@ -304,7 +304,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     // convert input to HPMPC format
     int_t idxp, idxb;
 
-    treeqp_tic(&tmr);
+    treeqp_tic(&interface_tmr);
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
@@ -334,8 +334,8 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         }
     }
 
-    qp_out->info.interface_time = treeqp_toc(&tmr);
-    treeqp_tic(&tmr);
+    qp_out->info.interface_time = treeqp_toc(&interface_tmr);
+    treeqp_tic(&solver_tmr);
 
     // solve QP
     int_t status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
@@ -343,10 +343,10 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
             work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
 
-    qp_out->info.solver_time = treeqp_toc(&tmr);
+    qp_out->info.solver_time = treeqp_toc(&solver_tmr);
 
     // copy results to qp_out struct
-    treeqp_tic(&tmr);
+    treeqp_tic(&interface_tmr);
 
     // TODO(dimitris): COPY ALSO MULTIPLIERS!
     for (int_t ii = 0; ii < Nn; ii++) {
@@ -354,7 +354,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         dveccp_libstr(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
     }
 
-    qp_out->info.interface_time += treeqp_toc(&tmr);
+    qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
     return status;
 }
