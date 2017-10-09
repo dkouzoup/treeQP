@@ -285,6 +285,46 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     struct node *tree = (struct node *)qp_in->tree;
 
+    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
+    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+
+    struct d_strmat *sQ = (struct d_strmat *) qp_in->Q;
+    struct d_strmat *sR = (struct d_strmat *) qp_in->R;
+    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
+    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
+
+    // convert input to HPMPC format
+    int_t idxp, idxb;
+
+    for (int_t kk = 0; kk < Nn; kk++) {
+
+        // TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
+        dgecp_libstr(nu[kk], nu[kk], &sR[kk], 0, 0, &work->sRSQrq[kk], 0, 0);
+        dgecp_libstr(nx[kk], nx[kk], &sQ[kk], 0, 0, &work->sRSQrq[kk], nu[kk], nu[kk]);
+
+        drowin_libstr(nu[kk], 1.0, &sr[kk], 0, &work->sRSQrq[kk], nu[kk] + nx[kk], 0);
+        drowin_libstr(nx[kk], 1.0, &sq[kk], 0, &work->sRSQrq[kk], nu[kk] + nx[kk], nu[kk]);
+
+        if (kk > 0) {
+            idxp = tree[kk].dad;
+            dgetr_libstr(nx[kk], nu[idxp], &sB[kk-1], 0, 0, &work->sBAbt[kk-1], 0, 0);
+            dgetr_libstr(nx[kk], nx[idxp], &sA[kk-1], 0, 0, &work->sBAbt[kk-1], nu[idxp], 0);
+            drowin_libstr(nx[kk], 1.0, &sb[kk-1], 0, &work->sBAbt[kk-1], nx[idxp] + nu[idxp], 0);
+        }
+
+        for (int_t jj = 0; jj < work->nb[kk]; jj++) {
+            idxb = work->idxb[kk][jj];
+            if (idxb < nu[kk]) {
+                DVECEL_LIBSTR(&work->sd[kk], jj) = DVECEL_LIBSTR(&qp_in->umin[kk], idxb);
+                DVECEL_LIBSTR(&work->sd[kk], jj + work->nb[kk]) = DVECEL_LIBSTR(&qp_in->umax[kk], idxb);
+            } else {
+                DVECEL_LIBSTR(&work->sd[kk], jj) = DVECEL_LIBSTR(&qp_in->xmin[kk], idxb - nu[kk]);
+                DVECEL_LIBSTR(&work->sd[kk], jj + work->nb[kk]) = DVECEL_LIBSTR(&qp_in->xmax[kk], idxb - nu[kk]);
+            }
+        }
+    }
+
     int_t status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
             nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
