@@ -145,11 +145,14 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
 
     bytes += 3*Nn*sizeof(struct d_strvec);  // sux, slam, sst
 
+    bytes += Nn*sizeof(struct d_strmat);  // sRSQrq
     bytes += (Nn-1)*sizeof(struct d_strmat);  // sBAbt
 
     for (int_t ii = 0; ii < Nn; ii++) {
         bytes += d_size_strvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
         bytes += 2*d_size_strvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
+
+        bytes += d_size_strmat(qp_in->nx[ii] + qp_in->nu[ii] + 1, qp_in->nx[ii] + qp_in->nu[ii]);  // sRSQrq
 
         if (ii > 0) {
             idxp = qp_in->tree[ii].dad;
@@ -210,6 +213,9 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     work->sst = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
+    work->sRSQrq = (struct d_strmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct d_strmat);
+
     work->sBAbt = (struct d_strmat *) c_ptr;
     c_ptr += (Nn-1)*sizeof(struct d_strmat);
 
@@ -223,6 +229,8 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
         init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
+
+        init_strmat(qp_in->nx[ii]+qp_in->nu[ii]+1, qp_in->nx[ii]+qp_in->nu[ii], &work->sRSQrq[ii], &c_ptr);
 
         if (ii > 0) {
             idxp = tree[ii].dad;

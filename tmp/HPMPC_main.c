@@ -548,7 +548,11 @@ int_t idxp;
 for (int_t kk = 0; kk < qp_in.N; kk++) {
 
 	// TODO(dimitris): ASK GIANLUCA ABOUT S TERM!!
-	dgecp_libstr(qp_in.nx[kk], qp_in.nx[kk], (struct d_strmat *)&qp_in.R[kk], 0, 0, &work->sRSQrq, 0, 0);
+	dgecp_libstr(qp_in.nu[kk], qp_in.nu[kk], (struct d_strmat *)&qp_in.R[kk], 0, 0, &work.sRSQrq[kk], 0, 0);
+	dgecp_libstr(qp_in.nx[kk], qp_in.nx[kk], (struct d_strmat *)&qp_in.Q[kk], 0, 0, &work.sRSQrq[kk], qp_in.nu[kk], qp_in.nu[kk]);
+
+	drowin_libstr(qp_in.nu[kk], 1.0, (struct d_strvec *)&qp_in.r[kk], 0, &work.sRSQrq[kk], qp_in.nu[kk] + qp_in.nx[kk], 0);
+	drowin_libstr(qp_in.nx[kk], 1.0, (struct d_strvec *)&qp_in.q[kk], 0, &work.sRSQrq[kk], qp_in.nu[kk] + qp_in.nx[kk], qp_in.nu[kk]);
 
 	if (kk > 0) {
 		idxp = tree[kk].dad;
@@ -595,10 +599,10 @@ for(ii=0; ii<N; ii++)
 	// printf("\n");
 	// exit(1);
 
-	for(rep=0; rep<nrep; rep++) {
+	for (rep = 0; rep < nrep; rep++) {
 		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,
 			opts.mu_tol, opts.alpha_min, opts.warm_start, work.status, qp_in.N, (struct node *) qp_in.tree,
-			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, t_hsRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
+			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, work.sRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
 	}
 
 #ifdef TIC_TOC
