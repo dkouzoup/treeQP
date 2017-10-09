@@ -523,6 +523,9 @@ int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, t_nx, t_nu, tree);
 void *qp_in_memory = malloc(qp_in_size);
 create_tree_ocp_qp_in(Nn, t_nx, t_nu, tree, &qp_in, qp_in_memory);
 
+// NOTE(dimitris): skipping first dynamics that represent the nominal ones
+tree_ocp_qp_in_fill_lti_data_diag_weights(&A[nx_*nx_], &B[nx_*nu_], &b[nx_], dQ, q, dP, p, dR, r,
+	xmin, xmax, umin, umax, x0, &qp_in);
 
 // setup QP solver
 treeqp_hpmpc_workspace work;
@@ -538,13 +541,7 @@ int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, t_nx, t_nu);
 void *qp_out_memory = malloc(qp_out_size);
 create_tree_ocp_qp_out(Nn, t_nx, t_nu, &qp_out, qp_out_memory);
 
-// TODO(dimitris): MOVE FILL_QP BEFORE HPMPC CREATE AND SHOULD STILL WORK!!
-
-// NOTE(dimitris): skipping first dynamics that represent the nominal ones
-tree_ocp_qp_in_fill_lti_data_diag_weights(&A[nx_*nx_], &B[nx_*nu_], &b[nx_], dQ, q, dP, p, dR, r,
-	xmin, xmax, umin, umax, x0, &qp_in);
-
-int_t idxp;
+int_t idxp, idxb;
 for (int_t kk = 0; kk < qp_in.N; kk++) {
 
 	// TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
@@ -561,11 +558,16 @@ for (int_t kk = 0; kk < qp_in.N; kk++) {
 		drowin_libstr(qp_in.nx[kk], 1.0, (struct d_strvec *)&qp_in.b[kk-1], 0, &work.sBAbt[kk-1], qp_in.nx[idxp] + qp_in.nu[idxp], 0);
 	}
 
-	dveccp_libstr(qp_in.nu[kk], (struct d_strvec *)&qp_in.umin[kk], 0, &work.sd[kk], 0);
-	dveccp_libstr(qp_in.nx[kk], (struct d_strvec *)&qp_in.xmin[kk], 0, &work.sd[kk], qp_in.nu[kk]);
-
-	dveccp_libstr(qp_in.nu[kk], (struct d_strvec *)&qp_in.umax[kk], 0, &work.sd[kk], qp_in.nu[kk] + qp_in.nx[kk]);
-	dveccp_libstr(qp_in.nx[kk], (struct d_strvec *)&qp_in.xmax[kk], 0, &work.sd[kk], 2*qp_in.nu[kk] + qp_in.nx[kk]);
+	for (int_t jj = 0; jj < work.nb[kk]; jj++) {
+		idxb = work.idxb[kk][jj];
+		if (idxb < qp_in.nu[kk]) {
+			DVECEL_LIBSTR(&work.sd[kk], jj) = DVECEL_LIBSTR(&qp_in.umin[kk], idxb);
+			DVECEL_LIBSTR(&work.sd[kk], jj + work.nb[kk]) = DVECEL_LIBSTR(&qp_in.umax[kk], idxb);
+		} else {
+			DVECEL_LIBSTR(&work.sd[kk], jj) = DVECEL_LIBSTR(&qp_in.xmin[kk], idxb - qp_in.nu[kk]);
+			DVECEL_LIBSTR(&work.sd[kk], jj + work.nb[kk]) = DVECEL_LIBSTR(&qp_in.xmax[kk], idxb - qp_in.nu[kk]);
+		}
+	}
 }
 
 // *****************************************************************************
@@ -581,24 +583,6 @@ for(ii=0; ii<N; ii++)
 #else
 	gettimeofday(&tv0, NULL); // time
 #endif
-    // printf("nb hpmpc\n");
-    // for (int_t kk = 0; kk < qp_in.N; kk++)
-    //     printf("%d ", t_nb[kk]);
-    // printf("\n");
-    // printf("nb me\n");
-    // for (int_t kk = 0; kk < qp_in.N; kk++)
-    //     printf("%d ", work.nb[kk]);
-	// printf("\n");
-
-	// for (int_t kk = 0; kk < nx_; kk++)
-	// 	printf("%f ", xmin[kk]);
-	// printf("\n");
-
-	// for (int_t kk = 0; kk < qp_in.N; kk++) {
-	// 	printf("kk = %d\n", kk);
-	// 	d_print_strvec(t_hsd[kk].m, &t_hsd[kk] ,0);
-	// }
-	// exit(1);
 
 	for (rep = 0; rep < nrep; rep++) {
 		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,

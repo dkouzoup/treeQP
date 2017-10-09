@@ -40,7 +40,7 @@
 #include "hpmpc/include/tree.h"
 #include "hpmpc/include/mpc_solvers.h"
 
-#define INF 1e10  // TODO(dimitris): option instead of hardcoded here?
+#define INF 1e10 // TODO(dimitris): option instead of hardcoded here?
 
 
 int_t number_of_bounds(const struct d_strvec *vmin, const struct d_strvec *vmax) {
@@ -164,7 +164,7 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
 
         // TODO(dimitris): this has not been tested
         bytes += d_size_strmat(qp_in->nx[ii] + qp_in->nu[ii], ng[ii]);  // sDCt
-        bytes += d_size_strvec(2*qp_in->nx[ii] + 2*qp_in->nu[ii] + 2*ng[ii]);  // sd
+        bytes += d_size_strvec(2*nb[ii] + 2*ng[ii]);  // sd
     }
 
     bytes += 5*opts->maxIter*sizeof(double);  // status
@@ -250,7 +250,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
             init_strmat(qp_in->nx[idxp]+qp_in->nu[idxp]+1, qp_in->nx[ii], &work->sBAbt[ii-1], &c_ptr);
         }
         init_strmat(qp_in->nx[ii]+qp_in->nu[ii], work->ng[ii], &work->sDCt[ii], &c_ptr);
-        init_strvec(2*qp_in->nx[ii] + 2*qp_in->nu[ii] + 2*work->ng[ii], &work->sd[ii], &c_ptr);
+        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sd[ii], &c_ptr);
     }
 
     work->status = (double *) c_ptr;
