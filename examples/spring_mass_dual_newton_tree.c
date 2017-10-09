@@ -98,12 +98,12 @@ int main( ) {
     // read initial point from txt file
     int_t nl = Nn*NX;
     real_t *lambda = malloc(nl*sizeof(real_t));
-    status = read_double_vector_from_txt(lambda, nl, "examples/data_spring_mass/lambda0_tree.txt");
+    status = read_double_vector_from_txt(lambda, nl, "examples/spring_mass_utils/lambda0_tree.txt");
     if (status != TREEQP_OK) return -1;
 
     // read constraint on x0 from txt file
     real_t x0[NX];
-    status = read_double_vector_from_txt(x0, NX, "examples/data_spring_mass/x0.txt");
+    status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
     if (status != TREEQP_OK) return status;
 
     // setup scenario tree
