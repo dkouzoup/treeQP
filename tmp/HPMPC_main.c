@@ -538,6 +538,36 @@ int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, t_nx, t_nu);
 void *qp_out_memory = malloc(qp_out_size);
 create_tree_ocp_qp_out(Nn, t_nx, t_nu, &qp_out, qp_out_memory);
 
+// TODO(dimitris): MOVE FILL_QP BEFORE HPMPC CREATE AND SHOULD STILL WORK!!
+
+// NOTE(dimitris): skipping first dynamics that represent the nominal ones
+tree_ocp_qp_in_fill_lti_data_diag_weights(&A[nx_*nx_], &B[nx_*nu_], &b[nx_], dQ, q, dP, p, dR, r,
+	xmin, xmax, umin, umax, x0, &qp_in);
+
+int_t idxp;
+for (int_t kk = 0; kk < qp_in.N; kk++) {
+
+	// TODO(dimitris): ASK GIANLUCA ABOUT S TERM!!
+	dgecp_libstr(qp_in.nx[kk], qp_in.nx[kk], (struct d_strmat *)&qp_in.R[kk], 0, 0, &work->sRSQrq, 0, 0);
+
+	if (kk > 0) {
+		idxp = tree[kk].dad;
+
+		// printf("kk = %d / %d , nx = %d, nxp = %d, nup = %d , tm = %d, tn = %d\n", kk, qp_in.N, qp_in.nx[kk], qp_in.nx[idxp], qp_in.nu[idxp], t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n);
+		// d_print_strmat(t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n, &t_hsBAbt[kk-1], 0, 0);
+
+		dgetr_libstr(qp_in.nx[kk], qp_in.nu[idxp], (struct d_strmat *)&qp_in.B[kk-1], 0, 0, &work.sBAbt[kk-1], 0, 0);
+		dgetr_libstr(qp_in.nx[kk], qp_in.nx[idxp], (struct d_strmat *)&qp_in.A[kk-1], 0, 0, &work.sBAbt[kk-1], qp_in.nu[idxp], 0);
+		drowin_libstr(qp_in.nx[kk], 1.0, (struct d_strvec *)&qp_in.b[kk-1], 0, &work.sBAbt[kk-1], qp_in.nx[idxp] + qp_in.nu[idxp], 0);
+
+		// d_print_strmat(t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n, &work.sBAbt[kk-1], 0, 0);
+
+	}
+
+	// if (kk == 4)
+	// 	exit(1);
+}
+
 // *****************************************************************************
 
 #if 0
@@ -551,11 +581,24 @@ for(ii=0; ii<N; ii++)
 #else
 	gettimeofday(&tv0, NULL); // time
 #endif
+    // printf("nb hpmpc\n");
+    // for (int_t kk = 0; kk < qp_in.N; kk++)
+    //     printf("%d ", t_nb[kk]);
+    // printf("\n");
+    // printf("nb me\n");
+    // for (int_t kk = 0; kk < qp_in.N; kk++)
+    //     printf("%d ", work.nb[kk]);
+	// printf("\n");
+
+	// for (int_t kk = 0; kk < nx_; kk++)
+	// 	printf("%f ", xmin[kk]);
+	// printf("\n");
+	// exit(1);
 
 	for(rep=0; rep<nrep; rep++) {
 		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,
 			opts.mu_tol, opts.alpha_min, opts.warm_start, work.status, qp_in.N, (struct node *) qp_in.tree,
-			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, t_hsBAbt, t_hsRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
+			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, t_hsRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
 	}
 
 #ifdef TIC_TOC

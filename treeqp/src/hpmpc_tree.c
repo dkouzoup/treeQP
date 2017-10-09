@@ -130,6 +130,7 @@ void treeqp_hpmpc_set_default_options(treeqp_hpmpc_options_t *opts) {
 int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts) {
     int_t bytes = 0;
     int_t Nn = qp_in->N;
+    int_t idxp;
 
     // TODO(dimitris): can we avoid memory allocation in here?
     int_t *nb = (int_t *)malloc(Nn*sizeof(int_t));
@@ -144,9 +145,16 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
 
     bytes += 3*Nn*sizeof(struct d_strvec);  // sux, slam, sst
 
+    bytes += (Nn-1)*sizeof(struct d_strmat);  // sBAbt
+
     for (int_t ii = 0; ii < Nn; ii++) {
         bytes += d_size_strvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
         bytes += 2*d_size_strvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
+
+        if (ii > 0) {
+            idxp = qp_in->tree[ii].dad;
+            bytes += d_size_strmat(qp_in->nx[idxp] + qp_in->nu[idxp] + 1, qp_in->nx[ii]);  // sABbt
+        }
     }
 
     bytes += 5*opts->maxIter*sizeof(double);  // status
@@ -155,7 +163,7 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
         (struct node *) qp_in->tree, (int *) qp_in->nx, (int *) qp_in->nu, nb, ng);
 
     bytes = (bytes + 63)/64*64;
-    bytes += 64;
+    bytes += 2*64;
 
     free(nb);
     free(ng);
@@ -169,6 +177,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
 
     struct node *tree = (struct node *) qp_in->tree;
     int_t Nn = qp_in->N;
+    int_t idxp;
 
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -201,7 +210,11 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     work->sst = (struct d_strvec *) c_ptr;
     c_ptr += Nn*sizeof(struct d_strvec);
 
+    work->sBAbt = (struct d_strmat *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct d_strmat);
+
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
+    // TODO(dimitris): put in a function and use size_t
     long long l_ptr = (long long) c_ptr;
     l_ptr = (l_ptr+63)/64*64;
     c_ptr = (char *) l_ptr;
@@ -210,16 +223,32 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
         init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
+
+        if (ii > 0) {
+            idxp = tree[ii].dad;
+            init_strmat(qp_in->nx[idxp]+qp_in->nu[idxp]+1, qp_in->nx[ii], &work->sBAbt[ii-1], &c_ptr);
+        }
     }
 
     work->status = (double *) c_ptr;
     c_ptr += 5*opts->maxIter*sizeof(double);
 
-    // TODO(dimitris): ******************* MAYBE REALLIGN NEEDED!
+    // TODO(dimitris): Maybe realign not needed
+    l_ptr = (long long) c_ptr;
+    l_ptr = (l_ptr+63)/64*64;
+    c_ptr = (char *) l_ptr;
+
+    int_t memsize = d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
+        (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
 
     work->internal = (void *) c_ptr;
-    c_ptr += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
-        (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
+    c_ptr += memsize;
+
+    // // TODO(dimitris): probably zeroing memory not needed
+    // char *tmp = (char *) work->internal;
+    // for (int_t ii = 0; ii < memsize; ii++) {
+    //     tmp[ii] = 0;
+    // }
 
     #ifdef  RUNTIME_CHECKS
     char *ptrStart = (char *) ptr;
