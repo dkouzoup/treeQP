@@ -585,9 +585,7 @@ for(ii=0; ii<N; ii++)
 #endif
 
 	for (rep = 0; rep < nrep; rep++) {
-		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,
-			opts.mu_tol, opts.alpha_min, opts.warm_start, work.status, qp_in.N, (struct node *) qp_in.tree,
-			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, work.sRSQrq, work.sDCt, work.sd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
+		treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 	}
 
 #ifdef TIC_TOC
@@ -596,9 +594,6 @@ for(ii=0; ii<N; ii++)
 	gettimeofday(&tv1, NULL); // time
 #endif
     niter = qp_out.info.iter;
-
-	// compute residuals
-	// d_tree_res_res_mpc_hard_libstr(Nn, tree, t_nx, t_nu, t_nb, t_hidxb, t_ng, t_hsBAbt, t_hsb, t_hsRSQrq, t_hsrq, t_hsux, t_hsDCt, t_hsd, qp_out.lam, t_hslam, t_hst, t_hsrrq, t_hsrb, t_hsrd, t_hsrm, &mu, t_work_res);
 
 #ifdef TIC_TOC
 	float time_tree_ipm = (float) total_time/nrep;

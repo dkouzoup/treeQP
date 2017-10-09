@@ -78,6 +78,9 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
 void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     treeqp_hpmpc_workspace *work, void *ptr);
 
+int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_hpmpc_options_t *opts, treeqp_hpmpc_workspace *work);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

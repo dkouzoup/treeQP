@@ -261,17 +261,9 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     l_ptr = (l_ptr+63)/64*64;
     c_ptr = (char *) l_ptr;
 
-    int_t memsize = d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
-        (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
-
     work->internal = (void *) c_ptr;
-    c_ptr += memsize;
-
-    // // TODO(dimitris): probably zeroing memory not needed
-    // char *tmp = (char *) work->internal;
-    // for (int_t ii = 0; ii < memsize; ii++) {
-    //     tmp[ii] = 0;
-    // }
+    c_ptr += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
+        (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
 
     #ifdef  RUNTIME_CHECKS
     char *ptrStart = (char *) ptr;
@@ -282,4 +274,21 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
     // exit(1);
     #endif
+}
+
+int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_hpmpc_options_t *opts, treeqp_hpmpc_workspace *work) {
+
+    int_t Nn = qp_in->N;
+    int_t *nx = (int_t *)qp_in->nx;
+    int_t *nu = (int_t *)qp_in->nu;
+
+    struct node *tree = (struct node *)qp_in->tree;
+
+    int_t status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
+            opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
+            nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
+            work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
+
+    return status;
 }
