@@ -48,7 +48,7 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#include "examples/data_spring_mass/data.c"
+#include "examples/spring_mass_utils/data.c"
 
 // TODO(dimitris): check that all these options are supported for tree version
 // TODO(dimitris): put this function in common file
