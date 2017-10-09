@@ -547,7 +547,7 @@ tree_ocp_qp_in_fill_lti_data_diag_weights(&A[nx_*nx_], &B[nx_*nu_], &b[nx_], dQ,
 int_t idxp;
 for (int_t kk = 0; kk < qp_in.N; kk++) {
 
-	// TODO(dimitris): ASK GIANLUCA ABOUT S TERM!!
+	// TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
 	dgecp_libstr(qp_in.nu[kk], qp_in.nu[kk], (struct d_strmat *)&qp_in.R[kk], 0, 0, &work.sRSQrq[kk], 0, 0);
 	dgecp_libstr(qp_in.nx[kk], qp_in.nx[kk], (struct d_strmat *)&qp_in.Q[kk], 0, 0, &work.sRSQrq[kk], qp_in.nu[kk], qp_in.nu[kk]);
 
@@ -556,20 +556,16 @@ for (int_t kk = 0; kk < qp_in.N; kk++) {
 
 	if (kk > 0) {
 		idxp = tree[kk].dad;
-
-		// printf("kk = %d / %d , nx = %d, nxp = %d, nup = %d , tm = %d, tn = %d\n", kk, qp_in.N, qp_in.nx[kk], qp_in.nx[idxp], qp_in.nu[idxp], t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n);
-		// d_print_strmat(t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n, &t_hsBAbt[kk-1], 0, 0);
-
 		dgetr_libstr(qp_in.nx[kk], qp_in.nu[idxp], (struct d_strmat *)&qp_in.B[kk-1], 0, 0, &work.sBAbt[kk-1], 0, 0);
 		dgetr_libstr(qp_in.nx[kk], qp_in.nx[idxp], (struct d_strmat *)&qp_in.A[kk-1], 0, 0, &work.sBAbt[kk-1], qp_in.nu[idxp], 0);
 		drowin_libstr(qp_in.nx[kk], 1.0, (struct d_strvec *)&qp_in.b[kk-1], 0, &work.sBAbt[kk-1], qp_in.nx[idxp] + qp_in.nu[idxp], 0);
-
-		// d_print_strmat(t_hsBAbt[kk-1].m, t_hsBAbt[kk-1].n, &work.sBAbt[kk-1], 0, 0);
-
 	}
 
-	// if (kk == 4)
-	// 	exit(1);
+	dveccp_libstr(qp_in.nu[kk], (struct d_strvec *)&qp_in.umin[kk], 0, &work.sd[kk], 0);
+	dveccp_libstr(qp_in.nx[kk], (struct d_strvec *)&qp_in.xmin[kk], 0, &work.sd[kk], qp_in.nu[kk]);
+
+	dveccp_libstr(qp_in.nu[kk], (struct d_strvec *)&qp_in.umax[kk], 0, &work.sd[kk], qp_in.nu[kk] + qp_in.nx[kk]);
+	dveccp_libstr(qp_in.nx[kk], (struct d_strvec *)&qp_in.xmax[kk], 0, &work.sd[kk], 2*qp_in.nu[kk] + qp_in.nx[kk]);
 }
 
 // *****************************************************************************
@@ -597,12 +593,17 @@ for(ii=0; ii<N; ii++)
 	// for (int_t kk = 0; kk < nx_; kk++)
 	// 	printf("%f ", xmin[kk]);
 	// printf("\n");
+
+	// for (int_t kk = 0; kk < qp_in.N; kk++) {
+	// 	printf("kk = %d\n", kk);
+	// 	d_print_strvec(t_hsd[kk].m, &t_hsd[kk] ,0);
+	// }
 	// exit(1);
 
 	for (rep = 0; rep < nrep; rep++) {
 		hpmpc_status = d_tree_ip2_res_mpc_hard_libstr(&qp_out.info.iter, opts.maxIter, opts.mu0,
 			opts.mu_tol, opts.alpha_min, opts.warm_start, work.status, qp_in.N, (struct node *) qp_in.tree,
-			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, work.sRSQrq, t_hsDCt, t_hsd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
+			(int *)qp_in.nx, (int *) qp_in.nu, work.nb, work.idxb, work.ng, work.sBAbt, work.sRSQrq, work.sDCt, work.sd, work.sux, opts.compute_mult, qp_out.lam, work.slam, work.sst, work.internal);
 	}
 
 #ifdef TIC_TOC
