@@ -272,11 +272,10 @@ real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_o
 
 
 // TODO(dimitris): add complementarity
-real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) {
+void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, real_t *res) {
 
     int_t Nn = qp_in->N;
     int_t nz = number_of_primal_variables(qp_in);
-    real_t *res = malloc(nz*sizeof(real_t));
 
     // initialize to NaN
     for (int_t ii = 0; ii < nz; ii++) {
@@ -286,8 +285,11 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
     int_t *nx = (int_t *)qp_in->nx;
     int_t *nu = (int_t *)qp_in->nu;
 
-    struct d_strvec *sQ = (struct d_strvec *)qp_in->Q;
-    struct d_strvec *sR = (struct d_strvec *)qp_in->R;
+    struct d_strvec *sx = (struct d_strvec *)qp_out->x;
+    struct d_strvec *su = (struct d_strvec *)qp_out->u;
+    struct d_strmat *sQ = (struct d_strmat *)qp_in->Q;
+    struct d_strmat *sR = (struct d_strmat *)qp_in->R;
+    struct d_strmat *sS = (struct d_strmat *)qp_in->S;
     struct d_strvec *sq = (struct d_strvec *)qp_in->q;
     struct d_strvec *sr = (struct d_strvec *)qp_in->r;
     struct d_strmat *sA = (struct d_strmat *)qp_in->A;
@@ -299,24 +301,26 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
     int_t idxkid;
     int_t idx = 0;
 
-    // TODO(dimitris): extend for nondiagonal weights
     for (int_t ii = 0; ii < Nn; ii++) {
 
+        // TODO(dimitris): allocate max dim outside
         d_allocate_strvec(nx[ii], &tmp_x);
         d_allocate_strvec(nu[ii], &tmp_u);
 
-        // tmp_x = Q[ii].*x[ii]
-        dvecmuldot_libstr(nx[ii], &sQ[ii], 0, &qp_out->x[ii], 0, &tmp_x, 0);
-        // tmp_x += q[ii]
-        daxpy_libstr(nx[ii], 1.0, &sq[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        // TODO(dimitris): NOT tested for non-zero S terms
+
+        // tmp_x = Q[ii]*x[ii] + q[ii]
+        dgemv_n_libstr(nx[ii], nx[ii], 1.0, &sQ[ii], 0, 0, &sx[ii], 0, 1.0, &sq[ii], 0, &tmp_x, 0);
+        // tmp_x += S[ii]*u[ii]
+        dgemv_n_libstr(nx[ii], nu[ii], 1.0, &sS[ii], 0, 0, &su[ii], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += mu_x[ii]
         daxpy_libstr(nx[ii], 1.0, &qp_out->mu_x[ii], 0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += lam[ii]
         daxpy_libstr(nx[ii], -1.0, &qp_out->lam[ii], 0, &tmp_x, 0, &tmp_x, 0);
-        // tmp_u = R[ii].*u[ii]
-        dvecmuldot_libstr(nu[ii], &sR[ii], 0, &qp_out->u[ii], 0, &tmp_u, 0);
-        // tmp_u += r[ii]
-        daxpy_libstr(nu[ii], 1.0, &sr[ii], 0, &tmp_u, 0, &tmp_u, 0);
+        // tmp_u = R[ii]*u[ii] + r[ii]
+        dgemv_n_libstr(nu[ii], nu[ii], 1.0, &sR[ii], 0, 0, &su[ii], 0, 1.0, &sr[ii], 0, &tmp_u, 0);
+        // tmp_u += S[ii]'*x[ii]
+        dgemv_t_libstr(nu[ii], nx[ii], 1.0, &sS[ii], 0, 0, &sx[ii], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
         // tmp_u += mu_u[ii]
         daxpy_libstr(nu[ii], 1.0, &qp_out->mu_u[ii], 0, &tmp_u, 0, &tmp_u, 0);
 
@@ -340,6 +344,25 @@ real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) 
     // d_print_e_mat(nz, 1, res, nz);
 
     return res;
+}
+
+
+real_t max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out) {
+
+    int_t nz = number_of_primal_variables(qp_in);
+    real_t *res = malloc(nz*sizeof(real_t));
+    calculate_KKT_residuals(qp_in, qp_out, res);
+
+    real_t err = ABS(res[0]);
+    real_t cur;
+    for (int_t ii = 1; ii < nz; ii++) {
+        cur = ABS(res[ii]);
+        if (cur > err) {
+            err = cur;
+        }
+    }
+    free(res);
+    return err;
 }
 
 

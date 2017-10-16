@@ -1151,9 +1151,6 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
-    // real_t *kktres = calculate_KKT_residuals(qp_in, qp_out);
-    // free(kktres);
-
     if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
 

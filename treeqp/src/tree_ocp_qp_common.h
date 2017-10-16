@@ -85,7 +85,9 @@ int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);
 void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_out, void *ptr);
 
 real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
-real_t *calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+
+void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, real_t *res);
+real_t max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
 int_t number_of_states(tree_ocp_qp_in *qp_in);
 int_t number_of_controls(tree_ocp_qp_in *qp_in);

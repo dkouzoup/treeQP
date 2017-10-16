@@ -123,36 +123,54 @@ int main( ) {
     void *qp_out_memory = malloc(qp_out_size);
     create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
 
-
+    // solve with tree-sparse dual Newton strategy
+    real_t overhead;
+    real_t max_overhead = 0;
     for (int_t jj = 0; jj < NRUNS; jj++) {
         treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
         treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
         printf("tdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.3f ms\n", qp_out.info.solver_time*1e3);
         printf("interface time:\t %5.3f ms\n", qp_out.info.interface_time*1e3);
-        printf("overhead:\t %5.2f %% \n", 100*qp_out.info.interface_time/qp_out.info.solver_time);
+        overhead = 100*qp_out.info.interface_time/qp_out.info.solver_time;
+        printf("overhead:\t %5.2f %% \n", overhead);
+        if (overhead > max_overhead) max_overhead = overhead;
     }
 
     real_t err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints (tdunes): %2.2e\n\n", err);
+    printf("\nMaximum violation of dynamic constraints (tdunes):\t %2.2e\n\n", err);
+
+    real_t kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
+
+    printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_e_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
+    // solve with tree-sparse HPMPC
+    max_overhead = 0;
     for (int_t jj = 0; jj < NRUNS; jj++) {
         treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
         printf("hpmpc run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);
         printf("interface time:\t %5.2f ms\n", qp_out.info.interface_time*1e3);
-        printf("overhead:\t %5.2f %% \n", 100*qp_out.info.interface_time/qp_out.info.solver_time);
+        overhead = 100*qp_out.info.interface_time/qp_out.info.solver_time;
+        printf("overhead:\t %5.2f %% \n", overhead);
+        if (overhead > max_overhead) max_overhead = overhead;
     }
 
     err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints (hpmpc): %2.2e\n\n", err);
+    printf("\nMaximum violation of dynamic constraints (hpmpc):\t %2.2e\n\n", err);
+
+    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (hpmpc):\t\t\t %2.2e\n\n", kkt_err);
+
+    printf("Maximum overhead of treeQP interface (hpmpc):\t\t %4.2f%%\n\n", max_overhead);
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_e_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
     // Free memory
