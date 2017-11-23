@@ -341,8 +341,6 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, rea
     }
 
     // d_print_e_mat(nz, 1, res, nz);
-
-    return res;
 }
 
 
