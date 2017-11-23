@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <assert.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/blasfeo_utils.h"
