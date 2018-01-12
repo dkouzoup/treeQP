@@ -41,6 +41,7 @@ HPMPC_TARGET = X64_AVX
 
 # Compiler flags
 CFLAGS =
+CFLAGS += -std=c99
 
 CFLAGS += -DALG=$(ALG)
 CFLAGS += -DRUNTIME_CHECKS
