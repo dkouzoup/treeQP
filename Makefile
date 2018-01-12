@@ -80,7 +80,7 @@ clean:
 	rm -f lib/libtreeqp.a
 
 deep_clean: clean
-	( cd external/blasfeo; $(MAKE) clean ) # TODO(dimitris): SWITCH TO DEEP_CLEAN AFTER UPDATE!!!!!
+	( cd external/blasfeo; $(MAKE) deep_clean )
 	( cd external/hpmpc; $(MAKE) clean )
 	rm -rf include
 	rm -rf lib
