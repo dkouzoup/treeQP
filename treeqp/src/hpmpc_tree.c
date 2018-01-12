@@ -58,7 +58,7 @@ treeqp_hpmpc_options_t treeqp_hpmpc_default_options() {
 }
 
 
-int_t number_of_bounds(const struct d_strvec *vmin, const struct d_strvec *vmax) {
+int_t number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax) {
     int_t nb = 0;
     int_t n = vmin->m;
     assert(vmin->m == vmax->m);
@@ -148,28 +148,28 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
     bytes += Nn*sizeof(int_t*);  // idxb
     bytes += get_size_idxb(qp_in)*sizeof(int_t);
 
-    bytes += 3*Nn*sizeof(struct d_strvec);  // sux, slam, sst
+    bytes += 3*Nn*sizeof(struct blasfeo_dvec);  // sux, slam, sst
 
-    bytes += Nn*sizeof(struct d_strmat);  // sRSQrq
-    bytes += (Nn-1)*sizeof(struct d_strmat);  // sBAbt
+    bytes += Nn*sizeof(struct blasfeo_dmat);  // sRSQrq
+    bytes += (Nn-1)*sizeof(struct blasfeo_dmat);  // sBAbt
 
-    bytes += Nn*sizeof(struct d_strmat);  // sDCt
-    bytes += Nn*sizeof(struct d_strvec);  // sd
+    bytes += Nn*sizeof(struct blasfeo_dmat);  // sDCt
+    bytes += Nn*sizeof(struct blasfeo_dvec);  // sd
 
     for (int_t ii = 0; ii < Nn; ii++) {
-        bytes += d_size_strvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
-        bytes += 2*d_size_strvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
+        bytes += blasfeo_memsize_dvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
+        bytes += 2*blasfeo_memsize_dvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
 
-        bytes += d_size_strmat(qp_in->nx[ii] + qp_in->nu[ii] + 1, qp_in->nx[ii] + qp_in->nu[ii]);  // sRSQrq
+        bytes += blasfeo_memsize_dmat(qp_in->nx[ii] + qp_in->nu[ii] + 1, qp_in->nx[ii] + qp_in->nu[ii]);  // sRSQrq
 
         if (ii > 0) {
             idxp = qp_in->tree[ii].dad;
-            bytes += d_size_strmat(qp_in->nx[idxp] + qp_in->nu[idxp] + 1, qp_in->nx[ii]);  // sABbt
+            bytes += blasfeo_memsize_dmat(qp_in->nx[idxp] + qp_in->nu[idxp] + 1, qp_in->nx[ii]);  // sABbt
         }
 
         // TODO(dimitris): this has not been tested
-        bytes += d_size_strmat(qp_in->nx[ii] + qp_in->nu[ii], ng[ii]);  // sDCt
-        bytes += d_size_strvec(2*nb[ii] + 2*ng[ii]);  // sd
+        bytes += blasfeo_memsize_dmat(qp_in->nx[ii] + qp_in->nu[ii], ng[ii]);  // sDCt
+        bytes += blasfeo_memsize_dvec(2*nb[ii] + 2*ng[ii]);  // sd
     }
 
     bytes += 5*opts->maxIter*sizeof(double);  // status
@@ -216,26 +216,26 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     c_ptr += Nn*sizeof(int);
     setup_ng(qp_in, work->ng);
 
-    work->sux = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sux = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->slam = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->slam = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sst = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sst = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sRSQrq = (struct d_strmat *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strmat);
+    work->sRSQrq = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
 
-    work->sBAbt = (struct d_strmat *) c_ptr;
-    c_ptr += (Nn-1)*sizeof(struct d_strmat);
+    work->sBAbt = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
 
-    work->sDCt = (struct d_strmat *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strmat);
+    work->sDCt = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
 
-    work->sd = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sd = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     // TODO(dimitris): put in a function and use size_t
@@ -292,14 +292,14 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
-    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
-    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
+    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
+    struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
 
-    struct d_strmat *sQ = (struct d_strmat *) qp_in->Q;
-    struct d_strmat *sR = (struct d_strmat *) qp_in->R;
-    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
-    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
+    struct blasfeo_dmat *sQ = (struct blasfeo_dmat *) qp_in->Q;
+    struct blasfeo_dmat *sR = (struct blasfeo_dmat *) qp_in->R;
+    struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
+    struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
 
     // convert input to HPMPC format
     int_t idxp, idxb;
@@ -309,17 +309,17 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     for (int_t ii = 0; ii < Nn; ii++) {
 
         // TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
-        dgecp_libstr(nu[ii], nu[ii], &sR[ii], 0, 0, &work->sRSQrq[ii], 0, 0);
-        dgecp_libstr(nx[ii], nx[ii], &sQ[ii], 0, 0, &work->sRSQrq[ii], nu[ii], nu[ii]);
+        blasfeo_dgecp(nu[ii], nu[ii], &sR[ii], 0, 0, &work->sRSQrq[ii], 0, 0);
+        blasfeo_dgecp(nx[ii], nx[ii], &sQ[ii], 0, 0, &work->sRSQrq[ii], nu[ii], nu[ii]);
 
-        drowin_libstr(nu[ii], 1.0, &sr[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], 0);
-        drowin_libstr(nx[ii], 1.0, &sq[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
+        blasfeo_drowin(nu[ii], 1.0, &sr[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], 0);
+        blasfeo_drowin(nx[ii], 1.0, &sq[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
 
         if (ii > 0) {
             idxp = tree[ii].dad;
-            dgetr_libstr(nx[ii], nu[idxp], &sB[ii-1], 0, 0, &work->sBAbt[ii-1], 0, 0);
-            dgetr_libstr(nx[ii], nx[idxp], &sA[ii-1], 0, 0, &work->sBAbt[ii-1], nu[idxp], 0);
-            drowin_libstr(nx[ii], 1.0, &sb[ii-1], 0, &work->sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
+            blasfeo_dgetr(nx[ii], nu[idxp], &sB[ii-1], 0, 0, &work->sBAbt[ii-1], 0, 0);
+            blasfeo_dgetr(nx[ii], nx[idxp], &sA[ii-1], 0, 0, &work->sBAbt[ii-1], nu[idxp], 0);
+            blasfeo_drowin(nx[ii], 1.0, &sb[ii-1], 0, &work->sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
         }
 
         for (int_t jj = 0; jj < work->nb[ii]; jj++) {
@@ -350,8 +350,8 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // TODO(dimitris): COPY ALSO MULTIPLIERS!
     for (int_t ii = 0; ii < Nn; ii++) {
-        dveccp_libstr(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
-        dveccp_libstr(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
+        blasfeo_dveccp(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
+        blasfeo_dveccp(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
     }
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);

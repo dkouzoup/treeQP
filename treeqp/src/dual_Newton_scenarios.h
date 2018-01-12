@@ -56,55 +56,55 @@ typedef struct treeqp_sdunes_workspace_ {
     int_t *commonNodes;  // common between neighboring scenarios [Ns-1]
     real_t *fvals;  // dual function value for each subsystem [Ns]
 
-    struct d_strvec *regMat;
+    struct blasfeo_dvec *regMat;
 
-    struct d_strmat *sJayD;
-    struct d_strmat *sJayL;
-    struct d_strmat *sCholJayD;
-    struct d_strmat *sCholJayL;
-    struct d_strmat *sUt;
-    struct d_strmat *sK;
+    struct blasfeo_dmat *sJayD;
+    struct blasfeo_dmat *sJayL;
+    struct blasfeo_dmat *sCholJayD;
+    struct blasfeo_dmat *sCholJayL;
+    struct blasfeo_dmat *sUt;
+    struct blasfeo_dmat *sK;
 
-    struct d_strmat *sTmpMats;
-    struct d_strvec *sTmpVecs;
+    struct blasfeo_dmat *sTmpMats;
+    struct blasfeo_dvec *sTmpVecs;
 
-    struct d_strvec *sResNonAnticip;
-    struct d_strvec *sRhsNonAnticip;
-    struct d_strvec *slambda;
-    struct d_strvec *sDeltalambda;
+    struct blasfeo_dvec *sResNonAnticip;
+    struct blasfeo_dvec *sRhsNonAnticip;
+    struct blasfeo_dvec *slambda;
+    struct blasfeo_dvec *sDeltalambda;
 
-    struct d_strmat **sZbar;  // = B * RinvCal
-    struct d_strmat **sLambdaD;  // diagonal block of partial derivative of r[k] w.r.t. mu[k] + F[k]
-    struct d_strmat **sLambdaL;  // lower diagonal block of same partial derivative
-    struct d_strmat **sCholLambdaD;
-    struct d_strmat **sCholLambdaL;
+    struct blasfeo_dmat **sZbar;  // = B * RinvCal
+    struct blasfeo_dmat **sLambdaD;  // diagonal block of partial derivative of r[k] w.r.t. mu[k] + F[k]
+    struct blasfeo_dmat **sLambdaL;  // lower diagonal block of same partial derivative
+    struct blasfeo_dmat **sCholLambdaD;
+    struct blasfeo_dmat **sCholLambdaL;
 
-    struct d_strvec *sQ;
-    struct d_strvec *sR;
-    struct d_strvec *sq;
-    struct d_strvec *sr;
-    struct d_strvec *sQinv;
-    struct d_strvec *sRinv;
+    struct blasfeo_dvec *sQ;
+    struct blasfeo_dvec *sR;
+    struct blasfeo_dvec *sq;
+    struct blasfeo_dvec *sr;
+    struct blasfeo_dvec *sQinv;
+    struct blasfeo_dvec *sRinv;
 
-    struct d_strvec **sQinvCal;
-    struct d_strvec **sRinvCal;
+    struct blasfeo_dvec **sQinvCal;
+    struct blasfeo_dvec **sRinvCal;
 
-    struct d_strvec **sx;
-    struct d_strvec **su;
-    struct d_strvec **sxas;
-    struct d_strvec **suas;
-    struct d_strvec **sxUnc;
-    struct d_strvec **suUnc;
+    struct blasfeo_dvec **sx;
+    struct blasfeo_dvec **su;
+    struct blasfeo_dvec **sxas;
+    struct blasfeo_dvec **suas;
+    struct blasfeo_dvec **sxUnc;
+    struct blasfeo_dvec **suUnc;
 
-    struct d_strvec **sresk;
-    struct d_strvec **sreskMod;
-    struct d_strvec **smu;
-    struct d_strvec **sDeltamu;
+    struct blasfeo_dvec **sresk;
+    struct blasfeo_dvec **sreskMod;
+    struct blasfeo_dvec **smu;
+    struct blasfeo_dvec **sDeltamu;
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    struct d_strvec **sxasPrev;
-    struct d_strvec **suasPrev;
-    struct d_strmat **sTmpLambdaD;
+    struct blasfeo_dvec **sxasPrev;
+    struct blasfeo_dvec **suasPrev;
+    struct blasfeo_dmat **sTmpLambdaD;
     #endif
 } treeqp_sdunes_workspace;
 

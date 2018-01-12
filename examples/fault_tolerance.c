@@ -239,7 +239,7 @@ int_t main() {
 
         // apply disturbance
         if (tt % 10 == 0)
-            dvecse_libstr(nu, Fmax, &qp_outs[mpc_config].u[0], 0);
+            blasfeo_dvecse(nu, Fmax, &qp_outs[mpc_config].u[0], 0);
 
         // simulate system
         A = sim[sim_config].A;
@@ -261,9 +261,9 @@ int_t main() {
         printf("\tmax. violation of dynamic constraints: %2.2e\n\n", err);
         printf("\tcurrent spring configuration index: %d\n\n", sim_config);
         printf("\tx = ");
-        d_print_e_tran_strvec(nx, &qp_outs[mpc_config].x[0], 0);
+        blasfeo_print_exp_tran_dvec(nx, &qp_outs[mpc_config].x[0], 0);
         printf("\tu = ");
-        d_print_e_tran_strvec(nu, &qp_outs[mpc_config].u[0], 0);
+        blasfeo_print_exp_tran_dvec(nu, &qp_outs[mpc_config].u[0], 0);
 
 
         // save state and input trajectories

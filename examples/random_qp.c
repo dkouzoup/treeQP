@@ -116,13 +116,13 @@ int main() {
         printf(" Node %d\n", ii);
         printf("--------\n");
         printf("x = \n");
-        d_print_e_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        blasfeo_print_exp_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
         printf("xopt = \n");
         d_print_e_mat(1, qp_in.nx[ii], &xopt[indx], 1);
         indx += qp_in.nx[ii];
 
         printf("u=\n");
-        d_print_e_tran_strvec(qp_in.nu[ii], &qp_out.u[ii], 0);
+        blasfeo_print_exp_tran_dvec(qp_in.nu[ii], &qp_out.u[ii], 0);
         printf("uopt = \n");
         d_print_e_mat(1, qp_in.nu[ii], &uopt[indu], 1);
         indu += qp_in.nu[ii];

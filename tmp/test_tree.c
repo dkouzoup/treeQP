@@ -73,28 +73,28 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
     int_t nx = qp_in->nx[1];
     int_t nu = qp_in->nu[0];
 
-    struct d_strvec *slambda = work->slambda;
-    struct d_strvec *sx = (struct d_strvec *) work->sx;
-    struct d_strvec *su = (struct d_strvec *) work->su;
-    struct d_strvec *sxas = (struct d_strvec *) work->sxas;
-    struct d_strvec *suas = (struct d_strvec *) work->suas;
+    struct blasfeo_dvec *slambda = work->slambda;
+    struct blasfeo_dvec *sx = (struct blasfeo_dvec *) work->sx;
+    struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
+    struct blasfeo_dvec *sxas = (struct blasfeo_dvec *) work->sxas;
+    struct blasfeo_dvec *suas = (struct blasfeo_dvec *) work->suas;
 
-    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
-    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
+    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
+    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
 
-    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
-    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
-    struct d_strvec *sQinv = work->sQinv;
-    struct d_strvec *sRinv = work->sRinv;
-    struct d_strvec *sQinvCal = work->sQinvCal;
-    struct d_strvec *sRinvCal = work->sRinvCal;
-    struct d_strvec *sqmod = work->sqmod;
-    struct d_strvec *srmod = work->srmod;
+    struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
+    struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
+    struct blasfeo_dvec *sQinv = work->sQinv;
+    struct blasfeo_dvec *sRinv = work->sRinv;
+    struct blasfeo_dvec *sQinvCal = work->sQinvCal;
+    struct blasfeo_dvec *sRinvCal = work->sRinvCal;
+    struct blasfeo_dvec *sqmod = work->sqmod;
+    struct blasfeo_dvec *srmod = work->srmod;
 
-    struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
-    struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
-    struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
-    struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
+    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *) qp_in->xmin;
+    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *) qp_in->xmax;
+    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *) qp_in->umin;
+    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *) qp_in->umax;
 
     #if DEBUG == 1
     int_t indh, indx, indu;
@@ -118,15 +118,15 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
         if (kk == 0) {
             // lambda[0] = 0
             for (jj = 0; jj < nx; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
+            blasfeo_daxpy(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
+            blasfeo_daxpy(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
         }
 
         // rmod[k] = - r[k]
         if (tree[kk].nkids > 0) {
-            dveccp_libstr(nu, &sr[kk], 0, &srmod[kk], 0);
-            dvecsc_libstr(nu, -1.0, &srmod[kk], 0);
+            blasfeo_dveccp(nu, &sr[kk], 0, &srmod[kk], 0);
+            blasfeo_dvecsc(nu, -1.0, &srmod[kk], 0);
         }
 
         for (ii = 0; ii < tree[kk].nkids; ii++) {
@@ -135,48 +135,48 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, int_t Nn, struct node *t
             idxpos = tree[idxkid].idxkid*nx;
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
+            blasfeo_dgemv_t(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                 &sqmod[kk], 0, &sqmod[kk], 0);
             if (tree[kk].nkids > 0) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
+                blasfeo_dgemv_t(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                     &srmod[kk], 0, &srmod[kk], 0);
             }
         }
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        blasfeo_dvecmuldot(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        dveccl_mask_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0, &sxas[kk], 0);
+        blasfeo_dveccl_mask(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0, &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        dvecze_libstr(nx, &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
+        blasfeo_dvecze(nx, &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
 
         if (tree[kk].nkids > 0) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+            blasfeo_dvecmuldot(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax), uas[k] = active set
-            dveccl_mask_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
+            blasfeo_dveccl_mask(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0,
                 &suas[kk], 0);
 
             // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-            dvecze_libstr(nu, &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
+            blasfeo_dvecze(nu, &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
         }
     }
 
     #if DEBUG == 1
     for (kk = 0; kk < Nn; kk++) {
-        d_cvt_strvec2vec(nx, &sqmod[kk], 0, &hmod[indh]);
-        d_cvt_strvec2vec(nx, &sx[kk], 0, &xit[indx]);
-        d_cvt_strvec2vec(nx, &sQinvCal[kk], 0, &QinvCal[indx]);
+        blasfeo_unpack_dvec(nx, &sqmod[kk], 0, &hmod[indh]);
+        blasfeo_unpack_dvec(nx, &sx[kk], 0, &xit[indx]);
+        blasfeo_unpack_dvec(nx, &sQinvCal[kk], 0, &QinvCal[indx]);
         indh += nx;
         indx += nx;
         if (tree[kk].nkids > 0) {
-            d_cvt_strvec2vec(nu, &srmod[kk], 0, &hmod[indh]);
-            d_cvt_strvec2vec(nu, &su[kk], 0, &uit[indu]);
-            d_cvt_strvec2vec(nx, &sRinvCal[kk], 0, &RinvCal[indu]);
+            blasfeo_unpack_dvec(nu, &srmod[kk], 0, &hmod[indh]);
+            blasfeo_unpack_dvec(nu, &su[kk], 0, &uit[indu]);
+            blasfeo_unpack_dvec(nx, &sRinvCal[kk], 0, &RinvCal[indu]);
             indh += nu;
             indu += nu;
         }
@@ -196,10 +196,10 @@ static void compare_with_previous_active_set(int_t isLeaf, int_t indx, treeqp_td
     int_t *xasChanged = work->xasChanged;
     int_t *uasChanged = work->uasChanged;
 
-    struct d_strvec *sxas = &work->sxas[indx];
-    struct d_strvec *suas = &work->suas[indx];
-    struct d_strvec *sxasPrev = &work->sxasPrev[indx];
-    struct d_strvec *suasPrev = &work->suasPrev[indx];
+    struct blasfeo_dvec *sxas = &work->sxas[indx];
+    struct blasfeo_dvec *suas = &work->suas[indx];
+    struct blasfeo_dvec *sxasPrev = &work->sxasPrev[indx];
+    struct blasfeo_dvec *suasPrev = &work->suasPrev[indx];
 
     xasChanged[indx] = 0;
     for (int_t ii = 0; ii < sxas->m; ii++) {
@@ -208,7 +208,7 @@ static void compare_with_previous_active_set(int_t isLeaf, int_t indx, treeqp_td
             break;
         }
     }
-    dveccp_libstr(sxas->m, sxas, 0, sxasPrev, 0);
+    blasfeo_dveccp(sxas->m, sxas, 0, sxasPrev, 0);
 
     if (!isLeaf) {
         uasChanged[indx] = 0;
@@ -218,7 +218,7 @@ static void compare_with_previous_active_set(int_t isLeaf, int_t indx, treeqp_td
                 break;
             }
         }
-        dveccp_libstr(suas->m, suas, 0, suasPrev, 0);
+        blasfeo_dveccp(suas->m, suas, 0, suasPrev, 0);
     }
 }
 
@@ -261,11 +261,11 @@ static int_t find_starting_point_of_factorization(struct node *tree, treeqp_tdun
 static real_t calculate_error_in_residuals(termination_t condition, treeqp_tdunes_workspace *work) {
     real_t error = 0;
     int_t Np = work->Np;
-    struct d_strvec *sres = work->sres;
+    struct blasfeo_dvec *sres = work->sres;
 
     if ((condition == TREEQP_SUMSQUAREDERRORS) || (condition == TREEQP_TWONORM)) {
         for (int_t kk = 0; kk < Np; kk++) {
-            error += ddot_libstr(sres[kk].m, &sres[kk], 0, &sres[kk], 0);
+            error += blasfeo_ddot(sres[kk].m, &sres[kk], 0, &sres[kk], 0);
         }
         if (condition == TREEQP_TWONORM) error = sqrt(error);
     } else if (condition == TREEQP_INFNORM) {
@@ -295,29 +295,29 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int_t *xasChanged = work->xasChanged;
     int_t *uasChanged = work->uasChanged;
-    struct d_strmat *sWdiag = work->sWdiag;
+    struct blasfeo_dmat *sWdiag = work->sWdiag;
     #endif
 
     int_t Nn = work->Nn;
     int_t Np = work->Np;
 
-    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
-    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
-    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
+    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
+    struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
     struct node *tree = (struct node *)qp_in->tree;
 
-    struct d_strvec *sQinvCal = work->sQinvCal;
-    struct d_strvec *sRinvCal = work->sRinvCal;
+    struct blasfeo_dvec *sQinvCal = work->sQinvCal;
+    struct blasfeo_dvec *sRinvCal = work->sRinvCal;
 
-    struct d_strvec *sx = work->sx;
-    struct d_strvec *su = work->su;
+    struct blasfeo_dvec *sx = work->sx;
+    struct blasfeo_dvec *su = work->su;
 
-    struct d_strmat *sM = work->sM;
-    struct d_strmat *sW = work->sW;
-    struct d_strmat *sUt = work->sUt;
-    struct d_strvec *sres = work->sres;
-    struct d_strvec *sresMod = work->sresMod;
-    struct d_strvec *regMat = work->regMat;
+    struct blasfeo_dmat *sM = work->sM;
+    struct blasfeo_dmat *sW = work->sW;
+    struct blasfeo_dmat *sUt = work->sUt;
+    struct blasfeo_dvec *sres = work->sres;
+    struct blasfeo_dvec *sresMod = work->sresMod;
+    struct blasfeo_dvec *regMat = work->regMat;
 
     *idxFactorStart = -1;
 
@@ -358,18 +358,18 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         // TODO(dimitris): decide on convention for comments (+offset or not)
 
         // res[k] = b[k] - x[k]
-        daxpy_libstr(nx, -1.0, &sx[kk], 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
+        blasfeo_daxpy(nx, -1.0, &sx[kk], 0, &sb[kk-1], 0, &sres[idxdad], idxpos);
 
         // res[k] += A[k]*x[idxdad]
-        dgemv_n_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sx[idxdad], 0, 1.0, &sres[idxdad],
+        blasfeo_dgemv_n(nx, nx, 1.0, &sA[kk-1], 0, 0, &sx[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // res[k] += B[k]*u[idxdad]
-        dgemv_n_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &su[idxdad], 0, 1.0, &sres[idxdad],
+        blasfeo_dgemv_n(nx, nu, 1.0, &sB[kk-1], 0, 0, &su[idxdad], 0, 1.0, &sres[idxdad],
             idxpos, &sres[idxdad], idxpos);
 
         // resMod[k] = res[k]
-        dveccp_libstr(nx, &sres[idxdad], idxpos, &sresMod[idxdad], idxpos);
+        blasfeo_dveccp(nx, &sres[idxdad], idxpos, &sresMod[idxdad], idxpos);
 
     }
 
@@ -400,7 +400,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
+        blasfeo_dgemm_nd(nx, nx, 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
             &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // --- hessian contribution of parent (Ut)
@@ -411,33 +411,33 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
         if (tree[idxdad].dad >= 0) {
         #endif
             // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
-            dgetr_libstr(nx, nx, &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
-            dgesc_libstr(nx, nx, -1.0, &sUt[idxdad-1], 0, idxpos);
+            blasfeo_dgetr(nx, nx, &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
+            blasfeo_dgesc(nx, nx, -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
         // --- hessian contribution of node (diagonal block of W)
 
         // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[k]'
-        dsyrk_ln_libstr(nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
+        blasfeo_dsyrk_ln(nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
-        dgemm_r_diag_libstr(nx, nu, 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
+        blasfeo_dgemm_nd(nx, nu, 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
             &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
-        dsyrk_ln_libstr(nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
+        blasfeo_dsyrk_ln(nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
-        ddiaad_libstr(nx, 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
+        blasfeo_ddiaad(nx, 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += regMat (regularization)
-        ddiaad_libstr(nx, 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
+        blasfeo_ddiaad(nx, 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // save diagonal block that will be overwritten in factorization
-        dgecp_libstr(nx, nx, &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
+        blasfeo_dgecp(nx, nx, &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
         #endif
 
         // --- hessian contribution of preceding siblings (off-diagonal blocks of W)
@@ -451,19 +451,19 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
             if (idxsib == kk) break;  // completed all preceding siblings
 
             // M = A[idxsib] * Qinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
+            blasfeo_dgemm_nd(nx, nx, 1.0,  &sA[idxsib-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
                 &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
-            dgemm_nt_libstr(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
+            blasfeo_dgemm_nt(nx, nx, nx, 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
 
             // M = B[idxsib]*Rinvcal[idxdad]
-            dgemm_r_diag_libstr(nx, nu, 1.0, &sB[idxsib-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
+            blasfeo_dgemm_nd(nx, nu, 1.0, &sB[idxsib-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
                 &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
-            dgemm_nt_libstr(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
+            blasfeo_dgemm_nt(nx, nx, nu, 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
                 idxpos, ii*nx, &sW[idxdad], idxpos, ii*nx);
         }
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -472,19 +472,19 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int_t *idxFactorStart,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         } else {
-            dgecp_libstr(nx, nx, &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
+            blasfeo_dgecp(nx, nx, &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
         }
         #endif
     }
 
     #if DEBUG == 1
     for (kk = 0; kk < Np; kk++) {
-        d_cvt_strvec2vec(sres[kk].m, &sres[kk], 0, &res[indres]);
+        blasfeo_unpack_dvec(sres[kk].m, &sres[kk], 0, &res[indres]);
         indres += sres[kk].m;
-        d_cvt_strmat2mat(sW[kk].n, sW[kk].n, &sW[kk], 0, 0, &W[indW], sW[kk].n);
+        blasfeo_unpack_dmat(sW[kk].n, sW[kk].n, &sW[kk], 0, 0, &W[indW], sW[kk].n);
         indW += sW[kk].n*sW[kk].n;
         if (kk > 0) {
-            d_cvt_strmat2mat( sUt[kk-1].m, sUt[kk-1].n, &sUt[kk-1], 0, 0,
+            blasfeo_unpack_dmat( sUt[kk-1].m, sUt[kk-1].n, &sUt[kk-1], 0, 0,
                 &Ut[indUt], sUt[kk-1].m);
             indUt += sUt[kk-1].m*sUt[kk-1].n;
         }
@@ -505,12 +505,12 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
     int_t icur = Np-1;
     int_t nx = qp_in->nx[1];
 
-    struct d_strmat *sW = work->sW;
-    struct d_strmat *sUt = work->sUt;
-    struct d_strmat *sCholW = work->sCholW;
-    struct d_strmat *sCholUt = work->sCholUt;
-    struct d_strvec *sresMod = work->sresMod;
-    struct d_strvec *sDeltalambda = work->sDeltalambda;
+    struct blasfeo_dmat *sW = work->sW;
+    struct blasfeo_dmat *sUt = work->sUt;
+    struct blasfeo_dmat *sCholW = work->sCholW;
+    struct blasfeo_dmat *sCholUt = work->sCholUt;
+    struct blasfeo_dvec *sresMod = work->sresMod;
+    struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
     #if DEBUG == 1
     int_t dimlam = 0;  // aka (Nn-1)*nx
@@ -541,17 +541,17 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
             #endif
 
             // add resMod in last row of matrix W
-            drowin_libstr(sresMod[ii].m, 1.0, &sresMod[ii], 0, &sW[ii], sW[ii].m-1, 0);
+            blasfeo_drowin(sresMod[ii].m, 1.0, &sresMod[ii], 0, &sW[ii], sW[ii].m-1, 0);
             // perform Cholesky factorization and backward substitution together
-            dpotrf_l_mn_libstr(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+            blasfeo_dpotrf_l_mn(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
             // extract result of substitution
-            drowex_libstr(sDeltalambda[ii].m, 1.0, &sCholW[ii], sCholW[ii].m-1, 0,
+            blasfeo_drowex(sDeltalambda[ii].m, 1.0, &sCholW[ii], sCholW[ii].m-1, 0,
                 &sDeltalambda[ii], 0);
 
             #ifdef _CHECK_LAST_ACTIVE_SET_
             } else {
             // perform only vector substitution
-            dtrsv_lnn_libstr(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
+            blasfeo_dtrsv_lnn(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
                 &sDeltalambda[ii], 0);
             }
             #endif
@@ -562,55 +562,55 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
             if (ii < idxFactorStart) {
             #endif
             // Cholesky factorization to calculate factor of current diagonal block
-            dpotrf_l_libstr(sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+            blasfeo_dpotrf_l(sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
             #ifdef _CHECK_LAST_ACTIVE_SET_
             }  // TODO(dimitris): we can probably skip more calculations (see scenarios)
             #endif
 
             // vector substitution
-            dtrsv_lnn_libstr(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
+            blasfeo_dtrsv_lnn(sresMod[ii].m, &sCholW[ii], 0, 0, &sresMod[ii], 0,
                 &sDeltalambda[ii], 0);
 
             #endif  /* _MERGE_FACTORIZATION_WITH_SUBSTITUTION_ */
 
             // Matrix substitution to calculate transposed factor of parent block
-            dtrsm_rltn_libstr( sUt[ii-1].m , sUt[ii-1].n, 1.0, &sCholW[ii], 0, 0,
+            blasfeo_dtrsm_rltn( sUt[ii-1].m , sUt[ii-1].n, 1.0, &sCholW[ii], 0, 0,
                 &sUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0);
 
             // Symmetric matrix multiplication to update diagonal block of parent
-            // NOTE(dimitris): use dgemm_nt_libstr if dsyrk not implemented yet
+            // NOTE(dimitris): use blasfeo_dgemm_nt if dsyrk not implemented yet
             idxdad = tree[ii].dad;
             idxpos = tree[ii].idxkid*nx;
-            dsyrk_ln_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0,
+            blasfeo_dsyrk_ln(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0,
                 &sCholUt[ii-1], 0, 0, &sCholUt[ii-1], 0, 0, 1.0,
                 &sW[idxdad], idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
             // Matrix vector multiplication to update vector of parent
-            dgemv_n_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
+            blasfeo_dgemv_n(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
                 &sDeltalambda[ii], 0, 1.0, &sresMod[idxdad], idxpos, &sresMod[idxdad], idxpos);
         }
         icur -= npar[kk];
     }
     #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
     // add resMod in last row of matrix W
-    drowin_libstr(sresMod[0].m, 1.0, &sresMod[0], 0, &sW[0], sW[0].m-1, 0);
+    blasfeo_drowin(sresMod[0].m, 1.0, &sresMod[0], 0, &sW[0], sW[0].m-1, 0);
     // perform Cholesky factorization and backward substitution together
-    dpotrf_l_mn_libstr(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    blasfeo_dpotrf_l_mn(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
     // extract result of substitution
-    drowex_libstr(sDeltalambda[0].m, 1.0, &sCholW[0], sCholW[0].m-1, 0, &sDeltalambda[0], 0);
+    blasfeo_drowex(sDeltalambda[0].m, 1.0, &sCholW[0], sCholW[0].m-1, 0, &sDeltalambda[0], 0);
     #else
     // calculate Cholesky factor of root block
-    dpotrf_l_libstr(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    blasfeo_dpotrf_l(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
 
     // calculate last elements of backward substitution
-    dtrsv_lnn_libstr(sresMod[0].m, &sCholW[0], 0, 0, &sresMod[0], 0, &sDeltalambda[0], 0);
+    blasfeo_dtrsv_lnn(sresMod[0].m, &sCholW[0], 0, 0, &sresMod[0], 0, &sDeltalambda[0], 0);
     #endif
 
     // --- Forward substitution
 
     icur = 1;
 
-    dtrsv_ltn_libstr(sDeltalambda[0].m, &sCholW[0], 0, 0, &sDeltalambda[0], 0, &sDeltalambda[0], 0);
+    blasfeo_dtrsv_ltn(sDeltalambda[0].m, &sCholW[0], 0, 0, &sDeltalambda[0], 0, &sDeltalambda[0], 0);
 
     for (kk = 1; kk < Nh; kk++) {
         #ifdef PARALLEL
@@ -619,10 +619,10 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
         for (ii = icur; ii < icur+npar[kk]; ii++) {
             idxdad = tree[ii].dad;
             idxpos = tree[ii].idxkid*nx;
-            dgemv_t_libstr(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
+            blasfeo_dgemv_t(sCholUt[ii-1].m, sCholUt[ii-1].n, -1.0, &sCholUt[ii-1], 0, 0,
                 &sDeltalambda[idxdad], idxpos, 1.0, &sDeltalambda[ii], 0, &sDeltalambda[ii], 0);
 
-            dtrsv_ltn_libstr(sDeltalambda[ii].m, &sCholW[ii], 0, 0, &sDeltalambda[ii], 0,
+            blasfeo_dtrsv_ltn(sDeltalambda[ii].m, &sCholW[ii], 0, 0, &sDeltalambda[ii], 0,
                 &sDeltalambda[ii], 0);
         }
         icur += npar[kk];
@@ -631,27 +631,27 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
     #if PRINT_LEVEL > 2
     for (ii = 0; ii < Np; ii++) {
         printf("\nCholesky factor of diagonal block #%d as strmat: \n\n", ii+1);
-        d_print_strmat( sCholW[ii].m, sCholW[ii].n, &sCholW[ii], 0, 0);
+        blasfeo_print_dmat( sCholW[ii].m, sCholW[ii].n, &sCholW[ii], 0, 0);
     }
     for (ii = 1; ii < Np; ii++) {
         printf("\nTransposed Cholesky factor of parent block #%d as strmat: \n\n", ii+1);
-        d_print_strmat(sCholUt[ii-1].m, sCholUt[ii-1].n, &sCholUt[ii-1], 0, 0);
+        blasfeo_print_dmat(sCholUt[ii-1].m, sCholUt[ii-1].n, &sCholUt[ii-1], 0, 0);
     }
 
     printf("\nResult of backward substitution:\n\n");
     for (ii = 0; ii < Np; ii++) {
-        d_print_strvec(sDeltalambda[0].m, &sDeltalambda[0], 0);
+        blasfeo_print_dvec(sDeltalambda[0].m, &sDeltalambda[0], 0);
     }
 
     printf("\nResult of forward substitution (aka final result):\n\n");
     for (ii = 0; ii < Np; ii++) {
-        d_print_strvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0);
+        blasfeo_print_dvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0);
     }
     #endif
 
     #if DEBUG == 1
     for (kk = 0; kk < Np; kk++) {
-        d_cvt_strvec2vec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
+        blasfeo_unpack_dvec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
         indlam += sDeltalambda[kk].m;
     }
     write_double_vector_to_txt(deltalambda, dimlam, "data_tree/deltalambda.txt");
@@ -661,11 +661,11 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int_t Np, int_t Nh, in
 
 static real_t gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
     real_t ans = 0;
-    struct d_strvec *sres = work->sres;
-    struct d_strvec *sDeltalambda = work->sDeltalambda;
+    struct blasfeo_dvec *sres = work->sres;
+    struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
     for (int_t kk = 0; kk < work->Np; kk++) {
-        ans += ddot_libstr(sres[kk].m, &sres[kk], 0, &sDeltalambda[kk], 0);
+        ans += blasfeo_ddot(sres[kk].m, &sres[kk], 0, &sDeltalambda[kk], 0);
     }
     // NOTE(dimitris): res has was -gradient above
     return -ans;
@@ -685,32 +685,32 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     real_t *fvals = work->fval;
     real_t *cmod = work->cmod;
 
-    struct d_strvec *sx = work->sx;
-    struct d_strvec *su = work->su;
-    struct d_strvec *sxas = work->sxas;
-    struct d_strvec *suas = work->suas;
+    struct blasfeo_dvec *sx = work->sx;
+    struct blasfeo_dvec *su = work->su;
+    struct blasfeo_dvec *sxas = work->sxas;
+    struct blasfeo_dvec *suas = work->suas;
 
-    struct d_strmat *sA = (struct d_strmat *) qp_in->A;
-    struct d_strmat *sB = (struct d_strmat *) qp_in->B;
-    struct d_strvec *sb = (struct d_strvec *) qp_in->b;
+    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
+    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
+    struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
 
-    struct d_strvec *sQ = (struct d_strvec *) qp_in->Q;
-    struct d_strvec *sR = (struct d_strvec *) qp_in->R;
-    struct d_strvec *sq = (struct d_strvec *) qp_in->q;
-    struct d_strvec *sr = (struct d_strvec *) qp_in->r;
-    struct d_strvec *sQinv = work->sQinv;
-    struct d_strvec *sRinv = work->sRinv;
-    struct d_strvec *sqmod = work->sqmod;
-    struct d_strvec *srmod = work->srmod;
+    struct blasfeo_dvec *sQ = (struct blasfeo_dvec *) qp_in->Q;
+    struct blasfeo_dvec *sR = (struct blasfeo_dvec *) qp_in->R;
+    struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
+    struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
+    struct blasfeo_dvec *sQinv = work->sQinv;
+    struct blasfeo_dvec *sRinv = work->sRinv;
+    struct blasfeo_dvec *sqmod = work->sqmod;
+    struct blasfeo_dvec *srmod = work->srmod;
 
-    struct d_strvec *sxmin = (struct d_strvec *) qp_in->xmin;
-    struct d_strvec *sxmax = (struct d_strvec *) qp_in->xmax;
-    struct d_strvec *sumin = (struct d_strvec *) qp_in->umin;
-    struct d_strvec *sumax = (struct d_strvec *) qp_in->umax;
+    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *) qp_in->xmin;
+    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *) qp_in->xmax;
+    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *) qp_in->umin;
+    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *) qp_in->umax;
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    struct d_strvec *slambda = work->slambda;
+    struct blasfeo_dvec *slambda = work->slambda;
     #ifdef PARALLEL
     #pragma omp parallel for private(ii, jj, idxkid, idxpos, idxdad)
     #endif
@@ -727,15 +727,15 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         if (kk == 0) {
             // lambda[0] = 0
             for (jj = 0; jj < nx; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
+            blasfeo_daxpy(nx, -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
-            daxpy_libstr(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
+            blasfeo_daxpy(nx, -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
         }
 
         // rmod[k] = - r[k]
         if (kk < Np) {
-            dveccp_libstr(nu, &sr[kk], 0, &srmod[kk], 0);
-            dvecsc_libstr(nu, -1.0, &srmod[kk], 0);
+            blasfeo_dveccp(nu, &sr[kk], 0, &srmod[kk], 0);
+            blasfeo_dvecsc(nu, -1.0, &srmod[kk], 0);
         }
 
         // cmod[k] = 0
@@ -747,32 +747,32 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
             idxpos = tree[idxkid].idxkid*nx;
 
             // cmod[k] += b[jj]' * lambda[jj]
-            cmod[kk] += ddot_libstr(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
+            cmod[kk] += blasfeo_ddot(nx, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
 
             // return x^T * y
 
             // qmod[k] -= A[jj]' * lambda[jj]
-            dgemv_t_libstr(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
+            blasfeo_dgemv_t(nx, nx, -1.0, &sA[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                 &sqmod[kk], 0, &sqmod[kk], 0);
             if (kk < Np) {
                 // rmod[k] -= B[jj]' * lambda[jj]
-                dgemv_t_libstr(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
+                blasfeo_dgemv_t(nx, nu, -1.0, &sB[idxkid-1], 0, 0, &slambda[idxdad], idxpos, 1.0,
                     &srmod[kk], 0, &srmod[kk], 0);
             }
         }
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        dvecmuldot_libstr(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        blasfeo_dvecmuldot(nx, &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax)
-        dveccl_libstr(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
+        blasfeo_dveccl(nx, &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // u[k] = R[k]^-1 .* rmod[k]
-            dvecmuldot_libstr(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+            blasfeo_dvecmuldot(nu, &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax)
-            dveccl_libstr(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
+            blasfeo_dveccl(nu, &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
         }
 
         // --- calculate dual function term
@@ -780,15 +780,15 @@ static real_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
         // NOTE: qmod[k] has already a minus sign
         // NOTE: xas used as workspace
-        dvecmuldot_libstr(nx, &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
-        fvals[kk] = -0.5*ddot_libstr(nx, &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
-        fvals[kk] += ddot_libstr(nx, &sqmod[kk], 0, &sx[kk], 0);
+        blasfeo_dvecmuldot(nx, &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
+        fvals[kk] = -0.5*blasfeo_ddot(nx, &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
+        fvals[kk] += blasfeo_ddot(nx, &sqmod[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-            dvecmuldot_libstr(nu, &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
-            fvals[kk] -= 0.5*ddot_libstr(nu, &suas[kk], 0, &su[kk], 0);
-            fvals[kk] += ddot_libstr(nu, &srmod[kk], 0, &su[kk], 0);
+            blasfeo_dvecmuldot(nu, &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
+            fvals[kk] -= 0.5*blasfeo_ddot(nu, &suas[kk], 0, &su[kk], 0);
+            fvals[kk] += blasfeo_ddot(nu, &srmod[kk], 0, &su[kk], 0);
         }
     }
 
@@ -807,8 +807,8 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
     int_t indlam = 0;
     #endif
 
-    struct d_strvec *slambda = work->slambda;
-    struct d_strvec *sDeltalambda = work->sDeltalambda;
+    struct blasfeo_dvec *slambda = work->slambda;
+    struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
     real_t dotProduct, fval, fval0;
     real_t tau = 1;
@@ -825,7 +825,7 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
         #pragma omp parallel for
         #endif
         for (kk = 0; kk < Np; kk++) {
-            daxpy_libstr( sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
+            blasfeo_daxpy( sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
                 &slambda[kk], 0);
         }
 
@@ -844,7 +844,7 @@ static int_t line_search(tree_ocp_qp_in *qp_in, int_t Nn, int_t Np, struct node 
     }
     #if DEBUG == 1
     for (kk = 0; kk < Np; kk++) {
-        d_cvt_strvec2vec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
+        blasfeo_unpack_dvec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;
     }
     write_double_vector_to_txt(lambda, (Nn-1)*nx, "data_tree/lambda_opt.txt");
@@ -866,11 +866,11 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
     int_t nx = qp_in->nx[1];
     int_t nu = qp_in->nu[0];
 
-    struct d_strvec *sx = work->sx;
-    struct d_strvec *su = work->su;
+    struct blasfeo_dvec *sx = work->sx;
+    struct blasfeo_dvec *su = work->su;
 
-    struct d_strvec *slambda = work->slambda;
-    struct d_strvec *sDeltalambda = work->sDeltalambda;
+    struct blasfeo_dvec *slambda = work->slambda;
+    struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
     // TODO(dimitris): maybe use Np for u instead of Nn in other places too to avoid confusion
     real_t *x = malloc(Nn*nx*sizeof(real_t));
@@ -880,18 +880,18 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct n
 
     indx = 0; indu = 0;
     for (kk = 0; kk < Nn; kk++) {
-        d_cvt_strvec2vec(nx, &sx[kk], 0, &x[indx]);
+        blasfeo_unpack_dvec(nx, &sx[kk], 0, &x[indx]);
         indx += nx;
         if (kk < Np) {
-            d_cvt_strvec2vec(nu, &su[kk], 0, &u[indu]);
+            blasfeo_unpack_dvec(nu, &su[kk], 0, &u[indu]);
             indu += nu;
         }
     }
 
     ind = 0;
     for (kk = 0; kk < Np; kk++) {
-        d_cvt_strvec2vec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[ind]);
-        d_cvt_strvec2vec(slambda[kk].m, &slambda[kk], 0, &lambda[ind]);
+        blasfeo_unpack_dvec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[ind]);
+        blasfeo_unpack_dvec(slambda[kk].m, &slambda[kk], 0, &lambda[ind]);
         ind += slambda[kk].m;
     }
 
@@ -925,7 +925,7 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int_t Nn = work->Nn;
     int_t Np = work->Np;
     int_t *npar = work->npar;
-    struct d_strvec *regMat = work->regMat;
+    struct blasfeo_dvec *regMat = work->regMat;
 
     // ------ initialization
     for (int_t ii = 0; ii < Nn; ii++) {
@@ -935,9 +935,9 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             DVECEL_LIBSTR(&work->sRinv[ii], nn) = 1.0/DVECEL_LIBSTR(&qp_in->R[ii], nn);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        dvecse_libstr(work->sxasPrev[ii].m, 0.0/0.0, &work->sxasPrev[ii], 0);
+        blasfeo_dvecse(work->sxasPrev[ii].m, 0.0/0.0, &work->sxasPrev[ii], 0);
         if (ii < Np)
-            dvecse_libstr(work->suasPrev[ii].m, 0.0/0.0, &work->suasPrev[ii], 0);
+            blasfeo_dvecse(work->suasPrev[ii].m, 0.0/0.0, &work->suasPrev[ii], 0);
         #endif
     }
 
@@ -1003,8 +1003,8 @@ int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // ------ copy solution to qp_out
     for (int_t ii = 0; ii < Nn; ii++) {
-        dveccp_libstr(qp_in->nx[ii], &work->sx[ii], 0, &qp_out->x[ii], 0);
-        dveccp_libstr(qp_in->nu[ii], &work->su[ii], 0, &qp_out->u[ii], 0);
+        blasfeo_dveccp(qp_in->nx[ii], &work->sx[ii], 0, &qp_out->x[ii], 0);
+        blasfeo_dveccp(qp_in->nu[ii], &work->su[ii], 0, &qp_out->u[ii], 0);
     }
     qp_out->info.iter = NewtonIter;
 
@@ -1038,57 +1038,57 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += 2*Nn*sizeof(real_t);  // fval, cmod
 
     // struct pointers
-    bytes += 6*Nn*sizeof(struct d_strvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
+    bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += Nn*sizeof(struct d_strmat);  // Wdiag
+    bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
     #endif
-    bytes += 1*sizeof(struct d_strvec);  // regMat
-    bytes += Nn*sizeof(struct d_strmat);  // M
-    bytes += 2*Np*sizeof(struct d_strmat);  // W, CholW
-    bytes += 2*(Np-1)*sizeof(struct d_strmat);  // Ut, CholUt
-    bytes += 4*Np*sizeof(struct d_strvec);  // res, resMod, lambda, Deltalambda
+    bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
+    bytes += Nn*sizeof(struct blasfeo_dmat);  // M
+    bytes += 2*Np*sizeof(struct blasfeo_dmat);  // W, CholW
+    bytes += 2*(Np-1)*sizeof(struct blasfeo_dmat);  // Ut, CholUt
+    bytes += 4*Np*sizeof(struct blasfeo_dvec);  // res, resMod, lambda, Deltalambda
 
     // TODO(dimitris): allow nu[N] > 0?
-    bytes += 2*Nn*sizeof(struct d_strvec);  // x, xas
-    bytes += 2*Np*sizeof(struct d_strvec);  // u, uas
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // x, xas
+    bytes += 2*Np*sizeof(struct blasfeo_dvec);  // u, uas
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += Nn*sizeof(struct d_strvec);  // xasPrev
-    bytes += Np*sizeof(struct d_strvec);  // uasPrev
+    bytes += Nn*sizeof(struct blasfeo_dvec);  // xasPrev
+    bytes += Np*sizeof(struct blasfeo_dvec);  // uasPrev
     #endif
 
     // structs
-    bytes += d_size_strvec(md*nx);  // regMat
+    bytes += blasfeo_memsize_dvec(md*nx);  // regMat
 
     for (int_t ii = 0; ii < Nn; ii++) {
 
-        bytes += 3*d_size_strvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
-        bytes += 3*d_size_strvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
+        bytes += 3*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Qinv, QinvCal, qmod
+        bytes += 3*blasfeo_memsize_dvec(qp_in->nu[ii]);  // Rinv, RinvCal, rmod
 
-        bytes += 2*d_size_strvec(nx);  // x, xas
+        bytes += 2*blasfeo_memsize_dvec(nx);  // x, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        bytes += d_size_strmat(nx, nx);  // Wdiag
-        bytes += d_size_strvec(nx);  // xasPrev
+        bytes += blasfeo_memsize_dmat(nx, nx);  // Wdiag
+        bytes += blasfeo_memsize_dvec(nx);  // xasPrev
         #endif
 
         bytes +=  // M
-            d_size_strmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]));
+            blasfeo_memsize_dmat(MAX(qp_in->nx[ii], qp_in->nu[ii]), MAX(qp_in->nx[ii], qp_in->nu[ii]));
 
         if (ii < Np) {
-            bytes += 2*d_size_strvec(nu);  // u, uas
+            bytes += 2*blasfeo_memsize_dvec(nu);  // u, uas
             #ifdef _CHECK_LAST_ACTIVE_SET_
-            bytes += d_size_strvec(nu);  // uasPrev
+            bytes += blasfeo_memsize_dvec(nu);  // uasPrev
             #endif
 
             dim = tree[ii].nkids*nx;
             #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-            bytes += 2*d_size_strmat(dim + 1, dim);  // W, CholW
+            bytes += 2*blasfeo_memsize_dmat(dim + 1, dim);  // W, CholW
             #else
-            bytes += 2*d_size_strmat(dim, dim);  // W, CholW
+            bytes += 2*blasfeo_memsize_dmat(dim, dim);  // W, CholW
             #endif
-            bytes += 4*d_size_strvec(dim);  // res, resMod, lambda, Deltalambda
+            bytes += 4*blasfeo_memsize_dvec(dim);  // res, resMod, lambda, Deltalambda
             if (ii > 0) {
-                bytes += 2*d_size_strmat(nx, dim);  // Ut, CholUt
+                bytes += 2*blasfeo_memsize_dmat(nx, dim);  // Ut, CholUt
             }
         }
     }
@@ -1136,77 +1136,77 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Np*sizeof(int_t);
     #endif
 
-    work->sQinv = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sQinv = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sRinv = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sRinv = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sQinvCal = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sQinvCal = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sRinvCal = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sRinvCal = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->sqmod = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sqmod = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->srmod = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->srmod = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->regMat = (struct d_strvec *) c_ptr;
-    c_ptr += 1*sizeof(struct d_strvec);
+    work->regMat = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += 1*sizeof(struct blasfeo_dvec);
 
-    work->sM = (struct d_strmat *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strmat);
+    work->sM = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    work->sWdiag = (struct d_strmat *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strmat);
+    work->sWdiag = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
     #endif
 
-    work->sW = (struct d_strmat *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strmat);
+    work->sW = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dmat);
 
-    work->sCholW = (struct d_strmat *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strmat);
+    work->sCholW = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dmat);
 
-    work->sUt = (struct d_strmat *) c_ptr;
-    c_ptr += (Np-1)*sizeof(struct d_strmat);
+    work->sUt = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Np-1)*sizeof(struct blasfeo_dmat);
 
-    work->sCholUt = (struct d_strmat *) c_ptr;
-    c_ptr += (Np-1)*sizeof(struct d_strmat);
+    work->sCholUt = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Np-1)*sizeof(struct blasfeo_dmat);
 
-    work->sres = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->sres = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
-    work->sresMod = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->sresMod = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
-    work->slambda = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->slambda = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
-    work->sDeltalambda = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->sDeltalambda = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
-    work->sx = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sx = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->su = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->su = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
-    work->sxas = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sxas = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->suas = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->suas = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    work->sxasPrev = (struct d_strvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct d_strvec);
+    work->sxasPrev = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->suasPrev = (struct d_strvec *) c_ptr;
-    c_ptr += Np*sizeof(struct d_strvec);
+    work->suasPrev = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Np*sizeof(struct blasfeo_dvec);
     #endif
 
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
@@ -1222,7 +1222,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     // TODO(dimitris): asserts for mem. alignment
     init_strvec(md*nx, work->regMat, &c_ptr);
-    dvecse_libstr(md*nx, opts->regValue, work->regMat, 0);
+    blasfeo_dvecse(md*nx, opts->regValue, work->regMat, 0);
 
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
@@ -1280,7 +1280,7 @@ void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspa
     int_t indx = nx;
 
     for (int_t ii = 0; ii < work->Np; ii++) {
-        d_cvt_vec2strvec(work->slambda[ii].m, &lambda[indx], &work->slambda[ii], 0);
+        blasfeo_pack_dvec(work->slambda[ii].m, &lambda[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }
 }
@@ -1389,7 +1389,7 @@ int main( ) {
     #endif
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
     // Free memory

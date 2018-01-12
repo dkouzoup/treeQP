@@ -58,14 +58,14 @@ typedef struct treeqp_tdunes_workspace_ {
     real_t *fval;  // 1 x Nn
     real_t *cmod;  // 1 x Nn
 
-    struct d_strvec *sQ;  // 1 x Nn
-    struct d_strvec *sR;  // 1 x Nn
-    struct d_strvec *sQinv;  // 1 x Nn
-    struct d_strvec *sRinv;  // 1 x Nn
-    struct d_strvec *sQinvCal;  // 1 x Nn
-    struct d_strvec *sRinvCal;  // 1 x Nn
-    struct d_strvec *sqmod;  // 1 x Nn
-    struct d_strvec *srmod;  // 1 x Nn
+    struct blasfeo_dvec *sQ;  // 1 x Nn
+    struct blasfeo_dvec *sR;  // 1 x Nn
+    struct blasfeo_dvec *sQinv;  // 1 x Nn
+    struct blasfeo_dvec *sRinv;  // 1 x Nn
+    struct blasfeo_dvec *sQinvCal;  // 1 x Nn
+    struct blasfeo_dvec *sRinvCal;  // 1 x Nn
+    struct blasfeo_dvec *sqmod;  // 1 x Nn
+    struct blasfeo_dvec *srmod;  // 1 x Nn
 
     // NOTE(dimitris):
     // - There are as many Hessian blocks on the diagonal as parent nodes in the tree
@@ -74,27 +74,27 @@ typedef struct treeqp_tdunes_workspace_ {
     // - Dimension of block k is (nc[k]*nx) x (nc[k]*nx), where nc[k] = tree[k].nkids
     // - Dimension of parent block is (nc[k]*nx) x nx
 
-    struct d_strvec *regMat;  // 1 x 1
-    struct d_strmat *sM;  // 1 x Nn: matrix MAX(nx, nu) x MAX(nx, nu) to store intermediate results
-    struct d_strmat *sW;  // 1 x Np
-    struct d_strmat *sCholW;  // 1 x Np
-    struct d_strmat *sUt;  // 1 x (Np-1)
-    struct d_strmat *sCholUt;  // 1 x (Np-1)
-    struct d_strvec *sres;  // 1 x Np
-    struct d_strvec *sresMod;  // 1 x Np
-    struct d_strvec *slambda;  // 1 x Np
-    struct d_strvec *sDeltalambda;  // 1 x Np
+    struct blasfeo_dvec *regMat;  // 1 x 1
+    struct blasfeo_dmat *sM;  // 1 x Nn: matrix MAX(nx, nu) x MAX(nx, nu) to store intermediate results
+    struct blasfeo_dmat *sW;  // 1 x Np
+    struct blasfeo_dmat *sCholW;  // 1 x Np
+    struct blasfeo_dmat *sUt;  // 1 x (Np-1)
+    struct blasfeo_dmat *sCholUt;  // 1 x (Np-1)
+    struct blasfeo_dvec *sres;  // 1 x Np
+    struct blasfeo_dvec *sresMod;  // 1 x Np
+    struct blasfeo_dvec *slambda;  // 1 x Np
+    struct blasfeo_dvec *sDeltalambda;  // 1 x Np
 
-    struct d_strvec *sx;  // 1 x Nn
-    struct d_strvec *su;  // 1 x Nn
-    struct d_strvec *sxas;  // 1 x Nn
-    struct d_strvec *suas;  // 1 x Nn
-    struct d_strvec *sxUnc;  // 1 x Nn
-    struct d_strvec *suUnc;  // 1 x Nn
+    struct blasfeo_dvec *sx;  // 1 x Nn
+    struct blasfeo_dvec *su;  // 1 x Nn
+    struct blasfeo_dvec *sxas;  // 1 x Nn
+    struct blasfeo_dvec *suas;  // 1 x Nn
+    struct blasfeo_dvec *sxUnc;  // 1 x Nn
+    struct blasfeo_dvec *suUnc;  // 1 x Nn
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    struct d_strvec *sxasPrev;  // 1 x Nn
-    struct d_strvec *suasPrev;  // 1 x Nn
-    struct d_strmat *sWdiag;  // 1 x Nn
+    struct blasfeo_dvec *sxasPrev;  // 1 x Nn
+    struct blasfeo_dvec *suasPrev;  // 1 x Nn
+    struct blasfeo_dmat *sWdiag;  // 1 x Nn
     #endif
 } treeqp_tdunes_workspace;
 

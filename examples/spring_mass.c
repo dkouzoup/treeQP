@@ -146,7 +146,7 @@ int main( ) {
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
     // solve with tree-sparse HPMPC
@@ -170,7 +170,7 @@ int main( ) {
     printf("Maximum overhead of treeQP interface (hpmpc):\t\t %4.2f%%\n\n", max_overhead);
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
     // Free memory

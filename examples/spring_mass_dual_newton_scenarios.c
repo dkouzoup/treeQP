@@ -196,7 +196,7 @@ int main() {
     #endif
 
     for (int_t ii = 0; ii < 5; ii++) {
-        d_print_tran_strvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
 
     // Free allocated memory

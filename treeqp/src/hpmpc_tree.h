@@ -57,14 +57,14 @@ typedef struct treeqp_hpmpc_workspace_ {
     int **idxb;
     int *ng;
 
-    struct d_strvec *sux;
-    struct d_strvec *slam;
-    struct d_strvec *sst;
+    struct blasfeo_dvec *sux;
+    struct blasfeo_dvec *slam;
+    struct blasfeo_dvec *sst;
 
-    struct d_strmat *sRSQrq;
-    struct d_strmat *sBAbt;
-    struct d_strmat *sDCt;
-    struct d_strvec *sd;
+    struct blasfeo_dmat *sRSQrq;
+    struct blasfeo_dmat *sBAbt;
+    struct blasfeo_dmat *sDCt;
+    struct blasfeo_dvec *sd;
 
     double *status;
     void *internal;

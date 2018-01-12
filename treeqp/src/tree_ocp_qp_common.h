@@ -50,18 +50,18 @@ typedef struct {
     int_t N;  // TODO(dimitris): think again about convention of N and N+1
     const int_t *nx;
     const int_t *nu;
-    const struct d_strmat *A;
-    const struct d_strmat *B;
-    const struct d_strvec *b;
-    const struct d_strmat *Q;
-    const struct d_strmat *R;
-    const struct d_strmat *S;
-    const struct d_strvec *q;
-    const struct d_strvec *r;
-    const struct d_strvec *xmin;
-    const struct d_strvec *xmax;
-    const struct d_strvec *umin;
-    const struct d_strvec *umax;
+    const struct blasfeo_dmat *A;
+    const struct blasfeo_dmat *B;
+    const struct blasfeo_dvec *b;
+    const struct blasfeo_dmat *Q;
+    const struct blasfeo_dmat *R;
+    const struct blasfeo_dmat *S;
+    const struct blasfeo_dvec *q;
+    const struct blasfeo_dvec *r;
+    const struct blasfeo_dvec *xmin;
+    const struct blasfeo_dvec *xmax;
+    const struct blasfeo_dvec *umin;
+    const struct blasfeo_dvec *umax;
     const struct node *tree;
 } tree_ocp_qp_in;
 
@@ -73,11 +73,11 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree,
 // output of solver
 typedef struct {
     treeqp_info_t info;
-    struct d_strvec *x;
-    struct d_strvec *u;
-    struct d_strvec *lam;  // multipliers of equality constraints
-    struct d_strvec *mu_x;  // multipliers of state bounds (+: upper bound active, -: lower bound)
-    struct d_strvec *mu_u;  // multipliers of input bounds
+    struct blasfeo_dvec *x;
+    struct blasfeo_dvec *u;
+    struct blasfeo_dvec *lam;  // multipliers of equality constraints
+    struct blasfeo_dvec *mu_x;  // multipliers of state bounds (+: upper bound active, -: lower bound)
+    struct blasfeo_dvec *mu_u;  // multipliers of input bounds
 } tree_ocp_qp_out;
 
 int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);

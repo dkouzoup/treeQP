@@ -38,31 +38,31 @@
 // NOTE(dimitris): uncomment line below to use dynamic memory allocation for debugging purposes
 // #define __DEBUG__
 
-void convert_strvecs_to_single_vec(int_t n, struct d_strvec sv[], real_t *v) {
+void convert_strvecs_to_single_vec(int_t n, struct blasfeo_dvec sv[], real_t *v) {
     int_t ind = 0;
     int_t i;
     for (i = 0; i < n; i++) {
-        d_cvt_strvec2vec(sv[i].m, &sv[i], 0, &v[ind]);
+        blasfeo_unpack_dvec(sv[i].m, &sv[i], 0, &v[ind]);
         ind += sv[i].m;
     }
 }
 
 
-void convert_strmats_to_single_vec(int_t n, struct d_strmat sMat[], real_t *mat) {
+void convert_strmats_to_single_vec(int_t n, struct blasfeo_dmat sMat[], real_t *mat) {
     int_t ind = 0;
     int_t i;
     for (i = 0; i < n; i++) {
-        d_cvt_strmat2mat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].m);
+        blasfeo_unpack_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].m);
         ind += sMat[i].m*sMat[i].n;
     }
 }
 
 
-void convert_strmats_tran_to_single_vec(int_t n, struct d_strmat sMat[], real_t *mat) {
+void convert_strmats_tran_to_single_vec(int_t n, struct blasfeo_dmat sMat[], real_t *mat) {
     int_t ind = 0;
     int_t i;
     for (i = 0; i < n; i++) {
-        d_cvt_tran_strmat2mat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].n);
+        blasfeo_unpack_tran_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].n);
         ind += sMat[i].m*sMat[i].n;
     }
 }
@@ -79,78 +79,78 @@ void clean_blasfeo_memory(char **ptr) {
 
 
 // wrappers to blasfeo create or allocate functions
-static void create_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
+static void create_strvec(int_t rows, struct blasfeo_dvec *sV, char **ptr) {
 #ifdef __DEBUG__
-    d_allocate_strvec(rows, sV);
+    blasfeo_allocate_dvec(rows, sV);
     printf(" -- using dynamically allocated memory for debugging --\n");
 #else
-    d_create_strvec(rows, sV, *ptr);
-    *ptr += sV->memory_size;
+    blasfeo_create_dvec(rows, sV, *ptr);
+    *ptr += sV->memsize;
 #endif
 }
 
 
-static void create_strmat(int_t rows, int_t cols, struct d_strmat *sA, char **ptr) {
+static void create_strmat(int_t rows, int_t cols, struct blasfeo_dmat *sA, char **ptr) {
     #ifdef __DEBUG__
-        d_allocate_strmat(rows, cols, sA);
+        blasfeo_allocate_dmat(rows, cols, sA);
         printf(" -- using dynamically allocated memory for debugging --\n");
     #else
-        d_create_strmat(rows, cols, sA, *ptr);
-        *ptr += sA->memory_size;
+        blasfeo_create_dmat(rows, cols, sA, *ptr);
+        *ptr += sA->memsize;
     #endif
 }
 
 
 // create and initialize to input data
-void wrapper_vec_to_strvec(int_t rows, real_t *V, struct d_strvec *sV, char **ptr) {
+void wrapper_vec_to_strvec(int_t rows, real_t *V, struct blasfeo_dvec *sV, char **ptr) {
     create_strvec(rows, sV, ptr);
-    d_cvt_vec2strvec(rows, V, sV, 0);
+    blasfeo_pack_dvec(rows, V, sV, 0);
 }
 
 
-void wrapper_mat_to_strmat(int_t rows, int_t cols, real_t *A, struct d_strmat *sA, char **ptr) {
+void wrapper_mat_to_strmat(int_t rows, int_t cols, real_t *A, struct blasfeo_dmat *sA, char **ptr) {
     create_strmat(rows, cols, sA, ptr);
-    d_cvt_mat2strmat(rows, cols, A, rows, sA, 0, 0);
+    blasfeo_pack_dmat(rows, cols, A, rows, sA, 0, 0);
 }
 
 
 // create and initialize to zero
-void init_strvec(int_t rows, struct d_strvec *sV, char **ptr) {
+void init_strvec(int_t rows, struct blasfeo_dvec *sV, char **ptr) {
     create_strvec(rows, sV, ptr);
-    dvecse_libstr(rows, 0.0, sV, 0);
+    blasfeo_dvecse(rows, 0.0, sV, 0);
 }
 
 
-void init_strmat(int_t rows, int_t cols, struct d_strmat *sA, char **ptr) {
+void init_strmat(int_t rows, int_t cols, struct blasfeo_dmat *sA, char **ptr) {
     create_strmat(rows, cols, sA, ptr);
-    dgese_libstr(rows, cols, 0.0, sA, 0, 0);
+    blasfeo_dgese(rows, cols, 0.0, sA, 0, 0);
 }
 
 
 // allocate and free double pointers
-void malloc_double_ptr_strmat(struct d_strmat ***arr, int_t m, int_t n) {
+void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int_t m, int_t n) {
     int_t ii;
 
-    *arr = malloc(m * sizeof(struct d_strmat*));
+    *arr = malloc(m * sizeof(struct blasfeo_dmat*));
 
     for (ii = 0; ii < m; ii++)
-        (*arr)[ii] = malloc(n * sizeof(struct d_strmat));
+        (*arr)[ii] = malloc(n * sizeof(struct blasfeo_dmat));
 }
 
 
 // TODO(dimitris): not used yet
-void malloc_double_ptr_strvec(struct d_strvec ***arr, int_t m, int_t n) {
+void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int_t m, int_t n) {
     int_t ii;
 
-    *arr = malloc(m * sizeof(struct d_strvec*));
+    *arr = malloc(m * sizeof(struct blasfeo_dvec*));
 
     for (ii = 0; ii < m; ii++)
-        (*arr)[ii]= malloc(n * sizeof(struct d_strvec));
+        (*arr)[ii]= malloc(n * sizeof(struct blasfeo_dvec));
 }
 
 
 // TODO(dimitris): Check with valgrind
-void free_double_ptr_strmat(struct d_strmat **arr, int_t m) {
+void free_double_ptr_strmat(struct blasfeo_dmat **arr, int_t m) {
     int_t ii;
 
     for (ii = 0; ii < m; ii++)
@@ -160,7 +160,7 @@ void free_double_ptr_strmat(struct d_strmat **arr, int_t m) {
 }
 
 
-void free_double_ptr_strvec(struct d_strvec **arr, int_t m) {
+void free_double_ptr_strvec(struct blasfeo_dvec **arr, int_t m) {
     int_t ii;
 
     for (ii = 0; ii < m; ii++)
@@ -170,28 +170,28 @@ void free_double_ptr_strvec(struct d_strvec **arr, int_t m) {
 }
 
 
-void create_double_ptr_strmat(struct d_strmat ***arr, int_t m, int_t n, char **ptr) {
+void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int_t m, int_t n, char **ptr) {
     int_t ii;
 
-    *arr = (struct d_strmat **) *ptr;
-    *ptr += m*sizeof(struct d_strmat*);
+    *arr = (struct blasfeo_dmat **) *ptr;
+    *ptr += m*sizeof(struct blasfeo_dmat*);
 
     for (ii = 0; ii < m; ii++) {
-        (*arr)[ii] = (struct d_strmat *) *ptr;
-        *ptr += n*sizeof(struct d_strmat);
+        (*arr)[ii] = (struct blasfeo_dmat *) *ptr;
+        *ptr += n*sizeof(struct blasfeo_dmat);
     }
 }
 
 
-void create_double_ptr_strvec(struct d_strvec ***arr, int_t m, int_t n, char **ptr) {
+void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int_t m, int_t n, char **ptr) {
     int_t ii;
 
-    *arr = (struct d_strvec **) *ptr;
-    *ptr += m*sizeof(struct d_strvec*);
+    *arr = (struct blasfeo_dvec **) *ptr;
+    *ptr += m*sizeof(struct blasfeo_dvec*);
 
     for (ii = 0; ii < m; ii++) {
-        (*arr)[ii] = (struct d_strvec *) *ptr;
-        *ptr += n*sizeof(struct d_strvec);
+        (*arr)[ii] = (struct blasfeo_dvec *) *ptr;
+        *ptr += n*sizeof(struct blasfeo_dvec);
     }
 }
 
@@ -212,7 +212,7 @@ void create_double_ptr_int(int_t ***arr, int_t m, int_t n, char **ptr) {
 }
 
 
-real_t check_error_strmat(struct d_strmat *M1, struct d_strmat *M2) {
+real_t check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2) {
     int_t ii, jj;
     real_t err = 0;
 
@@ -234,7 +234,7 @@ real_t check_error_strmat(struct d_strmat *M1, struct d_strmat *M2) {
 }
 
 
-real_t check_error_strvec(struct d_strvec *V1, struct d_strvec *V2) {
+real_t check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2) {
     int_t ii;
     real_t err = 0;
 
@@ -248,15 +248,15 @@ real_t check_error_strvec(struct d_strvec *V1, struct d_strvec *V2) {
     }
     if (err > 0) {
         printf("[TREEQP]: Error! Vectors are different (error = %2.2e)\n", err);
-        d_print_tran_strvec(V1->m, V1, 0);
-        d_print_tran_strvec(V2->m, V2, 0);
+        blasfeo_print_tran_dvec(V1->m, V1, 0);
+        blasfeo_print_tran_dvec(V2->m, V2, 0);
         exit(1);
     }
     return err;
 }
 
 
-answer_t is_strmat_diagonal(struct d_strmat *M) {
+answer_t iblasfeo_smat_diagonal(struct blasfeo_dmat *M) {
     answer_t ans = YES;
     assert(M->m == M->n);
     for (int_t ii = 0; ii < M->m; ii++) {
@@ -272,7 +272,7 @@ answer_t is_strmat_diagonal(struct d_strmat *M) {
 }
 
 
-answer_t is_strmat_zero(struct d_strmat *M) {
+answer_t iblasfeo_smat_zero(struct blasfeo_dmat *M) {
     answer_t ans = YES;
     for (int_t ii = 0; ii < M->m; ii++) {
         for (int_t jj = 0; jj < M->n; jj++) {
