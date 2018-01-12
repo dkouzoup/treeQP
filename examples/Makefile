@@ -27,9 +27,14 @@
 
 include ../Makefile.rule
 
-OBJS = spring_mass_dual_newton_scenarios.o spring_mass_dual_newton_tree.o spring_mass.o random_qp.o fault_tolerance.o
+OBJS =
+OBJS += spring_mass_dual_newton_scenarios.o
+OBJS += spring_mass_dual_newton_tree.o
+OBJS += spring_mass.o
+OBJS += random_qp.o
+OBJS += fault_tolerance.o
 
-obj: $(OBJS)
+examples: $(OBJS)
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o spring_mass.out spring_mass.o -ltreeqp -lhpmpc -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
@@ -38,4 +43,4 @@ obj: $(OBJS)
 
 clean:
 	rm -f *.o *.exe *.out
-	rm -rf .dSYM
+	rm -rf *.dSYM

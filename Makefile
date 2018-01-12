@@ -20,33 +20,70 @@
 #    License along with treeQP; if not, write to the Free Software Foundation,                     #
 #    Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA                            #
 #                                                                                                  #
-#    Author: Dimitris Kouzoupis, dimitris.kouzoupis (at) imtek.uni-freiburg.de                     #
+#    Authors: Dimitris Kouzoupis, Gianluca Frison, name.surname (at) imtek.uni-freiburg.de         #
 #                                                                                                  #
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+include ./Makefile.rule
 
-OBJS=
-OBJS+=./treeqp/src/tree_ocp_qp_common.o ./treeqp/src/dual_Newton_scenarios.o ./treeqp/src/dual_Newton_tree.o ./treeqp/src/hpmpc_tree.o
-OBJS+=./treeqp/utils/blasfeo_utils.o ./treeqp/utils/profiling_utils.o ./treeqp/utils/tree_utils.o
-OBJS+=./treeqp/utils/utils.o ./treeqp/utils/timing.o
+OBJS =
+OBJS += treeqp/src/tree_ocp_qp_common.o
+OBJS += treeqp/src/dual_Newton_scenarios.o
+OBJS += treeqp/src/dual_Newton_tree.o
+OBJS += treeqp/src/hpmpc_tree.o
+OBJS += treeqp/utils/blasfeo_utils.o
+OBJS += treeqp/utils/profiling_utils.o
+OBJS += treeqp/utils/tree_utils.o
+OBJS+= treeqp/utils/utils.o
+OBJS += treeqp/utils/timing.o
 
-static_library:
-	make -C treeqp/src obj
-	make -C treeqp/utils obj
+DEPS = blasfeo_static hpmpc_static
+
+treeqp_static: $(DEPS)
+	( cd treeqp/src; $(MAKE) obj TOP=$(TOP) )
+	( cd treeqp/utils; $(MAKE) obj TOP=$(TOP) )
 	ar rcs libtreeqp.a $(OBJS)
+	mkdir -p lib
+	mv libtreeqp.a lib
 	@echo
 	@echo " libtreeqp.a static library build complete."
 	@echo
 
-examples: static_library
-	make -C examples obj
-	#./examples/test.out
+blasfeo_static:
+	( cd external/blasfeo; $(MAKE) static_library CC=$(CC) LA=$(BLASFEO_VERSION) TARGET=$(BLASFEO_TARGET) )
+	mkdir -p include/blasfeo
+	mkdir -p lib
+	cp external/blasfeo/include/*.h include/blasfeo
+	cp external/blasfeo/lib/libblasfeo.a lib
+
+hpmpc_static: blasfeo_static
+	( cd external/hpmpc; $(MAKE) static_library CC=$(CC) TARGET=$(HPMPC_TARGET) BLASFEO_PATH=$(TOP)/external/blasfeo )
+	mkdir -p include/hpmpc
+	mkdir -p lib
+	cp external/hpmpc/include/*.h include/hpmpc
+	cp external/hpmpc/libhpmpc.a lib
+
+examples: treeqp_static
+	( cd examples; $(MAKE) examples TOP=$(TOP) )
+
+run_examples:
+	./examples/random_qp.out
+	./examples/spring_mass_tdunes.out
+	./examples/spring_mass_sdunes.out
+	./examples/fault_tolerance.out
+	./examples/spring_mass.out
 
 clean:
-	make -C treeqp/src clean
-	make -C treeqp/utils clean
-	make -C examples clean
-	rm -f *.a
+	( cd treeqp/src; $(MAKE) clean )
+	( cd treeqp/utils; $(MAKE) clean )
+	( cd examples; $(MAKE) clean )
+	rm -f lib/libtreeqp.a
+
+deep_clean: clean
+	( cd external/blasfeo; $(MAKE) clean ) # TODO(dimitris): SWITCH TO DEEP_CLEAN AFTER UPDATE!!!!!
+	( cd external/hpmpc; $(MAKE) clean )
+	rm -rf include
+	rm -rf lib
 
 lint: # TODO(dimitris): fix for Linux, currently works only on mac
 	# Generate list of files and pass them to lint

@@ -1,7 +1,12 @@
 
 include ../../Makefile.rule
 
-OBJS = blasfeo_utils.o profiling_utils.o tree_utils.o utils.o timing.o
+OBJS =
+OBJS += blasfeo_utils.o
+OBJS += profiling_utils.o
+OBJS += tree_utils.o
+OBJS += utils.o
+OBJS += timing.o
 
 obj: $(OBJS)
 

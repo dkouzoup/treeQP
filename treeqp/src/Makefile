@@ -27,7 +27,11 @@
 
 include ../../Makefile.rule
 
-OBJS = tree_ocp_qp_common.o dual_Newton_scenarios.o dual_Newton_tree.o hpmpc_tree.o
+OBJS =
+OBJS += tree_ocp_qp_common.o
+OBJS += dual_Newton_scenarios.o
+OBJS += dual_Newton_tree.o
+OBJS += hpmpc_tree.o
 
 obj: $(OBJS)
 

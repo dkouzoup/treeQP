@@ -1,14 +1,15 @@
 
-#C
+# C
 *.o
 *.exe
 *.out
 *.a
+include/*
 
-#MAC
+# MAC
 *.DS_Store
 
-#EDITORS
+# EDITORS
 *.dSYM/
 *settings.json
 *launch.json
