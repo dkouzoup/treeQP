@@ -38,4 +38,4 @@ obj: $(OBJS)
 
 clean:
 	rm -f *.o *.exe *.out
-	rm -r .dSYM
+	rm -rf .dSYM
