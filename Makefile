@@ -31,11 +31,12 @@ OBJS += treeqp/src/tree_ocp_qp_common.o
 OBJS += treeqp/src/dual_Newton_scenarios.o
 OBJS += treeqp/src/dual_Newton_tree.o
 OBJS += treeqp/src/hpmpc_tree.o
-OBJS += treeqp/utils/blasfeo_utils.o
+OBJS += treeqp/utils/blasfeo.o
+OBJS += treeqp/utils/memory.o
 OBJS += treeqp/utils/profiling.o
+OBJS += treeqp/utils/timing.o
 OBJS += treeqp/utils/tree.o
 OBJS+= treeqp/utils/utils.o
-OBJS += treeqp/utils/timing.o
 
 DEPS = blasfeo_static hpmpc_static
 

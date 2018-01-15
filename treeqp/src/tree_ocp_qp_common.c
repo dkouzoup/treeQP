@@ -30,7 +30,7 @@
 #include <assert.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
-#include "treeqp/utils/blasfeo_utils.h"
+#include "treeqp/utils/memory.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 

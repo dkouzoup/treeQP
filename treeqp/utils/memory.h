@@ -25,43 +25,39 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_TREE_H_
-#define TREEQP_UTILS_TREE_H_
+#ifndef TREEQP_UTILS_MEMORY_H_
+#define TREEQP_UTILS_MEMORY_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "treeqp/utils/types.h"
+#include "treeqp/utils/utils.h"
 
-// TODO(dimitris): MAKE INDEPENDENT OF ORDER (now HPMPC header must come first)
-#ifndef TREE_MPC
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
 
-struct node
-{
-    int *kids;   // 64 bits
-    int idx;     // 32 bits
-    int dad;     // 32 bits
-    int nkids;   // 32 bits
-    int stage;   // 32 bits
-    int real;    // 32 bits
-    int idxkid;  // 32 bits
-    // total       256 bits
-};
+void make_int_multiple_of(int num, int *size);
+int align_char_to(int num, char **c_ptr);
 
-#endif
+void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr);
+void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr);
 
-int calculate_number_of_nodes(int md, int Nr, int Nh);
-int get_number_of_parent_nodes(int Nn, struct node *tree);
-int get_robust_horizon(int Nn, struct node *tree);
-void print_node(struct node *tree);
-void setup_multistage_tree(int md, int Nr, int Nh, int Nn, struct node *tree);
-void setup_tree(int Nn, int *nkids, struct node *tree);
-void free_tree(int Nn, struct node *tree);
+void init_strvec(int rows, struct blasfeo_dvec *sV, char **ptr);
+void init_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr);
 
+void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n);
+void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n);
+void free_double_ptr_strmat(struct blasfeo_dmat **arr, int m);
+void free_double_ptr_strvec(struct blasfeo_dvec **arr, int m);
+
+void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n, char **ptr);
+void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **ptr);
+void create_double_ptr_int(int ***arr, int m, int n, char **ptr);
 
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_TREE_H_
+#endif  /*  TREEQP_UTILS_MEMORY_H_ */

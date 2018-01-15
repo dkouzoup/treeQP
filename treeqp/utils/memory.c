@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "treeqp/utils/blasfeo_utils.h"
+#include "treeqp/utils/memory.h"
 #include "treeqp/utils/types.h"
 
 #include "blasfeo/include/blasfeo_d_aux.h"
@@ -37,24 +37,6 @@
 
 // NOTE(dimitris): uncomment line below to use dynamic memory allocation for debugging purposes
 // #define _USE_VALGRIND_
-
-void make_int_multiple_of(int num, int *size)
-{
-    *size = (*size + num - 1) / num * num;
-}
-
-
-
-int align_char_to(int num, char **c_ptr)
-{
-    size_t s_ptr = (size_t)*c_ptr;
-    s_ptr = (s_ptr + num - 1) / num * num;
-    int offset = num - (int)(s_ptr - (size_t)(*c_ptr));
-    *c_ptr = (char *)s_ptr;
-    return offset;
-}
-
-
 
 #ifdef _USE_VALGRIND_
 // print warning when by-passing pointer and allocating new memory (for debugging)
@@ -65,39 +47,22 @@ static void print_warning ()
 #endif
 
 
-
-void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v)
+// make an integer multiple of num (for calculate_size routines)
+void make_int_multiple_of(int num, int *size)
 {
-    int ind = 0;
-    for (int i = 0; i < n; i++)
-    {
-        blasfeo_unpack_dvec(sv[i].m, &sv[i], 0, &v[ind]);
-        ind += sv[i].m;
-    }
+    *size = (*size + num - 1) / num * num;
 }
 
 
 
-void convert_strmats_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat)
+// move char pointer to next multiple of num (for memory alignment)
+int align_char_to(int num, char **c_ptr)
 {
-    int ind = 0;
-    for (int i = 0; i < n; i++)
-    {
-        blasfeo_unpack_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].m);
-        ind += sMat[i].m*sMat[i].n;
-    }
-}
-
-
-
-void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat)
-{
-    int ind = 0;
-    for (int i = 0; i < n; i++)
-    {
-        blasfeo_unpack_tran_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].n);
-        ind += sMat[i].m*sMat[i].n;
-    }
+    size_t s_ptr = (size_t)*c_ptr;
+    s_ptr = (s_ptr + num - 1) / num * num;
+    int offset = num - (int)(s_ptr - (size_t)(*c_ptr));
+    *c_ptr = (char *)s_ptr;
+    return offset;
 }
 
 
@@ -248,7 +213,6 @@ void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **p
 
 
 
-// TODO(dimitris): this function is not blasfeo related, rename to e.g. memory_utils?
 void create_double_ptr_int(int ***arr, int m, int n, char **ptr)
 {
     *arr = (int **) *ptr;
@@ -264,113 +228,4 @@ void create_double_ptr_int(int ***arr, int m, int n, char **ptr)
             (*arr)[ii][jj] = 0;
         }
     }
-}
-
-
-
-double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
-{
-    double err = 0;
-
-    if ((M1->m != M2->m) || (M1->n != M2->n))
-    {
-        printf("[TREEQP]: Error! Matrices do not have the same dimensions ");
-        printf("(%d x %d) vs (%d x %d)\n", M1->m, M1->n, M2->m, M2->n);
-        exit(1);
-    }
-    for (int ii = 0; ii < M1->m; ii++)
-    {
-        for (int jj = 0; jj < M1->n; jj++)
-        {
-            err = MAX(ABS(DMATEL_LIBSTR(M1, ii, jj) - DMATEL_LIBSTR(M2, ii, jj)), err);
-        }
-    }
-    if (err > 0)
-    {
-        printf("[TREEQP]: Error! Matrices are different (error = %2.2e)\n", err);
-        exit(1);
-    }
-    return err;
-}
-
-
-
-double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
-{
-    double err = 0;
-
-    if (V1->m != V2->m)
-    {
-        printf("[TREEQP]: Error! Vectors do not have the same dimensions ");
-        printf("(%d x 1) vs (%d x 1)\n", V1->m, V2->m);
-        exit(1);
-    }
-    for (int ii = 0; ii < V1->m; ii++)
-    {
-        err = MAX(ABS(DVECEL_LIBSTR(V1, ii) - DVECEL_LIBSTR(V2, ii)), err);
-    }
-    if (err > 0)
-    {
-        printf("[TREEQP]: Error! Vectors are different (error = %2.2e)\n", err);
-        blasfeo_print_tran_dvec(V1->m, V1, 0);
-        blasfeo_print_tran_dvec(V2->m, V2, 0);
-        exit(1);
-    }
-    return err;
-}
-
-
-
-// TODO(dimitris): weird name, probably edited by change_name.sh?
-answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
-{
-    answer_t ans = YES;
-    assert(M->m == M->n);
-    for (int ii = 0; ii < M->m; ii++)
-    {
-        for (int jj = 0; jj < M->n; jj++)
-        {
-            if (ii != jj)
-            {
-                if (DMATEL_LIBSTR(M, ii, jj) != 0)
-                {
-                    ans = NO;
-                }
-            }
-        }
-    }
-    return ans;
-}
-
-
-
-answer_t is_strmat_zero(struct blasfeo_dmat *M)
-{
-    answer_t ans = YES;
-    for (int ii = 0; ii < M->m; ii++)
-    {
-        for (int jj = 0; jj < M->n; jj++)
-        {
-            if (DMATEL_LIBSTR(M, ii, jj) != 0)
-            {
-                ans = NO;
-            }
-        }
-    }
-    return ans;
-}
-
-
-
-void print_blasfeo_target()
-{
-    printf("\n");
-    #if defined(LA_HIGH_PERFORMANCE)
-    printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");
-    #elif defined(LA_REFERENCE)
-    printf("blasfeo compiled with LA = REFERENCE\n");
-    #elif defined(LA_BLAS)
-    printf("blasfeo compiled with LA = BLAS\n");
-    #endif
-    printf("\n");
 }

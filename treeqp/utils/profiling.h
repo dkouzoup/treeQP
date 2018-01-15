@@ -25,8 +25,8 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_PROFILING_UTILS_H_
-#define TREEQP_UTILS_PROFILING_UTILS_H_
+#ifndef TREEQP_UTILS_PROFILING_H_
+#define TREEQP_UTILS_PROFILING_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,4 +77,4 @@ void write_timers_to_txt(void);
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_PROFILING_UTILS_H_
+#endif  // TREEQP_UTILS_PROFILING_H_

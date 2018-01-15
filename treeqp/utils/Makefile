@@ -2,11 +2,12 @@
 include ../../Makefile.rule
 
 OBJS =
-OBJS += blasfeo_utils.o
+OBJS += blasfeo.o
+OBJS += memory.o
 OBJS += profiling.o
+OBJS += timing.o
 OBJS += tree.o
 OBJS += utils.o
-OBJS += timing.o
 
 obj: $(OBJS)
 
