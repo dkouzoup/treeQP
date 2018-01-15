@@ -38,16 +38,22 @@
 #include "treeqp/utils/types.h"
 
 #if defined(__APPLE__)
-typedef struct treeqp_timer_ {
+
+typedef struct treeqp_timer_
+{
     uint64_t tic;
     uint64_t toc;
     mach_timebase_info_data_t tinfo;
 } treeqp_timer;
+
 #else
-typedef struct treeqp_timer_ {
+
+typedef struct treeqp_timer_
+{
     struct timeval tic;
     struct timeval toc;
 } treeqp_timer;
+
 #endif
 
 void treeqp_tic(treeqp_timer* t);
