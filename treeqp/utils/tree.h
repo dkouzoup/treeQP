@@ -64,4 +64,4 @@ void free_tree(int Nn, struct node *tree);
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_TREE_H_
+#endif  /* TREEQP_UTILS_TREE_H_ */

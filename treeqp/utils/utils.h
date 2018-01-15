@@ -50,4 +50,4 @@ return_t write_int_vector_to_txt(int *vec, int n, const char *filename);
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_UTILS_H_
+#endif  /* TREEQP_UTILS_UTILS_H_ */

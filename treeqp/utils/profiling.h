@@ -77,4 +77,4 @@ void write_timers_to_txt(void);
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_PROFILING_H_
+#endif  /* TREEQP_UTILS_PROFILING_H_ */

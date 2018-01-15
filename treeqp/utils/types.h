@@ -83,4 +83,4 @@ typedef enum {
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_UTILS_TYPES_H_
+#endif  /* TREEQP_UTILS_TYPES_H_ */

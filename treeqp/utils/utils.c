@@ -30,11 +30,15 @@
 #include "treeqp/utils/utils.h"
 #include "treeqp/utils/types.h"
 
-int ipow(int base, int exp) {
+int ipow(int base, int exp)
+{
     int result = 1;
-    while (exp) {
+    while (exp)
+    {
         if (exp & 1)
+        {
             result *= base;
+        }
         exp >>= 1;
         base *= base;
     }
@@ -42,18 +46,22 @@ int ipow(int base, int exp) {
 }
 
 
-return_t read_int_vector_from_txt(int *vec, int n, const char *filename) {
-    int i, c;
+
+return_t read_int_vector_from_txt(int *vec, int n, const char *filename)
+{
+    int c;
     FILE *myFile;
     myFile = fopen(filename, "r");
 
-    if (myFile == NULL) {
+    if (myFile == NULL)
+    {
         printf("Error Reading File (%s)\n", filename);
         return TREEQP_ERR_ERROR_OPENING_FILE;
     }
 
-    for (i = 0; i < n; i++) {
-        c = fscanf(myFile, "%d,", &vec[i]);
+    for (int ii = 0; ii < n; ii++)
+    {
+        c = fscanf(myFile, "%d,", &vec[ii]);
     }
 
     fclose(myFile);
@@ -62,18 +70,22 @@ return_t read_int_vector_from_txt(int *vec, int n, const char *filename) {
 }
 
 
-return_t read_double_vector_from_txt(double *vec, int n, const char *filename) {
-    int i, c;
+
+return_t read_double_vector_from_txt(double *vec, int n, const char *filename)
+{
+    int c;
     FILE *myFile;
     myFile = fopen(filename, "r");
 
-    if (myFile == NULL) {
+    if (myFile == NULL)
+    {
         printf("Error Reading File (%s)\n", filename);
         return TREEQP_ERR_ERROR_OPENING_FILE;
     }
 
-    for (i = 0; i < n; i++) {
-         c = fscanf(myFile, "%lf,", &vec[i]);
+    for (int ii = 0; ii < n; ii++)
+    {
+         c = fscanf(myFile, "%lf,", &vec[ii]);
     }
 
     fclose(myFile);
@@ -82,18 +94,22 @@ return_t read_double_vector_from_txt(double *vec, int n, const char *filename) {
 }
 
 
-return_t write_double_vector_to_txt(double *vec, int n, const char *filename) {
-    int i, c;
+
+return_t write_double_vector_to_txt(double *vec, int n, const char *filename)
+{
+    int c;
     FILE *myFile;
     myFile = fopen(filename, "wr");
 
-    if (myFile == NULL) {
+    if (myFile == NULL)
+    {
         printf("Error opening file (%s)\n", filename);
         return TREEQP_ERR_ERROR_OPENING_FILE;
     }
 
-    for (i = 0; i < n; i++) {
-        c = fprintf(myFile, "%.16e\n", vec[i]);
+    for (int ii = 0; ii < n; ii++)
+    {
+        c = fprintf(myFile, "%.16e\n", vec[ii]);
     }
 
     fclose(myFile);
@@ -102,18 +118,21 @@ return_t write_double_vector_to_txt(double *vec, int n, const char *filename) {
 }
 
 
-return_t write_int_vector_to_txt(int *vec, int n, const char *filename) {
-    int i, c;
+
+return_t write_int_vector_to_txt(int *vec, int n, const char *filename)
+{
+    int c;
     FILE *myFile;
     myFile = fopen(filename, "wr");
 
-    if (myFile == NULL) {
+    if (myFile == NULL)
+    {
         printf("Error opening file (%s)\n", filename);
         return TREEQP_ERR_ERROR_OPENING_FILE;
     }
 
-    for (i = 0; i < n; i++) {
-        c = fprintf(myFile, "%d\n", vec[i]);
+    for (int ii = 0; ii < n; ii++) {
+        c = fprintf(myFile, "%d\n", vec[ii]);
     }
 
     fclose(myFile);
