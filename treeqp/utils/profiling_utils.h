@@ -68,33 +68,7 @@ double line_search_times[kMax];
 double min_line_search_times[kMax];
 #endif
 
-#if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-
-// + finer profiling per key operation per iteration
-#if PROFILE > 3
-treeqp_timer sub_tmr;
-double xopt_times[kMax];
-double min_xopt_times[kMax];
-double uopt_times[kMax];
-double min_uopt_times[kMax];
-double Zbar_times[kMax];
-double min_Zbar_times[kMax];
-double Lambda_blocks_times[kMax];
-double min_Lambda_blocks_times[kMax];
-#endif
-
-#endif  // TREEQP_DUAL_NEWTON_SCENARIOS
-
-// + temporary profiling for debugging purposes
-#if PROFILE >  4
-treeqp_timer tmp_tmr;
-double tmp_time;
-#endif
-
 void initialize_timers(void);
-#if PROFILE > 3
-void reset_accumulative_timers(int iter);
-#endif
 void update_min_timers(int iter);
 void print_timers(int newtonIter);
 void write_timers_to_txt(void);

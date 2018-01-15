@@ -1,10 +1,4 @@
 
-# Algorithm:
-# TODO(dimitris): only needed for profiling, get rid of this as it is confusing
-# TREEQP_DUAL_NEWTON_SCENARIOS: Dual Newton strategy with scenario decomposition
-# TREEQP_DUAL_NEWTON_TREE: Tree-sparse dual Newton strategy
-ALG = TREEQP_DUAL_NEWTON_SCENARIOS
-
 # Operating system
 OS = WINDOWS
 UNAME_S = $(shell uname -s)
@@ -42,8 +36,6 @@ HPMPC_TARGET = X64_AVX
 # Compiler flags
 CFLAGS =
 CFLAGS += -std=c99
-
-CFLAGS += -DALG=$(ALG)
 
 # Enable/disable openmp
 # NOTE(dimitris): to define maximum number of threads type in terminal:

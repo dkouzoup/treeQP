@@ -68,10 +68,6 @@ void check_compiler_flags() {
     printf("\nError! Can't do detailed debugging in parallel mode\n");
     exit(66);
     #endif
-    #if PROFILE > 3
-    printf("\nError! Can't do detailed profiling in parallel mode\n");
-    exit(66);
-    #endif
     #endif
     #if PRINT_LEVEL == 2 && PROFILE > 0
     printf("\nWarning! Printing hinders timings\n");
@@ -331,9 +327,6 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
         #endif
         for (kk = 0; kk < Nh; kk++) {
             // --- calculate x_opt
-            #if PROFILE > 3
-            treeqp_tic(&sub_tmr);
-            #endif
             idxm1 = work->nodeIdx[ii][kk];
             idx = work->nodeIdx[ii][kk+1];
             if (kk < Nh-1) {
@@ -368,14 +361,8 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
                 }
                 #endif
             }
-            #if PROFILE > 3
-            xopt_times[NewtonIter] += treeqp_toc(&sub_tmr);
-            #endif
 
             // --- calculate u_opt
-            #if PROFILE > 3
-            treeqp_tic(&sub_tmr);
-            #endif
 
             // u[k] = -B[k]' * mu[k] - r[k]
             blasfeo_dgemv_t(nx, nu, -1.0, &sB[idx-1], 0, 0, &work->smu[ii][kk], 0, -1.0,
@@ -409,14 +396,8 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
                 }
                 #endif
             }
-            #if PROFILE > 3
-            uopt_times[NewtonIter] += treeqp_toc(&sub_tmr);
-            #endif
 
             // --- calculate Zbar
-            #if PROFILE > 3
-            treeqp_tic(&sub_tmr);
-            #endif
 
             #ifdef _CHECK_LAST_ACTIVE_SET_
             if (work->uasChanged[ii][kk] || NewtonIter == 0) {
@@ -428,14 +409,7 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
             }
             #endif
 
-            #if PROFILE > 3
-            Zbar_times[NewtonIter] += treeqp_toc(&sub_tmr);
-            #endif
-
             // --- calculate Lambda blocks
-            #if PROFILE > 3
-            treeqp_tic(&sub_tmr);
-            #endif
 
             #ifdef _CHECK_LAST_ACTIVE_SET_
             if ((kk == 0 && (work->uasChanged[ii][kk] || work->xasChanged[ii][kk+1])) ||
@@ -488,10 +462,6 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
                 blasfeo_dgecp(nx, nx, &work->sTmpLambdaD[ii][kk], 0, 0,
                     &work->sLambdaD[ii][kk], 0, 0);
             }
-            #endif
-
-            #if PROFILE > 3
-            Lambda_blocks_times[NewtonIter] += treeqp_toc(&sub_tmr);
             #endif
         }
         acc += commonNodes[ii];
@@ -1917,9 +1887,6 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
-        #endif
-        #if PROFILE > 3
-        reset_accumulative_timers(NewtonIter);
         #endif
 
         // --- solve stage QPs

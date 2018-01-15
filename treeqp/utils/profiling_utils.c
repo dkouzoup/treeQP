@@ -36,77 +36,77 @@
 #if PROFILE > 0
 
 // assign NaNs everywhere
-void initialize_timers(void) {
+void initialize_timers(void)
+{
     total_time = 0.0/0.0;
     #if PROFILE > 1
-    int ii;
-    for (ii = 0; ii < kMax; ii++) {
+    for (int ii = 0; ii < kMax; ii++)
+    {
         iter_times[ii] = 0.0/0.0;
         ls_iters[ii] = 0;
-        }
+    }
     #endif
     #if PROFILE > 2
-    for (ii = 0; ii < kMax; ii++) {
+    for (int ii = 0; ii < kMax; ii++)
+    {
         stage_qps_times[ii] = 0.0/0.0;
         build_dual_times[ii] = 0.0/0.0;
         newton_direction_times[ii] = 0.0/0.0;
         line_search_times[ii] = 0.0/0.0;
     }
     #endif
-    #if PROFILE > 3
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-    for (ii = 0; ii < kMax; ii++) {
-        xopt_times[ii] = 0.0/0.0;
-        uopt_times[ii] = 0.0/0.0;
-        Zbar_times[ii] = 0.0/0.0;
-        Lambda_blocks_times[ii] = 0.0/0.0;
-    }
-    #endif
-    #endif
 }
 
-#if PROFILE > 3
-void reset_accumulative_timers(int iter) {
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-    xopt_times[iter] = 0.0;
-    uopt_times[iter] = 0.0;
-    Zbar_times[iter] = 0.0;
-    Lambda_blocks_times[iter] = 0.0;
-    #endif
-}
-#endif
 
 
-void update_min_timers(int iter) {
-    int ii;
-    if (iter == 0) {
+void update_min_timers(int iter)
+{
+    if (iter == 0)
+    {
         min_total_time = total_time;
-    } else {
+    }
+    else
+    {
         min_total_time = MIN(min_total_time, total_time);
     }
     #if PROFILE > 1
-    if (iter == 0) {
-        for (ii = 0; ii < kMax; ii++) min_iter_times[ii] = iter_times[ii];
-    } else {
-        for (ii = 0; ii < kMax; ii++) min_iter_times[ii] =
-            MIN(min_iter_times[ii], iter_times[ii]);
+    if (iter == 0)
+    {
+        for (int ii = 0; ii < kMax; ii++)
+        {
+            min_iter_times[ii] = iter_times[ii];
+        }
     }
-    if (iter == 0) {
-        for (ii = 0; ii < kMax; ii++) {
+    else
+    {
+        for (int ii = 0; ii < kMax; ii++)
+        {
+            min_iter_times[ii] = MIN(min_iter_times[ii], iter_times[ii]);
+        }
+    }
+    if (iter == 0)
+    {
+        for (int ii = 0; ii < kMax; ii++)
+        {
             total_ls_iter += ls_iters[ii];
         }
     }
     #endif
     #if PROFILE > 2
-    if (iter == 0) {
-        for (ii = 0; ii < kMax; ii++) {
+    if (iter == 0)
+    {
+        for (int ii = 0; ii < kMax; ii++)
+        {
             min_stage_qps_times[ii] = stage_qps_times[ii];
             min_build_dual_times[ii] = build_dual_times[ii];
             min_newton_direction_times[ii] = newton_direction_times[ii];
             min_line_search_times[ii] = line_search_times[ii];
         }
-    } else {
-        for (ii = 0; ii < kMax; ii++) {
+    }
+    else
+    {
+        for (int ii = 0; ii < kMax; ii++)
+        {
             min_stage_qps_times[ii] = MIN(min_stage_qps_times[ii], stage_qps_times[ii]);
             min_build_dual_times[ii] = MIN(min_build_dual_times[ii], build_dual_times[ii]);
             min_newton_direction_times[ii] =
@@ -115,34 +115,12 @@ void update_min_timers(int iter) {
         }
     }
     #endif
-    #if PROFILE > 3
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-    if (iter == 0) {
-        for (ii = 0; ii < kMax; ii++) {
-            min_xopt_times[ii] = xopt_times[ii];
-            min_uopt_times[ii] = uopt_times[ii];
-            min_Zbar_times[ii] = Zbar_times[ii];
-            min_Lambda_blocks_times[ii] = Lambda_blocks_times[ii];
-        }
-    } else {
-        for (ii = 0; ii < kMax; ii++) {
-            min_xopt_times[ii] = MIN(min_xopt_times[ii], xopt_times[ii]);
-            min_uopt_times[ii] = MIN(min_uopt_times[ii], uopt_times[ii]);
-            min_Zbar_times[ii] = MIN(min_Zbar_times[ii], Zbar_times[ii]);
-            min_Lambda_blocks_times[ii] = MIN(min_Lambda_blocks_times[ii], Lambda_blocks_times[ii]);
-        }
-    }
-    #endif  // TREEQP_DUAL_NEWTON_SCENARIOS
-    #ifdef QPDUNES_TREE
-    // TODO(dimitris): PROFILE > 3 timings for tree
-    #endif
-    #endif
 }
 
 
-void print_timers(int newtonIter) {
-    int jj;
 
+void print_timers(int newtonIter)
+{
     #if DEBUG == 1
     printf("\n!!! WARNING: detailed DEBUG is on, timings are inaccurate !!!\n\n");
     #endif
@@ -152,9 +130,6 @@ void print_timers(int newtonIter) {
     #if PRINT_LEVEL > 1
     printf("\n!!! WARNING: print level is too high, timings may be inaccurate !!!\n\n");
     #endif
-    #if PROFILE > 3
-    printf("\n!!! WARNING: profile level too high, total and iteration timings inaccurate !!!\n\n");
-    #endif
 
     #if PROFILE > 0
     printf("\nTotal time:\n\n");
@@ -162,9 +137,10 @@ void print_timers(int newtonIter) {
     #endif
     #if PROFILE > 1
     printf("\nTimings per iteration:\n\n");
-    for (jj = 0; jj < newtonIter; jj++) {
-        printf("Iteration #%3d - %7.3f ms  (%3d ls iters. )\n", jj+1,
-            min_iter_times[jj]*1e3, ls_iters[jj]);
+    for (int jj = 0; jj < newtonIter; jj++)
+    {
+        printf("Iteration #%3d - %7.3f ms  (%3d ls iters. )\n",
+            jj+1, min_iter_times[jj]*1e3, ls_iters[jj]);
     }
     #endif
 
@@ -176,7 +152,8 @@ void print_timers(int newtonIter) {
     double sum_newton_direction_times = 0.;
     double sum_line_search_times = 0.;
     double sum_all = 0.;
-    for (jj = 0; jj < newtonIter; jj++) {
+    for (int jj = 0; jj < newtonIter; jj++)
+    {
         sum_stage_qps_times += min_stage_qps_times[jj];
         sum_build_dual_times += min_build_dual_times[jj];
         sum_newton_direction_times += min_newton_direction_times[jj];
@@ -198,49 +175,14 @@ void print_timers(int newtonIter) {
     // b) the time for the calculation of the termination condition was zero
     printf("> > > sum all of the above:\t\t %10.4f ms\n", sum_all*1e3);
 
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-    printf("\nNOTE: solve stage QPs timings contain building the dual Hessian blocks too!\n\n");
-    #endif
-    #endif
-
-    #if PROFILE > 3
-    #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
-    printf("\nTimings per sub-operation:\n\n");
-    double sum_xopt_times = 0.;
-    double sum_uopt_times = 0.;
-    double sum_Zbar_times = 0.;
-    double sum_Lambda_blocks_times = 0.;
-    double sum_stage_qps_detailed_times = 0.;
-    for (jj = 0; jj < newtonIter; jj++) {
-        sum_xopt_times += min_xopt_times[jj];
-        sum_uopt_times += min_uopt_times[jj];
-        sum_Zbar_times += min_Zbar_times[jj];
-        sum_Lambda_blocks_times += min_Lambda_blocks_times[jj];
-    }
-    sum_stage_qps_detailed_times = sum_xopt_times + sum_uopt_times + sum_Zbar_times
-        + sum_Lambda_blocks_times;
-
-    printf("1) Solve stage QPs \n\n");
-    printf("> > > calculated xopt in:\t\t %10.4f ms (%5.2f %%)\n",
-        sum_xopt_times*1e3, 100*sum_xopt_times/sum_stage_qps_detailed_times);
-    printf("> > > calculated uopt in:\t\t %10.4f ms (%5.2f %%)\n",
-        sum_uopt_times*1e3, 100*sum_uopt_times/sum_stage_qps_detailed_times);
-    printf("> > > calculated Zbar in:\t\t %10.4f ms (%5.2f %%)\n",
-    sum_Zbar_times*1e3, 100*sum_Zbar_times/sum_stage_qps_detailed_times);
-    printf("> > > calculated Lambda blocks in:\t %10.4f ms (%5.2f %%)\n",
-        sum_Lambda_blocks_times*1e3, 100*sum_Lambda_blocks_times/sum_stage_qps_detailed_times);
-    printf("> > > sum all of the above:\t\t %10.4f ms\n", sum_stage_qps_detailed_times*1e3);
-    printf("> > > instead of:\t\t\t %10.4f ms\n", sum_stage_qps_times*1e3);
-    printf("\n");
-    #endif
-    #if ALG == TREEQP_DUAL_NEWTON_TREE
-    printf("PROFILE > 2 not implemented yet.\n");
-    #endif
+    // NOTE(dimitris): for the scenario formulation, stage_qps_time contains building Hessian blocks
     #endif
 }
 
 
-void write_timers_to_txt(void) {
+
+void write_timers_to_txt(void)
+{
     char fname[256];
     char prefix[] = "examples/data_spring_mass";
 
