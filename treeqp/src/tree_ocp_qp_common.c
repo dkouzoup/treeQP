@@ -177,7 +177,7 @@ int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu) {
     }
 
     make_int_multiple_of(64, &bytes);
-    bytes += 0*64;
+    bytes += 1*64;
 
     return bytes;
 }
