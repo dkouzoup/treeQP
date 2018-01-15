@@ -282,8 +282,12 @@ int_t main() {
         }
 
         sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
-        // NOTE(dimitris): take care that mpc_config is generated (line below segfaults if not)
+
+        // NOTE(dimitris): take care that mpc_config has been code generated (otherwise the line
+        //                 below will cause a segfault)
+
         // mpc_config = sim_config;
+
         spring_configs[tt+1] = sim_config;
     }
 
