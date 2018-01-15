@@ -37,7 +37,8 @@ extern "C" {
 // TODO(dimitris): MAKE INDEPENDENT OF ORDER (now HPMPC header must come first)
 #ifndef TREE_MPC
 
-struct node {
+struct node
+{
     int *kids;   // 64 bits
     int idx;     // 32 bits
     int dad;     // 32 bits
