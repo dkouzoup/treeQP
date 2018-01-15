@@ -121,13 +121,13 @@ static void setup_stage_qp_solvers(tree_ocp_qp_in *qp_in, stage_qp_t *qp_solver)
     for (int kk = 0; kk < qp_in->N; kk++) {
         qp_solver[kk] = TREEQP_CLIPPING_SOLVER;
 
-        if (iblasfeo_smat_diagonal((struct blasfeo_dmat *)&qp_in->Q[kk]) == NO) {
+        if (is_strmat_diagonal((struct blasfeo_dmat *)&qp_in->Q[kk]) == NO) {
             qp_solver[kk] = TREEQP_DENSE_SOLVER;
         }
-        if (iblasfeo_smat_diagonal((struct blasfeo_dmat *)&qp_in->R[kk]) == NO) {
+        if (is_strmat_diagonal((struct blasfeo_dmat *)&qp_in->R[kk]) == NO) {
             qp_solver[kk] = TREEQP_DENSE_SOLVER;
         }
-        if (iblasfeo_smat_zero((struct blasfeo_dmat *)&qp_in->S[kk]) == NO) {
+        if (is_strmat_zero((struct blasfeo_dmat *)&qp_in->S[kk]) == NO) {
             qp_solver[kk] = TREEQP_DENSE_SOLVER;
         }
         // printf("stage QP solver [%d] : %d\n", kk, qp_solver[kk]);

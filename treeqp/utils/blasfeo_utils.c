@@ -36,7 +36,7 @@
 #include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 
 // NOTE(dimitris): uncomment line below to use dynamic memory allocation for debugging purposes
-// #define __DEBUG__
+// #define _USE_VALGRIND_
 
 void make_int_multiple_of(int num, int *size)
 {
@@ -56,10 +56,21 @@ int align_char_to(int num, char **c_ptr)
 
 
 
+#ifdef _USE_VALGRIND_
+// print warning when by-passing pointer and allocating new memory (for debugging)
+static void print_warning ()
+{
+    printf(" -- using dynamically allocated memory for debugging --\n");
+}
+#endif
+
+
+
 void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v)
 {
     int ind = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++)
+    {
         blasfeo_unpack_dvec(sv[i].m, &sv[i], 0, &v[ind]);
         ind += sv[i].m;
     }
@@ -79,30 +90,26 @@ void convert_strmats_to_single_vec(int n, struct blasfeo_dmat sMat[], double *ma
 
 
 
-void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat) {
+void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat)
+{
     int ind = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++)
+    {
         blasfeo_unpack_tran_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].n);
         ind += sMat[i].m*sMat[i].n;
     }
 }
 
 
-void init_blasfeo_memory(int memorySize, char **ptr) {
-    c_zeros_align(ptr, memorySize);
-}
-
-
-void clean_blasfeo_memory(char **ptr) {
-    c_free(*ptr);
-}
-
 
 // wrappers to blasfeo create or allocate functions
-static void create_strvec(int rows, struct blasfeo_dvec *sV, char **ptr) {
-#ifdef __DEBUG__
+static void create_strvec(int rows, struct blasfeo_dvec *sV, char **ptr)
+{
+    assert((size_t)*ptr % 8 == 0 && "strvec not 8-byte aligned!");
+
+#ifdef _USE_VALGRIND_
     blasfeo_allocate_dvec(rows, sV);
-    printf(" -- using dynamically allocated memory for debugging --\n");
+    print_warning();
 #else
     blasfeo_create_dvec(rows, sV, *ptr);
     *ptr += sV->memsize;
@@ -110,143 +117,176 @@ static void create_strvec(int rows, struct blasfeo_dvec *sV, char **ptr) {
 }
 
 
-static void create_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr) {
-    #ifdef __DEBUG__
-        blasfeo_allocate_dmat(rows, cols, sA);
-        printf(" -- using dynamically allocated memory for debugging --\n");
-    #else
-        blasfeo_create_dmat(rows, cols, sA, *ptr);
-        *ptr += sA->memsize;
-    #endif
+
+static void create_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr)
+{
+#ifdef LA_HIGH_PERFORMANCE
+    assert((size_t)*ptr % 64 == 0 && "strmat not 64-byte aligned!");
+#else
+    assert((size_t)*ptr % 8 == 0 && "strmat not 8-byte aligned!");
+#endif
+
+#ifdef _USE_VALGRIND_
+    blasfeo_allocate_dmat(rows, cols, sA);
+    print_warning();
+#else
+    blasfeo_create_dmat(rows, cols, sA, *ptr);
+    *ptr += sA->memsize;
+#endif
 }
 
 
+
 // create and initialize to input data
-void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr) {
+void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr)
+{
     create_strvec(rows, sV, ptr);
     blasfeo_pack_dvec(rows, V, sV, 0);
 }
 
 
-void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr) {
+
+void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr)
+{
     create_strmat(rows, cols, sA, ptr);
     blasfeo_pack_dmat(rows, cols, A, rows, sA, 0, 0);
 }
 
 
+
 // create and initialize to zero
-void init_strvec(int rows, struct blasfeo_dvec *sV, char **ptr) {
+void init_strvec(int rows, struct blasfeo_dvec *sV, char **ptr)
+{
     create_strvec(rows, sV, ptr);
     blasfeo_dvecse(rows, 0.0, sV, 0);
 }
 
 
-void init_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr) {
+
+void init_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr)
+{
     create_strmat(rows, cols, sA, ptr);
     blasfeo_dgese(rows, cols, 0.0, sA, 0, 0);
 }
 
 
-// allocate and free double pointers
-void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n) {
-    int ii;
 
+// allocate and free double pointers
+void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n)
+{
     *arr = malloc(m * sizeof(struct blasfeo_dmat*));
 
-    for (ii = 0; ii < m; ii++)
+    for (int ii = 0; ii < m; ii++)
+    {
         (*arr)[ii] = malloc(n * sizeof(struct blasfeo_dmat));
+    }
 }
+
 
 
 // TODO(dimitris): not used yet
-void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n) {
-    int ii;
-
+void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n)
+{
     *arr = malloc(m * sizeof(struct blasfeo_dvec*));
 
-    for (ii = 0; ii < m; ii++)
+    for (int ii = 0; ii < m; ii++)
+    {
         (*arr)[ii]= malloc(n * sizeof(struct blasfeo_dvec));
+    }
 }
+
 
 
 // TODO(dimitris): Check with valgrind
-void free_double_ptr_strmat(struct blasfeo_dmat **arr, int m) {
-    int ii;
-
-    for (ii = 0; ii < m; ii++)
+void free_double_ptr_strmat(struct blasfeo_dmat **arr, int m)
+{
+    for (int ii = 0; ii < m; ii++)
+    {
         free(arr[ii]);
-
+    }
     free(arr);
 }
 
 
-void free_double_ptr_strvec(struct blasfeo_dvec **arr, int m) {
-    int ii;
 
-    for (ii = 0; ii < m; ii++)
+void free_double_ptr_strvec(struct blasfeo_dvec **arr, int m)
+{
+    for (int ii = 0; ii < m; ii++)
+    {
         free(arr[ii]);
-
+    }
     free(arr);
 }
 
 
-void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n, char **ptr) {
-    int ii;
 
+void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n, char **ptr)
+{
     *arr = (struct blasfeo_dmat **) *ptr;
     *ptr += m*sizeof(struct blasfeo_dmat*);
 
-    for (ii = 0; ii < m; ii++) {
+    for (int ii = 0; ii < m; ii++)
+    {
         (*arr)[ii] = (struct blasfeo_dmat *) *ptr;
         *ptr += n*sizeof(struct blasfeo_dmat);
     }
 }
 
 
-void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **ptr) {
-    int ii;
 
+void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **ptr)
+{
     *arr = (struct blasfeo_dvec **) *ptr;
     *ptr += m*sizeof(struct blasfeo_dvec*);
 
-    for (ii = 0; ii < m; ii++) {
+    for (int ii = 0; ii < m; ii++)
+    {
         (*arr)[ii] = (struct blasfeo_dvec *) *ptr;
         *ptr += n*sizeof(struct blasfeo_dvec);
     }
 }
 
 
+
 // TODO(dimitris): this function is not blasfeo related, rename to e.g. memory_utils?
-void create_double_ptr_int(int ***arr, int m, int n, char **ptr) {
+void create_double_ptr_int(int ***arr, int m, int n, char **ptr)
+{
     *arr = (int **) *ptr;
     *ptr += m*sizeof(int*);
 
-    for (int ii = 0; ii < m; ii++) {
+    for (int ii = 0; ii < m; ii++)
+    {
         (*arr)[ii] = (int *) *ptr;
         *ptr += n*sizeof(int);
         // initialize to zero
-        for (int jj = 0; jj < n; jj++) {
+        for (int jj = 0; jj < n; jj++)
+        {
             (*arr)[ii][jj] = 0;
         }
     }
 }
 
 
-double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2) {
-    int ii, jj;
+
+double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
+{
     double err = 0;
 
-    if ((M1->m != M2->m) || (M1->n != M2->n)) {
+    if ((M1->m != M2->m) || (M1->n != M2->n))
+    {
         printf("[TREEQP]: Error! Matrices do not have the same dimensions ");
         printf("(%d x %d) vs (%d x %d)\n", M1->m, M1->n, M2->m, M2->n);
         exit(1);
     }
-    for (ii = 0; ii < M1->m; ii++) {
-        for (jj = 0; jj < M1->n; jj++) {
+    for (int ii = 0; ii < M1->m; ii++)
+    {
+        for (int jj = 0; jj < M1->n; jj++)
+        {
             err = MAX(ABS(DMATEL_LIBSTR(M1, ii, jj) - DMATEL_LIBSTR(M2, ii, jj)), err);
         }
     }
-    if (err > 0) {
+    if (err > 0)
+    {
         printf("[TREEQP]: Error! Matrices are different (error = %2.2e)\n", err);
         exit(1);
     }
@@ -254,19 +294,23 @@ double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2) {
 }
 
 
-double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2) {
-    int ii;
+
+double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
+{
     double err = 0;
 
-    if (V1->m != V2->m) {
+    if (V1->m != V2->m)
+    {
         printf("[TREEQP]: Error! Vectors do not have the same dimensions ");
         printf("(%d x 1) vs (%d x 1)\n", V1->m, V2->m);
         exit(1);
     }
-    for (ii = 0; ii < V1->m; ii++) {
+    for (int ii = 0; ii < V1->m; ii++)
+    {
         err = MAX(ABS(DVECEL_LIBSTR(V1, ii) - DVECEL_LIBSTR(V2, ii)), err);
     }
-    if (err > 0) {
+    if (err > 0)
+    {
         printf("[TREEQP]: Error! Vectors are different (error = %2.2e)\n", err);
         blasfeo_print_tran_dvec(V1->m, V1, 0);
         blasfeo_print_tran_dvec(V2->m, V2, 0);
@@ -276,13 +320,20 @@ double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2) {
 }
 
 
-answer_t iblasfeo_smat_diagonal(struct blasfeo_dmat *M) {
+
+// TODO(dimitris): weird name, probably edited by change_name.sh?
+answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
+{
     answer_t ans = YES;
     assert(M->m == M->n);
-    for (int ii = 0; ii < M->m; ii++) {
-        for (int jj = 0; jj < M->n; jj++) {
-            if (ii != jj) {
-                if (DMATEL_LIBSTR(M, ii, jj) != 0) {
+    for (int ii = 0; ii < M->m; ii++)
+    {
+        for (int jj = 0; jj < M->n; jj++)
+        {
+            if (ii != jj)
+            {
+                if (DMATEL_LIBSTR(M, ii, jj) != 0)
+                {
                     ans = NO;
                 }
             }
@@ -292,11 +343,16 @@ answer_t iblasfeo_smat_diagonal(struct blasfeo_dmat *M) {
 }
 
 
-answer_t iblasfeo_smat_zero(struct blasfeo_dmat *M) {
+
+answer_t is_strmat_zero(struct blasfeo_dmat *M)
+{
     answer_t ans = YES;
-    for (int ii = 0; ii < M->m; ii++) {
-        for (int jj = 0; jj < M->n; jj++) {
-            if (DMATEL_LIBSTR(M, ii, jj) != 0) {
+    for (int ii = 0; ii < M->m; ii++)
+    {
+        for (int jj = 0; jj < M->n; jj++)
+        {
+            if (DMATEL_LIBSTR(M, ii, jj) != 0)
+            {
                 ans = NO;
             }
         }
@@ -304,7 +360,10 @@ answer_t iblasfeo_smat_zero(struct blasfeo_dmat *M) {
     return ans;
 }
 
-void print_blasfeo_target() {
+
+
+void print_blasfeo_target()
+{
     printf("\n");
     #if defined(LA_HIGH_PERFORMANCE)
     printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");

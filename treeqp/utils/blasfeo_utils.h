@@ -45,9 +45,6 @@ void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v);
 void convert_strmats_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat);
 void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat);
 
-void init_blasfeo_memory(int memorySize, char **ptr);
-void clean_blasfeo_memory(char **ptr);
-
 void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr);
 void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr);
 
@@ -66,8 +63,8 @@ void create_double_ptr_int(int ***arr, int m, int n, char **ptr);
 double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2);
 double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2);
 
-answer_t iblasfeo_smat_diagonal(struct blasfeo_dmat *M);
-answer_t iblasfeo_smat_zero(struct blasfeo_dmat *M);
+answer_t is_strmat_diagonal(struct blasfeo_dmat *M);
+answer_t is_strmat_zero(struct blasfeo_dmat *M);
 
 void print_blasfeo_target();
 
