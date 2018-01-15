@@ -1558,7 +1558,7 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
     #endif
 
     // struct pointers
-    bytes += 6*Nn*sizeof(struct blasfeo_dmat);  // Q, R, q, r, Qinv, Rinv
+    bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // Q, R, q, r, Qinv, Rinv
     bytes += 2*(Ns-1)*sizeof(struct blasfeo_dmat);  // JayD, CholJayD
     bytes += 2*(Ns-2)*sizeof(struct blasfeo_dmat);  // JayL, CholJayL
     bytes += 2*Ns*sizeof(struct blasfeo_dmat);  // Ut, K
@@ -1811,7 +1811,6 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     }
     free(processedNodes);
 
-    // TODO(dimitris): calculate_size returns bigger size than required
     assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) - c_ptr);
