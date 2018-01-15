@@ -1463,15 +1463,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->cmod = (real_t *) c_ptr;
     c_ptr += Nn*sizeof(real_t);
 
-    #ifdef  RUNTIME_CHECKS
-    char *ptrStart = (char *) ptr;
-    char *ptrEnd = c_ptr;
-    int_t bytes = treeqp_tdunes_calculate_size(qp_in);
-    assert(ptrEnd <= ptrStart + bytes);
+    assert((char *)ptr + treeqp_tdunes_calculate_size(qp_in) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    //     ptr, c_ptr, (char *)ptr + treeqp_tdunes_calculate_size(qp_in) - c_ptr);
     // exit(1);
-    #endif
 }
 
 

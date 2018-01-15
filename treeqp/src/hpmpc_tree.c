@@ -24,6 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -270,15 +271,11 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     c_ptr += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,
         (int *) qp_in->nx, (int *) qp_in->nu, work->nb, work->ng);
 
-    #ifdef  RUNTIME_CHECKS
-    char *ptrStart = (char *) ptr;
-    char *ptrEnd = c_ptr;
-    int_t bytes = treeqp_hpmpc_calculate_size(qp_in, opts);
-    assert(ptrEnd <= ptrStart + bytes);
+
+    assert((char *)ptr + treeqp_hpmpc_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    //     ptr, c_ptr, (char *)ptr + treeqp_hpmpc_calculate_size(qp_in, opts) - c_ptr);
     // exit(1);
-    #endif
 }
 
 int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,

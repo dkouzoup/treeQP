@@ -161,15 +161,11 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
         init_strvec(nu[idx], (struct blasfeo_dvec *) &qp_in->umin[idx], &c_ptr);
         init_strvec(nu[idx], (struct blasfeo_dvec *) &qp_in->umax[idx], &c_ptr);
     }
-#ifdef  RUNTIME_CHECKS
-    char *ptrStart = (char *) ptr;
-    char *ptrEnd = c_ptr;
-    int_t bytes = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
-    assert(ptrEnd <= ptrStart + bytes);
+
+    assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree) - c_ptr);
     // exit(1);
-#endif
 }
 
 
@@ -216,15 +212,11 @@ void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_
         init_strvec(nx[kk], &qp_out->mu_x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->mu_u[kk], &c_ptr);
     }
-#ifdef  RUNTIME_CHECKS
-    char *ptrStart = (char *) ptr;
-    char *ptrEnd = c_ptr;
-    int_t bytes = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
-    assert(ptrEnd <= ptrStart + bytes);
+
+    assert((char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) - c_ptr);
     // exit(1);
-#endif
 }
 
 
@@ -691,22 +683,20 @@ void tree_ocp_qp_in_set_constant_bounds(real_t *xmin, real_t *xmax, real_t *umin
     tree_ocp_qp_in *qp_in) {
 
     int_t Nn = qp_in->N;
+    int_t nx = qp_in->nx[1];
+    int_t nu = qp_in->nu[0];
 
     struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *)qp_in->xmin;
     struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *)qp_in->xmax;
     struct blasfeo_dvec *sumin = (struct blasfeo_dvec *)qp_in->umin;
     struct blasfeo_dvec *sumax = (struct blasfeo_dvec *)qp_in->umax;
 
-    #ifdef RUNTIME_CHECKS
-        int_t nx = qp_in->nx[1];
-        int_t nu = qp_in->nu[0];
-        for (int_t ii = 0; ii < Nn; ii++) {
-            assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
-            assert(sxmax[ii].m == qp_in->nx[ii]);
-            assert(qp_in->nu[ii] == nu || qp_in->nu[ii] == 0);
-            assert(sumax[ii].m == qp_in->nu[ii]);
-        }
-    #endif
+    for (int_t ii = 0; ii < Nn; ii++) {
+        assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
+        assert(sxmax[ii].m == qp_in->nx[ii]);
+        assert(qp_in->nu[ii] == nu || qp_in->nu[ii] == 0);
+        assert(sumax[ii].m == qp_in->nu[ii]);
+    }
 
     for (int_t ii = 0; ii < Nn; ii++) {
         blasfeo_pack_dvec(sxmin[ii].m, xmin, &sxmin[ii], 0);

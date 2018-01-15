@@ -31,9 +31,7 @@
 #ifdef PARALLEL
 #include <omp.h>
 #endif
-#ifdef RUNTIME_CHECKS
 #include <assert.h>
-#endif
 
 // TODO(dimitris): Check if merging all loops wrt scenarios improves openmp siginficantly
 
@@ -1843,15 +1841,10 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     }
     free(processedNodes);
 
-#ifdef  RUNTIME_CHECKS
-    char *ptrStart = (char *) ptr;
-    char *ptrEnd = c_ptr;
-    int_t bytes = treeqp_dune_scenarios_calculate_size(qp_in);
-    assert(ptrEnd <= ptrStart + bytes);
+    assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptrStart, ptrEnd, ptrStart + bytes - ptrEnd);
+    //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) - c_ptr);
     // exit(1);
-#endif
 }
 
 
