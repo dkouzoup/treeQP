@@ -33,7 +33,7 @@ OBJS += treeqp/src/dual_Newton_tree.o
 OBJS += treeqp/src/hpmpc_tree.o
 OBJS += treeqp/utils/blasfeo_utils.o
 OBJS += treeqp/utils/profiling.o
-OBJS += treeqp/utils/tree_utils.o
+OBJS += treeqp/utils/tree.o
 OBJS+= treeqp/utils/utils.o
 OBJS += treeqp/utils/timing.o
 

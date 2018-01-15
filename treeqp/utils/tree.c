@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "treeqp/utils/tree_utils.h"
+#include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 

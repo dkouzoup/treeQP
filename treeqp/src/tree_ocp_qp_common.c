@@ -31,7 +31,7 @@
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/blasfeo_utils.h"
-#include "treeqp/utils/tree_utils.h"
+#include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 
 #include "blasfeo/include/blasfeo_target.h"
