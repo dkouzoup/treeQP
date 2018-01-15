@@ -1525,7 +1525,8 @@ real_t calculate_error_in_residuals(int_t Ns, int_t Nh, termination_t condition,
 }
 
 
-int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
+int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
+{
     struct node *tree = (struct node *) qp_in->tree;
     int_t nx = qp_in->nx[1];
     int_t nu = qp_in->nu[0];
@@ -1623,8 +1624,8 @@ int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in) {
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, Nh*nx);  // Ut
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, nu*Nr);  // K
 
-    bytes = (bytes + 63)/64*64;  // make multiple of typical cache line size
-    bytes += 64;  // align to typical cache line size
+    make_int_multiple_of(64, &bytes);
+    bytes += 1*64;
 
     return bytes;
 }
@@ -1776,9 +1777,7 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     #endif
 
     // move pointer for proper alignment of blasfeo matrices and vectors
-    long long l_ptr = (long long) c_ptr;
-	l_ptr = (l_ptr+63)/64*64;
-	c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
     init_strvec(maxTmpDim, work->regMat, &c_ptr);
     blasfeo_dvecse(maxTmpDim, opts->regValue, work->regMat, 0);
@@ -1841,6 +1840,7 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *
     }
     free(processedNodes);
 
+    // TODO(dimitris): calculate_size returns bigger size than required
     assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) - c_ptr);

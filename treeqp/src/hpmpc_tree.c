@@ -178,7 +178,7 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
     bytes += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn,
         (struct node *) qp_in->tree, (int *) qp_in->nx, (int *) qp_in->nu, nb, ng);
 
-    bytes = (bytes + 63)/64*64;
+    make_int_multiple_of(64, &bytes);
     bytes += 2*64;
 
     free(nb);
@@ -239,10 +239,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
-    // TODO(dimitris): put in a function and use size_t
-    long long l_ptr = (long long) c_ptr;
-    l_ptr = (l_ptr+63)/64*64;
-    c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
     for (int_t ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
@@ -263,9 +260,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     c_ptr += 5*opts->maxIter*sizeof(double);
 
     // TODO(dimitris): Maybe realign not needed
-    l_ptr = (long long) c_ptr;
-    l_ptr = (l_ptr+63)/64*64;
-    c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
     work->internal = (void *) c_ptr;
     c_ptr += d_tree_ip2_res_mpc_hard_work_space_size_bytes_libstr(Nn, tree,

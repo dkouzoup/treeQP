@@ -73,8 +73,8 @@ int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node 
         bytes += 2*blasfeo_memsize_dvec(nu[idx]);  // umin, umax
     }
 
-    bytes = (bytes + 63)/64*64;
-    bytes += 64;
+    make_int_multiple_of(64, &bytes);
+    bytes += 1*64;
 
     return bytes;
 }
@@ -135,9 +135,7 @@ void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree, tr
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
     // align pointer
-    long long l_ptr = (long long) c_ptr;
-	l_ptr = (l_ptr+63)/64*64;
-	c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
     int_t idx, idxp;
     for (int_t ii = 0; ii < Nn; ii++) {
@@ -178,8 +176,8 @@ int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu) {
         bytes += 2*blasfeo_memsize_dvec(nu[kk]);  // u, mu_u
     }
 
-    bytes = (bytes + 63)/64*64;
-    bytes += 64;
+    make_int_multiple_of(64, &bytes);
+    bytes += 0*64;
 
     return bytes;
 }
@@ -201,9 +199,7 @@ void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_
     qp_out->mu_u = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    long long l_ptr = (long long) c_ptr;
-	l_ptr = (l_ptr+63)/64*64;
-	c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
     for (int_t kk = 0; kk < Nn; kk++) {
         init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);

@@ -1261,8 +1261,8 @@ int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         }
     }
 
-    bytes = (bytes + 63)/64*64;
-    bytes += 64;
+    make_int_multiple_of(64, &bytes);
+    bytes += 1*64;
 
     return bytes;
 }
@@ -1396,11 +1396,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     #endif
 
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
-    long long l_ptr = (long long) c_ptr;
-    l_ptr = (l_ptr+63)/64*64;
-    c_ptr = (char *) l_ptr;
+    align_char_to(64, &c_ptr);
 
-    // TODO(dimitris): asserts for mem. alignment
     init_strvec(regDim, work->regMat, &c_ptr);
     blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
 
