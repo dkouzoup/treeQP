@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 #include "treeqp/flags.h"
-#include "treeqp/utils/profiling_utils.h"
+#include "treeqp/utils/profiling.h"
 #include "treeqp/utils/utils.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/timing.h"
