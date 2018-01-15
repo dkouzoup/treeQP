@@ -39,12 +39,12 @@ Interesting simulations so far:
 
 - less oscillations with treeMPC (2 masses, 1 control):
 
-    real_t Pmin = -5;
-    real_t Pmax = 2.7;
-    real_t Vmin = -10;
-    real_t Vmax = 10;
-    real_t Fmin = -100;
-    real_t Fmax = 100;
+    double Pmin = -5;
+    double Pmax = 2.7;
+    double Vmin = -10;
+    double Vmax = 10;
+    double Fmin = -100;
+    double Fmax = 100;
 
     x0[0] = 0;
     x0[1] = 2;

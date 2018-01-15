@@ -41,22 +41,22 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 typedef struct treeqp_tdunes_workspace_ {
-    int_t Nn;
-    int_t Np;
+    int Nn;
+    int Np;
 
-    int_t *npar;  // 1 x Nh: number of parallel factorizations per stage
-    int_t *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
+    int *npar;  // 1 x Nh: number of parallel factorizations per stage
+    int *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
 
     stage_qp_t *qp_solver;  // 1 x Nn: type of stage QP solver
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    int_t *xasChanged;  // 1 x Nn
-    int_t *uasChanged;  // 1 x Nn
-    int_t *blockChanged;  // 1 x Np
+    int *xasChanged;  // 1 x Nn
+    int *uasChanged;  // 1 x Nn
+    int *blockChanged;  // 1 x Np
     #endif
 
-    real_t *fval;  // 1 x Nn
-    real_t *cmod;  // 1 x Nn
+    double *fval;  // 1 x Nn
+    double *cmod;  // 1 x Nn
 
     struct blasfeo_dvec *sQ;  // 1 x Nn
     struct blasfeo_dvec *sR;  // 1 x Nn
@@ -101,11 +101,11 @@ typedef struct treeqp_tdunes_workspace_ {
 
 typedef struct {
     // iterations
-    int_t maxIter;
-    int_t lineSearchMaxIter;
+    int maxIter;
+    int lineSearchMaxIter;
 
     // numerical tolerances
-    real_t stationarityTolerance;
+    double stationarityTolerance;
 
     // termination condition options
     termination_t termCondition;
@@ -113,27 +113,27 @@ typedef struct {
     // regularization options
     // TODO(dimitris): implement on-the-gly regularization option!
     regType_t regType;
-    // real_t regTol;
-    real_t regValue;
+    // double regTol;
+    double regValue;
 
     // line search options
-    real_t lineSearchGamma;
-    real_t lineSearchBeta;
+    double lineSearchGamma;
+    double lineSearchBeta;
 } treeqp_tdunes_options_t;
 
 treeqp_tdunes_options_t treeqp_tdunes_default_options(void);
 
-int_t treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
+int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
 
 void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     treeqp_tdunes_workspace *work, void *ptr);
 
-void treeqp_tdunes_set_dual_initialization(real_t *lambda, treeqp_tdunes_workspace *work);
+void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work);
 
-int_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work);
 
-void write_solution_to_txt(tree_ocp_qp_in *qp_in, int_t Np, int_t iter, struct node *tree,
+void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree,
     treeqp_tdunes_workspace *work);
 
 #ifdef __cplusplus

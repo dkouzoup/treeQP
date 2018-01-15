@@ -33,7 +33,7 @@ void treeqp_tic(treeqp_timer* t) {
     t->tic = mach_absolute_time();
 }
 
-real_t treeqp_toc(treeqp_timer* t) {
+double treeqp_toc(treeqp_timer* t) {
     uint64_t duration; /* elapsed time in clock cycles*/
 
     t->toc = mach_absolute_time();
@@ -44,7 +44,7 @@ real_t treeqp_toc(treeqp_timer* t) {
     duration *= t->tinfo.numer;
     duration /= t->tinfo.denom;
 
-    return (real_t)duration / 1e9;
+    return (double)duration / 1e9;
 }
 #else
 void treeqp_tic(treeqp_timer* t) {
@@ -52,7 +52,7 @@ void treeqp_tic(treeqp_timer* t) {
     gettimeofday(&t->tic, 0);
 }
 
-real_t treeqp_toc(treeqp_timer* t) {
+double treeqp_toc(treeqp_timer* t) {
     struct timeval temp;
 
     gettimeofday(&t->toc, 0);
@@ -65,6 +65,6 @@ real_t treeqp_toc(treeqp_timer* t) {
         temp.tv_usec = t->toc.tv_usec - t->tic.tv_usec;
     }
 
-    return (real_t)temp.tv_sec + (real_t)temp.tv_usec / 1e6;
+    return (double)temp.tv_sec + (double)temp.tv_usec / 1e6;
 }
 #endif

@@ -42,30 +42,30 @@ extern "C" {
 // total cpu time and ls iterations
 #if PROFILE > 0
 treeqp_timer tot_tmr;
-real_t total_time;
-real_t min_total_time;
-int_t total_ls_iter;
+double total_time;
+double min_total_time;
+int total_ls_iter;
 #endif
 
 // + cputime and ls iterations per iteration
 #if PROFILE > 1
 treeqp_timer iter_tmr;
-real_t iter_times[kMax];
-real_t min_iter_times[kMax];
-int_t ls_iters[kMax];
+double iter_times[kMax];
+double min_iter_times[kMax];
+int ls_iters[kMax];
 #endif
 
 // + time per key operation per iteration
 #if PROFILE > 2
 treeqp_timer tmr;
-real_t stage_qps_times[kMax];
-real_t min_stage_qps_times[kMax];
-real_t build_dual_times[kMax];
-real_t min_build_dual_times[kMax];
-real_t newton_direction_times[kMax];
-real_t min_newton_direction_times[kMax];
-real_t line_search_times[kMax];
-real_t min_line_search_times[kMax];
+double stage_qps_times[kMax];
+double min_stage_qps_times[kMax];
+double build_dual_times[kMax];
+double min_build_dual_times[kMax];
+double newton_direction_times[kMax];
+double min_newton_direction_times[kMax];
+double line_search_times[kMax];
+double min_line_search_times[kMax];
 #endif
 
 #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
@@ -73,14 +73,14 @@ real_t min_line_search_times[kMax];
 // + finer profiling per key operation per iteration
 #if PROFILE > 3
 treeqp_timer sub_tmr;
-real_t xopt_times[kMax];
-real_t min_xopt_times[kMax];
-real_t uopt_times[kMax];
-real_t min_uopt_times[kMax];
-real_t Zbar_times[kMax];
-real_t min_Zbar_times[kMax];
-real_t Lambda_blocks_times[kMax];
-real_t min_Lambda_blocks_times[kMax];
+double xopt_times[kMax];
+double min_xopt_times[kMax];
+double uopt_times[kMax];
+double min_uopt_times[kMax];
+double Zbar_times[kMax];
+double min_Zbar_times[kMax];
+double Lambda_blocks_times[kMax];
+double min_Lambda_blocks_times[kMax];
 #endif
 
 #endif  // TREEQP_DUAL_NEWTON_SCENARIOS
@@ -88,15 +88,15 @@ real_t min_Lambda_blocks_times[kMax];
 // + temporary profiling for debugging purposes
 #if PROFILE >  4
 treeqp_timer tmp_tmr;
-real_t tmp_time;
+double tmp_time;
 #endif
 
 void initialize_timers(void);
 #if PROFILE > 3
-void reset_accumulative_timers(int_t iter);
+void reset_accumulative_timers(int iter);
 #endif
-void update_min_timers(int_t iter);
-void print_timers(int_t newtonIter);
+void update_min_timers(int iter);
+void print_timers(int newtonIter);
 void write_timers_to_txt(void);
 
 #ifdef __cplusplus

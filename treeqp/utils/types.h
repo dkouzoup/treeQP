@@ -32,8 +32,10 @@
 extern "C" {
 #endif
 
-typedef double real_t;
 typedef unsigned int uint;
+
+// TODO(dimitris): remove those definitions (exist in code generated files of fault tol. example)
+typedef double real_t;
 typedef int int_t;
 
 // Boolean answer

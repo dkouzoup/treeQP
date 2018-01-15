@@ -32,8 +32,8 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 
-int_t calculate_number_of_nodes(int_t md, int_t Nr, int_t Nh) {
-    int_t n_nodes;
+int calculate_number_of_nodes(int md, int Nr, int Nh) {
+    int n_nodes;
     if (md == 1)  // i.e. standard block-banded structure
         n_nodes = Nh+1;
     else
@@ -42,9 +42,9 @@ int_t calculate_number_of_nodes(int_t md, int_t Nr, int_t Nh) {
 }
 
 
-int_t get_number_of_parent_nodes(int_t Nn, struct node *tree) {
-    int_t kk;
-    int_t Np = 0;
+int get_number_of_parent_nodes(int Nn, struct node *tree) {
+    int kk;
+    int Np = 0;
 
     for (kk = 0; kk < Nn; kk++) {
         if (tree[kk].nkids > 0) Np++;
@@ -53,9 +53,9 @@ int_t get_number_of_parent_nodes(int_t Nn, struct node *tree) {
 }
 
 
-int_t get_robust_horizon(int_t Nn, struct node *tree) {
-    int_t kk;
-    int_t Nr = 0;
+int get_robust_horizon(int Nn, struct node *tree) {
+    int kk;
+    int Nr = 0;
 
     for (kk = 0; kk < Nn; kk++) {
         if (tree[kk].nkids > 1) {
@@ -70,7 +70,7 @@ int_t get_robust_horizon(int_t Nn, struct node *tree) {
 
 
 void print_node(struct node *tree) {
-    int_t ii;
+    int ii;
     printf("\n");
     printf("idx    = \t%d\n", tree[0].idx);
     printf("dad    = \t%d\n", tree[0].dad);
@@ -87,9 +87,9 @@ void print_node(struct node *tree) {
 }
 
 
-void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
+void setup_tree(int Nn, int *nkids, struct node *tree) {
     // initialize nodes to 'unassigned'
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         tree[ii].stage = -1;
         tree[ii].real = -1;
     }
@@ -101,17 +101,17 @@ void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
     tree[0].idxkid = 0;
 
     // set up tree
-    int_t idxkids;
-    for (int_t ii = 0; ii < Nn; ii++) {
+    int idxkids;
+    for (int ii = 0; ii < Nn; ii++) {
 
         tree[ii].nkids = nkids[ii];
         if (nkids[ii] > 0) {
-            tree[ii].kids = (int_t *) malloc(nkids[ii]*sizeof(int_t));
+            tree[ii].kids = (int *) malloc(nkids[ii]*sizeof(int));
         }
 
         // identify where children nodes start
         idxkids = 0;
-        for (int_t jj = ii; jj < Nn; jj++) {
+        for (int jj = ii; jj < Nn; jj++) {
             if (tree[jj].stage == -1) {
                 idxkids = jj;
                 break;
@@ -119,7 +119,7 @@ void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
         }
 
         // assign data to children nodes
-        for (int_t jj = idxkids; jj < idxkids + nkids[ii]; jj++) {
+        for (int jj = idxkids; jj < idxkids + nkids[ii]; jj++) {
             tree[ii].kids[jj - idxkids] = jj;
             tree[jj].idx = jj;
             tree[jj].dad = ii;
@@ -130,9 +130,9 @@ void setup_tree(int_t Nn, int_t *nkids, struct node *tree) {
 }
 
 
-void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
-    int_t ii;
-    int_t idx, dad, stage, real, nkids, idxkid;
+void setup_multistage_tree(int md, int Nr, int Nh, int Nn, struct node *tree) {
+    int ii;
+    int idx, dad, stage, real, nkids, idxkid;
     // root
     idx = 0;
     dad = -1;
@@ -151,7 +151,7 @@ void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *
     tree[idx].nkids = nkids;
     tree[idx].idxkid = 0;
     if (nkids > 0) {
-        tree[idx].kids = (int_t *) malloc(nkids*sizeof(int_t));
+        tree[idx].kids = (int *) malloc(nkids*sizeof(int));
         if (nkids > 1) {
             for (ii = 0; ii < nkids; ii++) {
                 idxkid = ii+1;
@@ -181,7 +181,7 @@ void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *
         tree[idx].stage = stage;
         tree[idx].nkids = nkids;
         if (nkids > 0) {
-            tree[idx].kids = (int_t *) malloc(nkids*sizeof(int_t));
+            tree[idx].kids = (int *) malloc(nkids*sizeof(int));
             if (nkids > 1) {
                 for (ii = 0; ii < nkids; ii++) {
                     idxkid = tree[idx-1].kids[tree[idx-1].nkids-1]+ii+1;
@@ -202,8 +202,8 @@ void setup_multistage_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *
 }
 
 
-void free_tree(int_t Nn, struct node *tree) {
-    for (int_t ii = 0; ii < Nn; ii++) {
+void free_tree(int Nn, struct node *tree) {
+    for (int ii = 0; ii < Nn; ii++) {
         if (tree[ii].nkids > 0) {
             free(tree[ii].kids);
         }
@@ -211,9 +211,9 @@ void free_tree(int_t Nn, struct node *tree) {
 }
 
 // TODO(dimitris): Check with valgrind that new version is equivalent and then delete code below
-// void free_tree(int_t md, int_t Nr, int_t Nh, int_t Nn, struct node *tree) {
-//     int_t ii;
-//     int_t idx, dad, stage, real, nkids, idxkid;
+// void free_tree(int md, int Nr, int Nh, int Nn, struct node *tree) {
+//     int ii;
+//     int idx, dad, stage, real, nkids, idxkid;
 //     // root
 //     idx = 0;
 //     dad = -1;

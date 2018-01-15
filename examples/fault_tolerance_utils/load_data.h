@@ -37,26 +37,26 @@ extern "C" {
 
 // data of one pruned tree
 typedef struct input_data_ {
-    int_t Nn;
-    int_t *nc;
-    int_t *nx;
-    int_t *nu;
+    int Nn;
+    int *nc;
+    int *nx;
+    int *nu;
 
-    real_t *A;
-    real_t *B;
-    real_t *b;
+    double *A;
+    double *B;
+    double *b;
 
-    real_t *Qd;
-    real_t *Rd;
-    real_t *q;
-    real_t *r;
+    double *Qd;
+    double *Rd;
+    double *q;
+    double *r;
 } input_data;
 
 // simulation data of one spring configuration
 typedef struct sim_data_ {
-    real_t *A;
-    real_t *B;
-    real_t *b;
+    double *A;
+    double *B;
+    double *b;
 } sim_data;
 
 input_data *load_data( );
@@ -65,11 +65,11 @@ input_data *load_nominal_data( );
 
 sim_data *load_sim_data( );
 
-int_t get_number_of_realizations( );
-int_t get_number_of_trees( );
-int_t get_nx( );
-int_t get_nu( );
-real_t *get_ptr_transition_matrix( );
+int get_number_of_realizations( );
+int get_number_of_trees( );
+int get_nx( );
+int get_nu( );
+double *get_ptr_transition_matrix( );
 
 #ifdef __cplusplus
 }  /* extern "C" */

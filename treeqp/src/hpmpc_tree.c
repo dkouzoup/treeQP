@@ -59,12 +59,12 @@ treeqp_hpmpc_options_t treeqp_hpmpc_default_options() {
 }
 
 
-int_t number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax) {
-    int_t nb = 0;
-    int_t n = vmin->m;
+int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax) {
+    int nb = 0;
+    int n = vmin->m;
     assert(vmin->m == vmax->m);
 
-    for (int_t ii = 0; ii < n; ii++) {
+    for (int ii = 0; ii < n; ii++) {
         if (DVECEL_LIBSTR(vmin, ii) > -INF ||
             DVECEL_LIBSTR(vmax, ii) < INF) {
             nb += 1;
@@ -74,11 +74,11 @@ int_t number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dve
 }
 
 
-int_t get_size_idxb(tree_ocp_qp_in *qp_in) {
-    int_t size = 0;
-    int_t Nn = qp_in->N;
+int get_size_idxb(tree_ocp_qp_in *qp_in) {
+    int size = 0;
+    int Nn = qp_in->N;
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         size += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii]);
         size += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii]);
     }
@@ -88,9 +88,9 @@ int_t get_size_idxb(tree_ocp_qp_in *qp_in) {
 
 
 void setup_nb(tree_ocp_qp_in *qp_in, int *nb) {
-    int_t Nn = qp_in->N;
+    int Nn = qp_in->N;
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         nb[ii] = 0;
         nb[ii] += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii]);
         nb[ii] += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii]);
@@ -99,20 +99,20 @@ void setup_nb(tree_ocp_qp_in *qp_in, int *nb) {
 
 
 void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb) {
-    int_t Nn = qp_in->N;
-    int_t kk;
+    int Nn = qp_in->N;
+    int kk;
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         nb[ii] = 0;
         kk = 0;
-        for (int_t jj = 0; jj < qp_in->nu[ii]; jj++) {
+        for (int jj = 0; jj < qp_in->nu[ii]; jj++) {
             if (DVECEL_LIBSTR(&qp_in->umin[ii], jj) > -INF ||
                 DVECEL_LIBSTR(&qp_in->umax[ii], jj) < INF) {
                 nb[ii] += 1;
                 idxb[ii][kk++] = jj;
             }
         }
-        for (int_t jj = 0; jj < qp_in->nx[ii]; jj++) {
+        for (int jj = 0; jj < qp_in->nx[ii]; jj++) {
             if (DVECEL_LIBSTR(&qp_in->xmin[ii], jj) > -INF ||
                 DVECEL_LIBSTR(&qp_in->xmax[ii], jj) < INF) {
                 nb[ii] += 1;
@@ -125,29 +125,29 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb) {
 
 
 void setup_ng(tree_ocp_qp_in *qp_in, int *ng) {
-    int_t Nn = qp_in->N;
+    int Nn = qp_in->N;
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         ng[ii] = 0;  // TODO(dimitris): update once polyhedral constraints are supported
     }
 }
 
 
-int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts) {
-    int_t bytes = 0;
-    int_t Nn = qp_in->N;
-    int_t idxp;
+int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts) {
+    int bytes = 0;
+    int Nn = qp_in->N;
+    int idxp;
 
     // TODO(dimitris): can we avoid memory allocation in here?
-    int_t *nb = (int_t *)malloc(Nn*sizeof(int_t));
-    int_t *ng = (int_t *)malloc(Nn*sizeof(int_t));
+    int *nb = (int *)malloc(Nn*sizeof(int));
+    int *ng = (int *)malloc(Nn*sizeof(int));
     setup_nb(qp_in, nb);
     setup_ng(qp_in, ng);
 
     bytes += 2*Nn*sizeof(int);  // nb, ng
 
-    bytes += Nn*sizeof(int_t*);  // idxb
-    bytes += get_size_idxb(qp_in)*sizeof(int_t);
+    bytes += Nn*sizeof(int*);  // idxb
+    bytes += get_size_idxb(qp_in)*sizeof(int);
 
     bytes += 3*Nn*sizeof(struct blasfeo_dvec);  // sux, slam, sst
 
@@ -157,7 +157,7 @@ int_t treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t 
     bytes += Nn*sizeof(struct blasfeo_dmat);  // sDCt
     bytes += Nn*sizeof(struct blasfeo_dvec);  // sd
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         bytes += blasfeo_memsize_dvec(qp_in->nx[ii] + qp_in->nu[ii]);  // sux
         bytes += 2*blasfeo_memsize_dvec(2*nb[ii] + 2*ng[ii]);  // slam, sst
 
@@ -192,8 +192,8 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     treeqp_hpmpc_workspace *work, void *ptr) {
 
     struct node *tree = (struct node *) qp_in->tree;
-    int_t Nn = qp_in->N;
-    int_t idxp;
+    int Nn = qp_in->N;
+    int idxp;
 
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -201,7 +201,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     // double pointers
     work->idxb = (int **) c_ptr;
     c_ptr += Nn*sizeof(int *);
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         work->idxb[ii] = (int *) c_ptr;
         c_ptr += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii])*sizeof(int);
         c_ptr += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii])*sizeof(int);
@@ -241,7 +241,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     align_char_to(64, &c_ptr);
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         init_strvec(qp_in->nx[ii] + qp_in->nu[ii], &work->sux[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
@@ -273,12 +273,12 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     // exit(1);
 }
 
-int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_hpmpc_options_t *opts, treeqp_hpmpc_workspace *work) {
 
-    int_t Nn = qp_in->N;
-    int_t *nx = (int_t *)qp_in->nx;
-    int_t *nu = (int_t *)qp_in->nu;
+    int Nn = qp_in->N;
+    int *nx = (int *)qp_in->nx;
+    int *nu = (int *)qp_in->nu;
 
     treeqp_timer solver_tmr, interface_tmr;
 
@@ -294,11 +294,11 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
 
     // convert input to HPMPC format
-    int_t idxp, idxb;
+    int idxp, idxb;
 
     treeqp_tic(&interface_tmr);
 
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
 
         // TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
         blasfeo_dgecp(nu[ii], nu[ii], &sR[ii], 0, 0, &work->sRSQrq[ii], 0, 0);
@@ -314,7 +314,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             blasfeo_drowin(nx[ii], 1.0, &sb[ii-1], 0, &work->sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
         }
 
-        for (int_t jj = 0; jj < work->nb[ii]; jj++) {
+        for (int jj = 0; jj < work->nb[ii]; jj++) {
             idxb = work->idxb[ii][jj];
             if (idxb < nu[ii]) {
                 DVECEL_LIBSTR(&work->sd[ii], jj) = DVECEL_LIBSTR(&qp_in->umin[ii], idxb);
@@ -330,7 +330,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tic(&solver_tmr);
 
     // solve QP
-    int_t status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
+    int status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
             nx, nu, work->nb, work->idxb, work->ng, work->sBAbt, work->sRSQrq, work->sDCt, work->sd,
             work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
@@ -341,7 +341,7 @@ int_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tic(&interface_tmr);
 
     // TODO(dimitris): COPY ALSO MULTIPLIERS!
-    for (int_t ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++) {
         blasfeo_dveccp(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
         blasfeo_dveccp(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
     }

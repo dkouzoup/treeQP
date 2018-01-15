@@ -39,17 +39,17 @@ extern "C" {
 
 // info returned by solver
 typedef struct {
-    int_t iter;
-    real_t solver_time;
-    real_t interface_time;
+    int iter;
+    double solver_time;
+    double interface_time;
 } treeqp_info_t;
 
 
 // input to solver
 typedef struct {
-    int_t N;  // TODO(dimitris): think again about convention of N and N+1
-    const int_t *nx;
-    const int_t *nu;
+    int N;  // TODO(dimitris): think again about convention of N and N+1
+    const int *nx;
+    const int *nu;
     const struct blasfeo_dmat *A;
     const struct blasfeo_dmat *B;
     const struct blasfeo_dvec *b;
@@ -65,9 +65,9 @@ typedef struct {
     const struct node *tree;
 } tree_ocp_qp_in;
 
-int_t tree_ocp_qp_in_calculate_size(int_t Nn, int_t *nx, int_t *nu, struct node *tree);
+int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, struct node *tree);
 
-void create_tree_ocp_qp_in(int_t Nn, int_t *nx, int_t *nu, struct node *tree,
+void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree,
     tree_ocp_qp_in *qp_in, void *ptr);
 
 // output of solver
@@ -80,18 +80,18 @@ typedef struct {
     struct blasfeo_dvec *mu_u;  // multipliers of input bounds
 } tree_ocp_qp_out;
 
-int_t tree_ocp_qp_out_calculate_size(int_t Nn, int_t *nx, int_t *nu);
+int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu);
 
-void create_tree_ocp_qp_out(int_t Nn, int_t *nx, int_t *nu, tree_ocp_qp_out *qp_out, void *ptr);
+void create_tree_ocp_qp_out(int Nn, int *nx, int *nu, tree_ocp_qp_out *qp_out, void *ptr);
 
-real_t maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+double maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
-void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, real_t *res);
-real_t max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res);
+double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
-int_t number_of_states(tree_ocp_qp_in *qp_in);
-int_t number_of_controls(tree_ocp_qp_in *qp_in);
-int_t number_of_primal_variables(tree_ocp_qp_in *qp_in);
+int number_of_states(tree_ocp_qp_in *qp_in);
+int number_of_controls(tree_ocp_qp_in *qp_in);
+int number_of_primal_variables(tree_ocp_qp_in *qp_in);
 
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 
@@ -99,17 +99,17 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_dynamics_colmajor(real_t *A, real_t *B, real_t *b, tree_ocp_qp_in *qp_in);
+void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_objective_diag(real_t *Qd, real_t *Rd, real_t *q, real_t *r,
+void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, double *r,
     tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_set_constant_bounds(real_t *xmin, real_t *xmax, real_t *umin, real_t *umax,
+void tree_ocp_qp_in_set_constant_bounds(double *xmin, double *xmax, double *umin, double *umax,
     tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, real_t *x0);
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
 
 void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath);
 

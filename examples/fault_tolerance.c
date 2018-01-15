@@ -46,20 +46,20 @@
 
 #include "examples/fault_tolerance_utils/load_data.h"
 
-real_t random_real( ) {
-    return (real_t) rand() / (real_t) RAND_MAX;
+double random_real( ) {
+    return (double) rand() / (double) RAND_MAX;
 }
 
 
-int_t sample_from_markov_chain(real_t *transition_matrix, int_t curr_state, int_t n_realizations) {
+int sample_from_markov_chain(double *transition_matrix, int curr_state, int n_realizations) {
 
-    real_t *matrix_row = &transition_matrix[curr_state*n_realizations];
+    double *matrix_row = &transition_matrix[curr_state*n_realizations];
 
-    real_t u = random_real( );
-    real_t accsum = 0;
-    int_t next_state;
+    double u = random_real( );
+    double accsum = 0;
+    int next_state;
 
-    for (int_t ii = 0; ii < n_realizations; ii++) {
+    for (int ii = 0; ii < n_realizations; ii++) {
         accsum += matrix_row[ii];
         // printf("i = %d, accsum = %2.2e, number = %2.2e, accsum >= u = %d\n", ii, accsum, u, accsum >= u);
         if (accsum >= u) {
@@ -71,19 +71,19 @@ int_t sample_from_markov_chain(real_t *transition_matrix, int_t curr_state, int_
 }
 
 
-real_t calculate_closed_loop_objective(int_t MPCsteps, int_t nx, int_t nu, real_t *Q, real_t *q,
-    real_t *R, real_t *r, real_t *states, real_t *controls) {
+double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, double *q,
+    double *R, double *r, double *states, double *controls) {
 
-    real_t obj = 0;
-    real_t xj, uj;
+    double obj = 0;
+    double xj, uj;
 
     // NOTE(dimitris): Q, R are assumed constant and diagonal. x0 does not contribute to cost.
-    for (int_t ii = 0; ii < MPCsteps; ii++) {
-        for (int_t jj = 0; jj < nx; jj++) {
+    for (int ii = 0; ii < MPCsteps; ii++) {
+        for (int jj = 0; jj < nx; jj++) {
             xj = states[(ii+1)*nx + jj];
             obj += xj*Q[jj]*xj + xj*q[jj];
         }
-        for (int_t jj = 0; jj < nu; jj++) {
+        for (int jj = 0; jj < nu; jj++) {
             uj = controls[ii*nu + jj];
             obj += uj*R[jj]*xj + uj*r[jj];
         }
@@ -92,10 +92,10 @@ real_t calculate_closed_loop_objective(int_t MPCsteps, int_t nx, int_t nu, real_
 }
 
 
-int_t main() {
+int main() {
 
     // define simulation length and number of considered trees
-    int_t MPCsteps = 100;
+    int MPCsteps = 100;
 
     // read code generated data
     sim_data *sim = load_sim_data();
@@ -107,27 +107,27 @@ int_t main() {
         input_data *data = load_data();
     #endif
 
-    int_t nx = get_nx();
-    int_t nu = get_nu();
-    int_t n_masses = nx/2;
-    int_t n_realizations = get_number_of_realizations();
-    real_t *transition_matrix = get_ptr_transition_matrix( );
+    int nx = get_nx();
+    int nu = get_nu();
+    int n_masses = nx/2;
+    int n_realizations = get_number_of_realizations();
+    double *transition_matrix = get_ptr_transition_matrix( );
 
     // set up bounds and initial condition for closed loop simulation
-    real_t *x0 = calloc(nx, sizeof(real_t));
-    real_t *xmin = malloc(nx*sizeof(real_t));
-    real_t *xmax = malloc(nx*sizeof(real_t));
-    real_t *umin = malloc(nx*sizeof(real_t));
-    real_t *umax = malloc(nx*sizeof(real_t));
+    double *x0 = calloc(nx, sizeof(double));
+    double *xmin = malloc(nx*sizeof(double));
+    double *xmax = malloc(nx*sizeof(double));
+    double *umin = malloc(nx*sizeof(double));
+    double *umax = malloc(nx*sizeof(double));
 
-    real_t Pmin = -3;
-    real_t Pmax = 2.5;
-    real_t Vmin = -8;
-    real_t Vmax = 8;
-    real_t Fmin = -10;
-    real_t Fmax = 10;
+    double Pmin = -3;
+    double Pmax = 2.5;
+    double Vmin = -8;
+    double Vmax = 8;
+    double Fmin = -10;
+    double Fmax = 10;
 
-    for (int_t ii = 0; ii < nx; ii++) {
+    for (int ii = 0; ii < nx; ii++) {
         if (ii < nx/2) {
             xmin[ii] = Pmin;
             xmax[ii] = Pmax;
@@ -137,24 +137,24 @@ int_t main() {
         }
     }
 
-    for (int_t ii = 0; ii < n_masses; ii++) {
+    for (int ii = 0; ii < n_masses; ii++) {
         x0[ii] = 0;
         x0[n_masses+ii] = 0;
     }
 
-    for (int_t ii = 0; ii < nu; ii++) {
+    for (int ii = 0; ii < nu; ii++) {
         umin[ii] = Fmin;
         umax[ii] = Fmax;
     }
 
     treeqp_timer timer;
 
-    real_t *stateTrajectory = malloc(nx*(MPCsteps+1)*sizeof(real_t));
-    real_t *inputTrajectory = malloc(nu*MPCsteps*sizeof(real_t));
-    real_t *cpuTimes = malloc(MPCsteps*sizeof(real_t));
-    real_t *spring_configs = malloc((MPCsteps+1)*sizeof(real_t));
+    double *stateTrajectory = malloc(nx*(MPCsteps+1)*sizeof(double));
+    double *inputTrajectory = malloc(nu*MPCsteps*sizeof(double));
+    double *cpuTimes = malloc(MPCsteps*sizeof(double));
+    double *spring_configs = malloc((MPCsteps+1)*sizeof(double));
 
-    for (int_t jj = 0; jj < nx; jj++) {
+    for (int jj = 0; jj < nx; jj++) {
         stateTrajectory[jj] = x0[jj];
     }
 
@@ -179,9 +179,9 @@ int_t main() {
     tree_ocp_qp_out *qp_outs = malloc(n_realizations*sizeof(tree_ocp_qp_out));
     void **qp_out_memories = malloc(n_realizations*sizeof(void*));
 
-    int_t size;
+    int size;
 
-    for (int_t ii = 0; ii < n_realizations; ii++) {
+    for (int ii = 0; ii < n_realizations; ii++) {
         // create solver only if tree has been generated for this configuration
         if (data[ii].Nn != -1) {
             //set up tree
@@ -209,11 +209,11 @@ int_t main() {
         }
     }
 
-    real_t err;
-    real_t *A, *B, *b;
+    double err;
+    double *A, *B, *b;
 
-    int_t mpc_config = n_realizations-1;
-    int_t sim_config = n_realizations-1;
+    int mpc_config = n_realizations-1;
+    int sim_config = n_realizations-1;
 
     // NOTE(dimitris): get rid of first random number which gives too low probability
     random_real( );
@@ -221,7 +221,7 @@ int_t main() {
     spring_configs[0] = sim_config;
 
     // MPC loop
-    for (int_t tt = 0; tt < MPCsteps; tt++) {
+    for (int tt = 0; tt < MPCsteps; tt++) {
 
         // solve QP
         treeqp_tic(&timer);
@@ -229,7 +229,7 @@ int_t main() {
         cpuTimes[tt] = treeqp_toc(&timer);
 
         // run some sanity checks
-        for (int_t jj = 0; jj < nx; jj++) {
+        for (int jj = 0; jj < nx; jj++) {
             assert(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) == x0[jj]);
         }
         assert(qp_outs[mpc_config].info.iter < opts.maxIter && "maximum number of iterations reached");
@@ -245,12 +245,12 @@ int_t main() {
         A = sim[sim_config].A;
         B = sim[sim_config].B;
         b = sim[sim_config].b;
-        for (int_t ii = 0; ii < nx; ii++) {
+        for (int ii = 0; ii < nx; ii++) {
             x0[ii] = b[ii];
-            for (int_t jj = 0; jj < nx; jj++) {
+            for (int jj = 0; jj < nx; jj++) {
                 x0[ii] += A[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj);
             }
-            for (int_t jj = 0; jj < nu; jj++)
+            for (int jj = 0; jj < nu; jj++)
                 x0[ii] += B[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
         }
 
@@ -267,15 +267,15 @@ int_t main() {
 
 
         // save state and input trajectories
-        for (int_t jj = 0; jj < nx; jj++) {
+        for (int jj = 0; jj < nx; jj++) {
             stateTrajectory[jj + (tt+1)*nx] = x0[jj];
         }
-        for (int_t jj = 0; jj < nu; jj++) {
+        for (int jj = 0; jj < nu; jj++) {
             inputTrajectory[jj + tt*nu] = DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
         }
 
         // update bound on x0
-        for (int_t ii = 0; ii < n_realizations; ii++) {
+        for (int ii = 0; ii < n_realizations; ii++) {
             if (data[ii].Nn != -1) {
                 tree_ocp_qp_in_set_x0_bounds(&qp_ins[ii], x0);
             }
@@ -292,11 +292,11 @@ int_t main() {
     }
 
     // print some results
-    real_t *Q = data[mpc_config].Qd;
-    real_t *q = data[mpc_config].q;
-    real_t *R = data[mpc_config].Rd;
-    real_t *r = data[mpc_config].r;
-    real_t obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
+    double *Q = data[mpc_config].Qd;
+    double *q = data[mpc_config].q;
+    double *R = data[mpc_config].Rd;
+    double *r = data[mpc_config].r;
+    double obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
         stateTrajectory, inputTrajectory);
 
     printf("\nClosed loop objective: %f\n\n", obj);
@@ -322,7 +322,7 @@ int_t main() {
     }
 
     // free allocated memory
-    for (int_t ii = 0; ii < n_realizations; ii++) {
+    for (int ii = 0; ii < n_realizations; ii++) {
         if (data[ii].Nn != -1) {
             free_tree(data[ii].Nn, forest[ii]);
             free(forest[ii]);

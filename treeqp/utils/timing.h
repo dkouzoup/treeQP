@@ -51,6 +51,6 @@ typedef struct treeqp_timer_ {
 #endif
 
 void treeqp_tic(treeqp_timer* t);
-real_t treeqp_toc(treeqp_timer* t);
+double treeqp_toc(treeqp_timer* t);
 
 #endif  /* TREEQP_UTILS_TIMING_H_ */

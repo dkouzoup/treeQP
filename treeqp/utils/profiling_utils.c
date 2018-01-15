@@ -39,7 +39,7 @@
 void initialize_timers(void) {
     total_time = 0.0/0.0;
     #if PROFILE > 1
-    int_t ii;
+    int ii;
     for (ii = 0; ii < kMax; ii++) {
         iter_times[ii] = 0.0/0.0;
         ls_iters[ii] = 0;
@@ -66,7 +66,7 @@ void initialize_timers(void) {
 }
 
 #if PROFILE > 3
-void reset_accumulative_timers(int_t iter) {
+void reset_accumulative_timers(int iter) {
     #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
     xopt_times[iter] = 0.0;
     uopt_times[iter] = 0.0;
@@ -77,8 +77,8 @@ void reset_accumulative_timers(int_t iter) {
 #endif
 
 
-void update_min_timers(int_t iter) {
-    int_t ii;
+void update_min_timers(int iter) {
+    int ii;
     if (iter == 0) {
         min_total_time = total_time;
     } else {
@@ -140,8 +140,8 @@ void update_min_timers(int_t iter) {
 }
 
 
-void print_timers(int_t newtonIter) {
-    int_t jj;
+void print_timers(int newtonIter) {
+    int jj;
 
     #if DEBUG == 1
     printf("\n!!! WARNING: detailed DEBUG is on, timings are inaccurate !!!\n\n");
@@ -171,11 +171,11 @@ void print_timers(int_t newtonIter) {
     #if PROFILE > 2
     printf("\nTimings per operation:\n\n");
 
-    real_t sum_stage_qps_times = 0.;
-    real_t sum_build_dual_times = 0.;
-    real_t sum_newton_direction_times = 0.;
-    real_t sum_line_search_times = 0.;
-    real_t sum_all = 0.;
+    double sum_stage_qps_times = 0.;
+    double sum_build_dual_times = 0.;
+    double sum_newton_direction_times = 0.;
+    double sum_line_search_times = 0.;
+    double sum_all = 0.;
     for (jj = 0; jj < newtonIter; jj++) {
         sum_stage_qps_times += min_stage_qps_times[jj];
         sum_build_dual_times += min_build_dual_times[jj];
@@ -206,11 +206,11 @@ void print_timers(int_t newtonIter) {
     #if PROFILE > 3
     #if ALG == TREEQP_DUAL_NEWTON_SCENARIOS
     printf("\nTimings per sub-operation:\n\n");
-    real_t sum_xopt_times = 0.;
-    real_t sum_uopt_times = 0.;
-    real_t sum_Zbar_times = 0.;
-    real_t sum_Lambda_blocks_times = 0.;
-    real_t sum_stage_qps_detailed_times = 0.;
+    double sum_xopt_times = 0.;
+    double sum_uopt_times = 0.;
+    double sum_Zbar_times = 0.;
+    double sum_Lambda_blocks_times = 0.;
+    double sum_stage_qps_detailed_times = 0.;
     for (jj = 0; jj < newtonIter; jj++) {
         sum_xopt_times += min_xopt_times[jj];
         sum_uopt_times += min_uopt_times[jj];

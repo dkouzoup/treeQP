@@ -41,20 +41,20 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 typedef struct treeqp_sdunes_workspace_ {
-    int_t Ns;  // number of scenarios
-    int_t Nh;  // prediction horizon
-    int_t Nr;  // robust horizon
-    int_t md;  // number of realizations
+    int Ns;  // number of scenarios
+    int Nh;  // prediction horizon
+    int Nr;  // robust horizon
+    int md;  // number of realizations
 
-    int_t **nodeIdx;  // tree index of scenario nodes [Ns*(Nh+1)]
-    int_t **boundsRemoved;  // flag to check if bounds of subsystem are removed
+    int **nodeIdx;  // tree index of scenario nodes [Ns*(Nh+1)]
+    int **boundsRemoved;  // flag to check if bounds of subsystem are removed
     #ifdef _CHECK_LAST_ACTIVE_SET_
-    int_t **xasChanged;  // binary variables to denote an AS change since last iteration
-    int_t **uasChanged;
+    int **xasChanged;  // binary variables to denote an AS change since last iteration
+    int **uasChanged;
     #endif
 
-    int_t *commonNodes;  // common between neighboring scenarios [Ns-1]
-    real_t *fvals;  // dual function value for each subsystem [Ns]
+    int *commonNodes;  // common between neighboring scenarios [Ns-1]
+    double *fvals;  // dual function value for each subsystem [Ns]
 
     struct blasfeo_dvec *regMat;
 
@@ -112,42 +112,42 @@ typedef struct treeqp_sdunes_workspace_ {
 // Options of QP solver
 typedef struct {
     // iterations
-    int_t maxIter;
-    int_t lineSearchMaxIter;
+    int maxIter;
+    int lineSearchMaxIter;
 
     // numerical tolerances
-    real_t stationarityTolerance;
+    double stationarityTolerance;
 
     // termination condition options
     termination_t termCondition;
 
     // regularization options
     regType_t regType;
-    real_t regTol;  // tolerance for on-the-fly regularization // TODO(dimitris): implement for tree
-    real_t regValue;
+    double regTol;  // tolerance for on-the-fly regularization // TODO(dimitris): implement for tree
+    double regValue;
 
     // line search options
-    real_t lineSearchGamma;
-    real_t lineSearchBeta;
+    double lineSearchGamma;
+    double lineSearchBeta;
 } treeqp_dune_options_t;  // TODO(dimitris): rename to treeqp_sdunes_options_t
 
 
-int_t treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);
+int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);
 
 void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
     treeqp_sdunes_workspace *work, void *ptr);
 
-int_t treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_dune_options_t *opts, treeqp_sdunes_workspace *work);
 
-int_t calculate_dimension_of_lambda(int_t Nr, int_t md, int_t nu);
+int calculate_dimension_of_lambda(int Nr, int md, int nu);
 
-void treeqp_sdunes_set_dual_initialization(real_t *lam, real_t *mu, treeqp_sdunes_workspace *work);
+void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdunes_workspace *work);
 
 void check_compiler_flags();
 
-void write_scenarios_solution_to_txt(int_t Ns, int_t Nh, int_t Nr, int_t md, int_t nx, int_t nu,
-    int_t NewtonIter, treeqp_sdunes_workspace *work);
+void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int nu,
+    int NewtonIter, treeqp_sdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

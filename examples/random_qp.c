@@ -55,14 +55,14 @@ int main() {
 
     struct node *tree = malloc(Nn*sizeof(struct node));
     setup_tree(Nn, nc, tree);
-    // for (int_t ii = 0; ii < Nn; ii++) {
+    // for (int ii = 0; ii < Nn; ii++) {
     //     print_node(&tree[ii]);
     // }
 
     // set up QP data
     tree_ocp_qp_in qp_in;
 
-    int_t qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
     void *qp_in_memory = malloc(qp_in_size);
     create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
 
@@ -87,14 +87,14 @@ int main() {
 
     treeqp_tdunes_workspace work;
 
-    int_t treeqp_size = treeqp_tdunes_calculate_size(&qp_in);
+    int treeqp_size = treeqp_tdunes_calculate_size(&qp_in);
     void *qp_solver_memory = malloc(treeqp_size);
     create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
 
     // set up QP solution
     tree_ocp_qp_out qp_out;
 
-    int_t qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
     void *qp_out_memory = malloc(qp_out_size);
     create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
 
@@ -109,9 +109,9 @@ int main() {
     #endif
 
     // TODO(dimitris): print_ocp_qp_out function
-    int_t indx = 0;
-    int_t indu = 0;
-    for (int_t ii = 0; ii < qp_in.N; ii++) {
+    int indx = 0;
+    int indu = 0;
+    for (int ii = 0; ii < qp_in.N; ii++) {
         printf("--------\n");
         printf(" Node %d\n", ii);
         printf("--------\n");
