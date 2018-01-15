@@ -51,16 +51,16 @@ treeqp_static: $(DEPS)
 
 blasfeo_static:
 	( cd external/blasfeo; $(MAKE) static_library CC=$(CC) LA=$(BLASFEO_VERSION) TARGET=$(BLASFEO_TARGET) )
-	mkdir -p include/blasfeo
+	#mkdir -p include/blasfeo
 	mkdir -p lib
-	cp external/blasfeo/include/*.h include/blasfeo
+	#cp external/blasfeo/include/*.h include/blasfeo
 	cp external/blasfeo/lib/libblasfeo.a lib
 
 hpmpc_static: blasfeo_static
 	( cd external/hpmpc; $(MAKE) static_library CC=$(CC) TARGET=$(HPMPC_TARGET) BLASFEO_PATH=$(TOP)/external/blasfeo )
-	mkdir -p include/hpmpc
+	#mkdir -p include/hpmpc
 	mkdir -p lib
-	cp external/hpmpc/include/*.h include/hpmpc
+	#cp external/hpmpc/include/*.h include/hpmpc
 	cp external/hpmpc/libhpmpc.a lib
 
 examples: treeqp_static
