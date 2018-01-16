@@ -64,14 +64,18 @@
 
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
-treeqp_tdunes_options_t treeqp_tdunes_default_options(void) {
-
+treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
+{
     treeqp_tdunes_options_t opts;
     termination_t cond = TREEQP_INFNORM;
 
     opts.maxIter = 100;
     opts.termCondition = cond;
     opts.stationarityTolerance = 1.0e-12;
+
+    // TODO(dimitris): replace with calculate_size/create for args
+    opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -117,24 +121,18 @@ static void setup_idxpos(tree_ocp_qp_in *qp_in, int *idxpos) {
 }
 
 
-static void setup_stage_qp_solvers(tree_ocp_qp_in *qp_in, stage_qp_t *qp_solver) {
-    // TODO(dimitris): add checks on polyhedral constraints
-    for (int kk = 0; kk < qp_in->N; kk++) {
-        qp_solver[kk] = TREEQP_CLIPPING_SOLVER;
+static answer_t is_clipping_solver_applicable(tree_ocp_qp_in *qp_in, int node_index)
+{
+    answer_t ans = YES;
 
-        if (is_strmat_diagonal((struct blasfeo_dmat *)&qp_in->Q[kk]) == NO) {
-            qp_solver[kk] = TREEQP_DENSE_SOLVER;
-        }
-        if (is_strmat_diagonal((struct blasfeo_dmat *)&qp_in->R[kk]) == NO) {
-            qp_solver[kk] = TREEQP_DENSE_SOLVER;
-        }
-        if (is_strmat_zero((struct blasfeo_dmat *)&qp_in->S[kk]) == NO) {
-            qp_solver[kk] = TREEQP_DENSE_SOLVER;
-        }
-        // printf("stage QP solver [%d] : %d\n", kk, qp_solver[kk]);
+    if (is_strmat_diagonal(&qp_in->Q[node_index]) == NO)
+    {
+        ans = NO;
     }
-    // printf("\nclipping:\t%d\ndense:\t\t%d\n", TREEQP_CLIPPING_SOLVER, TREEQP_DENSE_SOLVER);
+
+    return ans;
 }
+
 
 
 static int maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
@@ -1298,7 +1296,19 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     work->qp_solver = (stage_qp_t *) c_ptr;
     c_ptr += Nn*sizeof(stage_qp_t);
-    setup_stage_qp_solvers(qp_in, work->qp_solver);
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
+        {
+            if (is_clipping_solver_applicable(qp_in, ii) == NO)
+            {
+                printf("[TREEQP]: Error! Specified stage QP solver (clipping) not applicable.\n");
+                exit(1);
+            }
+        }
+    }
+    // setup_stage_qp_solvers(qp_in, opts, work->qp_solver);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->xasChanged = (int *) c_ptr;

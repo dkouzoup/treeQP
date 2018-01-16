@@ -159,7 +159,12 @@ int main() {
     }
 
     // set up QP solver options
-    treeqp_tdunes_options_t opts;
+    int max_Nn = data[0].Nn;
+    for (int ii = 1; ii < n_realizations; ii++)
+    {
+        if (data[ii].Nn > max_Nn) max_Nn = data[ii].Nn;
+    }
+    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(max_Nn);
 
     opts.maxIter = 200;
     opts.termCondition = TREEQP_INFNORM;

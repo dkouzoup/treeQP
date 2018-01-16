@@ -53,39 +53,6 @@
 
 #include "examples/spring_mass_utils/data.c"
 
-treeqp_dune_options_t set_default_options(void) {
-    treeqp_dune_options_t opts;
-    termination_t cond = TREEQP_INFNORM;
-
-    #ifdef READ_OPTIONS_FROM_C_FILE
-    opts.maxIter = iterNEWTON;
-    opts.termCondition = cond;
-    opts.stationarityTolerance = termNEWTON;
-
-    opts.lineSearchMaxIter = maxIterLS;
-    opts.lineSearchGamma = gammaLS;
-    opts.lineSearchBeta = betaLS;
-
-    opts.regType  = typeREG;
-    opts.regTol   = tolREG;
-    opts.regValue = valueREG;
-    #else
-    opts.maxIter = 100;
-    opts.termCondition = cond;
-    opts.stationarityTolerance = 1.0e-12;
-
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.6;
-
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-8;
-    #endif
-
-    return opts;
-}
-
 
 int main() {
     return_t status;
@@ -94,7 +61,7 @@ int main() {
     int Nn = calculate_number_of_nodes(md, Nr, Nh);
     int Ns = ipow(md, Nr);
 
-    treeqp_dune_options_t opts = set_default_options();
+    treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
 
     check_compiler_flags();
 

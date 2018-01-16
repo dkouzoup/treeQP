@@ -50,50 +50,13 @@
 
 #include "examples/spring_mass_utils/data.c"
 
-// TODO(dimitris): check that all these options are supported for tree version
-// TODO(dimitris): put this function in common file
-treeqp_tdunes_options_t set_default_options(void) {
-    treeqp_tdunes_options_t opts;
-    termination_t cond = TREEQP_INFNORM;
-
-    #ifdef READ_OPTIONS_FROM_C_FILE
-    opts.maxIter = iterNEWTON;
-    opts.termCondition = cond;
-    opts.stationarityTolerance = termNEWTON;
-
-    opts.lineSearchMaxIter = maxIterLS;
-    opts.lineSearchGamma = gammaLS;
-    opts.lineSearchBeta = betaLS;
-
-    opts.regType  = typeREG;
-    // opts.regTol   = tolREG;
-    opts.regValue = valueREG;
-    #else
-    opts.maxIter = 100;
-    opts.termCondition = cond;
-    opts.stationarityTolerance = 1.0e-12;
-
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.6;
-
-    // TODO(dimitris): implement on the fly regularization
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    // opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-8;
-    #endif
-
-    return opts;
-}
-
-
 int main( ) {
     return_t status;
 
     int Nn = calculate_number_of_nodes(md, Nr, Nh);
     int Np = Nn - ipow(md, Nr);
 
-    treeqp_tdunes_options_t opts = set_default_options();
+    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
 
     // read initial point from txt file
     int nl = Nn*NX;

@@ -103,7 +103,7 @@ int main( ) {
         xmin, xmax, umin, umax, x0, &qp_in);
 
     // set up tree-sparse dual Newton solver
-    treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options();
+    treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);
 
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in));

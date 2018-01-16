@@ -68,7 +68,9 @@ typedef enum {
 // Stage QP solvers
 typedef enum {
     TREEQP_CLIPPING_SOLVER = 0,
-    TREEQP_DENSE_SOLVER,  // TODO(dimitris): NOT IMPLEMENTED YET
+    TREEQP_QPOASES_SOLVER,  // TODO(dimitris): qpOASES - WIP, HPIPM/QORE - NIY
+    // TREEQP_HPIPM_SOLVER,
+    // TREEQP_QORE_SOLVER,
 } stage_qp_t;
 
 // Regularization of dual Hessian

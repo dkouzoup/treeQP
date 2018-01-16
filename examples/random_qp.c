@@ -73,17 +73,11 @@ int main() {
     print_tree_ocp_qp_in(&qp_in);
 
     // set up QP solver
-    treeqp_tdunes_options_t opts;
+    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
 
-    // TODO(dimitris): move to function in solver
     opts.maxIter = 10;
-    opts.termCondition = TREEQP_INFNORM;
-    opts.stationarityTolerance = 1.0e-12;
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
     opts.lineSearchBeta = 0.8;
     opts.regType  = TREEQP_NO_REGULARIZATION;
-    opts.regValue = 0.0;
 
     treeqp_tdunes_workspace work;
 

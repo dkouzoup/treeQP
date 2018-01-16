@@ -40,7 +40,9 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
-typedef struct treeqp_sdunes_workspace_ {
+
+typedef struct treeqp_sdunes_workspace_
+{
     int Ns;  // number of scenarios
     int Nh;  // prediction horizon
     int Nr;  // robust horizon
@@ -109,8 +111,10 @@ typedef struct treeqp_sdunes_workspace_ {
 } treeqp_sdunes_workspace;
 
 
+
 // Options of QP solver
-typedef struct {
+typedef struct
+{
     // iterations
     int maxIter;
     int lineSearchMaxIter;
@@ -129,16 +133,19 @@ typedef struct {
     // line search options
     double lineSearchGamma;
     double lineSearchBeta;
-} treeqp_dune_options_t;  // TODO(dimitris): rename to treeqp_sdunes_options_t
+} treeqp_sdunes_options_t;
 
+
+
+treeqp_sdunes_options_t treeqp_sdunes_default_options();
 
 int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);
 
-void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_dune_options_t *opts,
+void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts,
     treeqp_sdunes_workspace *work, void *ptr);
 
 int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_dune_options_t *opts, treeqp_sdunes_workspace *work);
+    treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work);
 
 int calculate_dimension_of_lambda(int Nr, int md, int nu);
 
@@ -153,4 +160,4 @@ void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_SRC_DUAL_NEWTON_SCENARIOS_H_
+#endif  /* TREEQP_SRC_DUAL_NEWTON_SCENARIOS_H_ */

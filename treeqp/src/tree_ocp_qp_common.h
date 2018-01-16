@@ -48,21 +48,23 @@ typedef struct {
 // input to solver
 typedef struct {
     int N;  // TODO(dimitris): think again about convention of N and N+1
-    const int *nx;
-    const int *nu;
-    const struct blasfeo_dmat *A;
-    const struct blasfeo_dmat *B;
-    const struct blasfeo_dvec *b;
-    const struct blasfeo_dmat *Q;
-    const struct blasfeo_dmat *R;
-    const struct blasfeo_dmat *S;
-    const struct blasfeo_dvec *q;
-    const struct blasfeo_dvec *r;
-    const struct blasfeo_dvec *xmin;
-    const struct blasfeo_dvec *xmax;
-    const struct blasfeo_dvec *umin;
-    const struct blasfeo_dvec *umax;
-    const struct node *tree;
+    int *nx;
+    int *nu;
+    struct blasfeo_dmat *A;
+    struct blasfeo_dmat *B;
+    struct blasfeo_dvec *b;
+    struct blasfeo_dmat *Q;
+    struct blasfeo_dmat *R;
+    struct blasfeo_dmat *S;
+    struct blasfeo_dvec *q;
+    struct blasfeo_dvec *r;
+    struct blasfeo_dvec *xmin;
+    struct blasfeo_dvec *xmax;
+    struct blasfeo_dvec *umin;
+    struct blasfeo_dvec *umax;
+    // TODO(dimitris): add general constraints
+    // TODO(dimitris): decide on compatibility with HPIPM QP format
+    struct node *tree;
 } tree_ocp_qp_in;
 
 int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, struct node *tree);

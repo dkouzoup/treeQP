@@ -40,7 +40,9 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
-typedef struct treeqp_tdunes_workspace_ {
+
+typedef struct treeqp_tdunes_workspace_
+{
     int Nn;
     int Np;
 
@@ -99,10 +101,15 @@ typedef struct treeqp_tdunes_workspace_ {
 } treeqp_tdunes_workspace;
 
 
-typedef struct {
+
+typedef struct
+{
     // iterations
     int maxIter;
     int lineSearchMaxIter;
+
+    // solution of stage QPs (1 x Nn)
+    stage_qp_t *qp_solver;
 
     // numerical tolerances
     double stationarityTolerance;
@@ -121,7 +128,9 @@ typedef struct {
     double lineSearchBeta;
 } treeqp_tdunes_options_t;
 
-treeqp_tdunes_options_t treeqp_tdunes_default_options(void);
+
+
+treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn);
 
 int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
 
@@ -140,4 +149,4 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_SRC_DUAL_NEWTON_TREE_H_
+#endif  /* TREEQP_SRC_DUAL_NEWTON_TREE_H_ */
