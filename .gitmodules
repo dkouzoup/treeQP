@@ -4,3 +4,6 @@
 [submodule "external/hpmpc"]
 	path = external/hpmpc
 	url = https://github.com/giaf/hpmpc.git
+[submodule "external/qpoases"]
+	path = external/qpoases
+	url = https://github.com/acados/qpOASES
