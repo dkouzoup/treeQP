@@ -38,7 +38,7 @@ OBJS += treeqp/utils/timing.o
 OBJS += treeqp/utils/tree.o
 OBJS+= treeqp/utils/utils.o
 
-DEPS = blasfeo_static hpmpc_static
+DEPS = blasfeo_static hpmpc_static qpoases_static
 
 treeqp_static: $(DEPS)
 	( cd treeqp/src; $(MAKE) obj TOP=$(TOP) )
@@ -64,10 +64,17 @@ hpmpc_static: blasfeo_static
 	#cp external/hpmpc/include/*.h include/hpmpc
 	cp external/hpmpc/libhpmpc.a lib
 
+qpoases_static:
+	( cd external/qpoases; $(MAKE) src CC=$(CC) )
+	#mkdir -p include/qpoases
+	mkdir -p lib
+	#cp -r external/qpoases/include/* include/qpoases
+	cp external/qpoases/bin/libqpOASES_e.a lib/libqpoases.a
+
 examples: treeqp_static
 	( cd examples; $(MAKE) examples TOP=$(TOP) )
 
-run_examples:
+run_examples: examples
 	./examples/random_qp.out
 	./examples/spring_mass_tdunes.out
 	./examples/spring_mass_sdunes.out
@@ -83,6 +90,7 @@ clean:
 deep_clean: clean
 	( cd external/blasfeo; $(MAKE) deep_clean )
 	( cd external/hpmpc; $(MAKE) clean )
+	( cd external/qpoases; $(MAKE) clean )
 	rm -rf include
 	rm -rf lib
 
