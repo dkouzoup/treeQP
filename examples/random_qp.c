@@ -81,7 +81,7 @@ int main() {
 
     treeqp_tdunes_workspace work;
 
-    int treeqp_size = treeqp_tdunes_calculate_size(&qp_in);
+    int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
     create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
 

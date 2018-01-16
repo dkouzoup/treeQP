@@ -32,7 +32,6 @@
 #endif
 #include <assert.h>
 
-// TODO(dimitris): test variable dimensions and pruned trees
 // TODO(dimitris): VALGRIND CODE
 // TODO(dimitris): Try open MPI interface (message passing)
 // TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1)
@@ -1048,7 +1047,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     for (int kk = 0; kk < Nn; kk++) {
 
-        if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
             blasfeo_ddiaex(nx[kk], 1.0, (struct blasfeo_dmat *)&qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
             blasfeo_ddiaex(nu[kk], 1.0, (struct blasfeo_dmat *)&qp_in->R[kk], 0, 0, &work->sR[kk], 0);
 
@@ -1138,7 +1137,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             blasfeo_dveccp(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
                 &qp_out->lam[kk], 0);
         }
-        if (work->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
             // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
             blasfeo_daxpy(nx[kk], -1., &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
             blasfeo_daxpy(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
@@ -1177,7 +1176,8 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
 }
 
 
-int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
+int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts)
+{
     struct node *tree = (struct node *) qp_in->tree;
     int bytes = 0;
     int Nn = qp_in->N;
@@ -1190,7 +1190,6 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     // int pointers
     bytes += Nh*sizeof(int);  // npar
     bytes += Nn*sizeof(int);  // idxpos
-    bytes += Nn*sizeof(int);  // qp_solver
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += 2*Nn*sizeof(int);  // xasChanged, uasChanged
@@ -1222,7 +1221,8 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
     // structs
     bytes += blasfeo_memsize_dvec(regDim);  // regMat
 
-    for (int ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++)
+    {
         bytes += 4*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal, qmod
         bytes += 4*blasfeo_memsize_dvec(qp_in->nu[ii]);  // R, Rinv, RinvCal, rmod
 
@@ -1240,10 +1240,11 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
         update_M_dimensions(ii, qp_in, &rowsM, &colsM);
         bytes += blasfeo_memsize_dmat(rowsM, colsM);  // M
 
-        if (ii < Np) {
-            // NOTE(dimitris): for constant dimensions dim = tree[ii].nkids*nx
+        if (ii < Np)
+        {   // NOTE(dimitris): for constant dimensions dim = tree[ii].nkids*nx
             dim = 0;
-            for (int jj = 0; jj < tree[ii].nkids; jj++) {
+            for (int jj = 0; jj < tree[ii].nkids; jj++)
+            {
                 idxkid = tree[ii].kids[jj];
                 dim += qp_in->nx[idxkid];
             }
@@ -1254,7 +1255,8 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in) {
             bytes += 2*blasfeo_memsize_dmat(dim, dim);  // W, CholW
             #endif
             bytes += 4*blasfeo_memsize_dvec(dim);  // res, resMod, lambda, Deltalambda
-            if (ii > 0) {
+            if (ii > 0)
+            {
                 bytes += 2*blasfeo_memsize_dmat(qp_in->nx[ii], dim);  // Ut, CholUt
             }
         }
@@ -1294,9 +1296,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(int);
     setup_idxpos(qp_in, work->idxpos);
 
-    work->qp_solver = (stage_qp_t *) c_ptr;
-    c_ptr += Nn*sizeof(stage_qp_t);
-
+    // check consistency of stage QP solvers
     for (int ii = 0; ii < Nn; ii++)
     {
         if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
@@ -1308,7 +1308,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             }
         }
     }
-    // setup_stage_qp_solvers(qp_in, opts, work->qp_solver);
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     work->xasChanged = (int *) c_ptr;
@@ -1471,7 +1470,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->cmod = (double *) c_ptr;
     c_ptr += Nn*sizeof(double);
 
-    assert((char *)ptr + treeqp_tdunes_calculate_size(qp_in) >= c_ptr);
+    assert((char *)ptr + treeqp_tdunes_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + treeqp_tdunes_calculate_size(qp_in) - c_ptr);
     // exit(1);

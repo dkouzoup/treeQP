@@ -203,7 +203,7 @@ int main() {
             tree_ocp_qp_in_set_x0_bounds(&qp_ins[ii], x0);
 
             // set up QP solver
-            size = treeqp_tdunes_calculate_size(&qp_ins[ii]);
+            size = treeqp_tdunes_calculate_size(&qp_ins[ii], &opts);
             solver_memories[ii] = malloc(size);
             create_treeqp_tdunes(&qp_ins[ii], &opts, &works[ii], solver_memories[ii]);
 

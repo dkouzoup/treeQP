@@ -106,7 +106,7 @@ int main( ) {
     treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);
 
     treeqp_tdunes_workspace tdunes_work;
-    void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in));
+    void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
     create_treeqp_tdunes(&qp_in, &tdunes_opts, &tdunes_work, tdunes_memory);
 
     // set up HPMPC solver

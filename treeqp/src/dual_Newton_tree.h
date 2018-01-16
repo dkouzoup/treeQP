@@ -132,7 +132,7 @@ typedef struct
 
 treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn);
 
-int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in);
+int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts);
 
 void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     treeqp_tdunes_workspace *work, void *ptr);
