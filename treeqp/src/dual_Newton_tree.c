@@ -61,6 +61,8 @@
 #include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
+#include <qpOASES_e.h>
+
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
 treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
@@ -1200,7 +1202,19 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     bytes += 2*Nn*sizeof(double);  // fval, cmod
 
     // struct pointers
-    bytes += 8*Nn*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal, qmod, rmod
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
+        {
+            bytes += 6*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
+        }
+        else if (opts->qp_solver[ii] == TREEQP_QPOASES_SOLVER)
+        {
+            bytes += QProblemB_calculateMemorySize(qp_in->nx[ii] + qp_in->nu[ii]);
+        }
+    }
+
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // qmod, rmod
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
     #endif
@@ -1223,8 +1237,14 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 
     for (int ii = 0; ii < Nn; ii++)
     {
-        bytes += 4*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal, qmod
-        bytes += 4*blasfeo_memsize_dvec(qp_in->nu[ii]);  // R, Rinv, RinvCal, rmod
+        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
+        {
+            bytes += 3*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal
+            bytes += 3*blasfeo_memsize_dvec(qp_in->nu[ii]);  // R, Rinv, RinvCal
+        }
+
+        bytes += blasfeo_memsize_dvec(qp_in->nx[ii]);  // qmod
+        bytes += blasfeo_memsize_dvec(qp_in->nu[ii]);  // rmod
 
         bytes += 3*blasfeo_memsize_dvec(qp_in->nx[ii]);  // x, xUnc, xas
         #ifdef _CHECK_LAST_ACTIVE_SET_

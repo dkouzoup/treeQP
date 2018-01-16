@@ -34,12 +34,14 @@ OBJS += spring_mass.o
 OBJS += random_qp.o
 OBJS += fault_tolerance.o
 
+LIBS = -ltreeqp -lblasfeo -lqpoases -lm
+
 examples: $(OBJS)
-	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o spring_mass.out spring_mass.o -ltreeqp -lhpmpc -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o random_qp.out random_qp.o -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/load_data.c -ltreeqp -lblasfeo -lm $(CFLAGS) $(LDFLAGS)
+	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
+	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/load_data.c $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 clean:
 	rm -f *.o *.exe *.out

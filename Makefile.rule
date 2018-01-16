@@ -55,6 +55,7 @@ CFLAGS += -g -O0
 # Include dirs
 CFLAGS += -I$(TOP)
 CFLAGS += -I$(TOP)/external
+CFLAGS += -I$(TOP)/external/qpoases/include
 
 # Lib dirs
 LDFLAGS =
