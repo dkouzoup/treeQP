@@ -220,8 +220,9 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
                 &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
         }
 
-        // --- solve QP
-        // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
+        // --- solve QP and calculate QinvCal/RinvCal
+
+        // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)  // TODO(dimitris): TAKE CARE OF THIS WHEN IMPLEMENTING OTHER SOLVERS, SUCH AS QPOASES!!!!!!!!!!!!
         blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQinv, 0, &sqmod[kk], 0, &sxUnc[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
@@ -256,11 +257,11 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         indu += su[kk].m;
     }
     // printf("dimh = %d, indh = %d\n", dimh, indh);
-    write_double_vector_to_txt(hmod, dimh, "examples/data_spring_mass/hmod.txt");
-    write_double_vector_to_txt(xit, dimx, "examples/data_spring_mass/xit.txt");
-    write_double_vector_to_txt(uit, dimu, "examples/data_spring_mass/uit.txt");
-    write_double_vector_to_txt(QinvCal, dimx, "examples/data_spring_mass/Qinvcal.txt");
-    write_double_vector_to_txt(RinvCal, dimu, "examples/data_spring_mass/Rinvcal.txt");
+    write_double_vector_to_txt(hmod, dimh, "examples/spring_mass_utils/hmod.txt");
+    write_double_vector_to_txt(xit, dimx, "examples/spring_mass_utils/xit.txt");
+    write_double_vector_to_txt(uit, dimu, "examples/spring_mass_utils/uit.txt");
+    write_double_vector_to_txt(QinvCal, dimx, "examples/spring_mass_utils/Qinvcal.txt");
+    write_double_vector_to_txt(RinvCal, dimu, "examples/spring_mass_utils/Rinvcal.txt");
     free(hmod);
     free(xit);
     free(uit);
@@ -482,7 +483,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         blasfeo_dgemm_nd(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0,
             qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
-            // --- hessian contribution of parent (Ut)
+        // --- hessian contribution of parent (Ut)
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         if (asDadChanged && tree[idxdad].dad >= 0) {
@@ -572,9 +573,9 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             indUt += sUt[kk-1].m*sUt[kk-1].n;
         }
     }
-    write_double_vector_to_txt(res, dimres, "examples/data_spring_mass/res.txt");
-    write_double_vector_to_txt(W, dimW, "examples/data_spring_mass/W.txt");
-    write_double_vector_to_txt(Ut, dimUt, "examples/data_spring_mass/Ut.txt");
+    write_double_vector_to_txt(res, dimres, "examples/spring_mass_utils/res.txt");
+    write_double_vector_to_txt(W, dimW, "examples/spring_mass_utils/W.txt");
+    write_double_vector_to_txt(Ut, dimUt, "examples/spring_mass_utils/Ut.txt");
     #endif
 
     return TREEQP_OK;
@@ -741,7 +742,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
         blasfeo_unpack_dvec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
         indlam += sDeltalambda[kk].m;
     }
-    write_double_vector_to_txt(deltalambda, dimlam, "examples/data_spring_mass/deltalambda.txt");
+    write_double_vector_to_txt(deltalambda, dimlam, "examples/spring_mass_utils/deltalambda.txt");
     #endif
 }
 
@@ -941,10 +942,10 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         blasfeo_unpack_dvec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;
     }
-    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/lambda_opt.txt");
-    write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
-    write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
-    write_int_vector_to_txt(&lsIter, 1, "examples/data_spring_mass/lsiter.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/spring_mass_utils/lambda_opt.txt");
+    write_double_vector_to_txt(&dotProduct, 1, "examples/spring_mass_utils/dotProduct.txt");
+    write_double_vector_to_txt(&fval0, 1, "examples/spring_mass_utils/fval0.txt");
+    write_int_vector_to_txt(&lsIter, 1, "examples/spring_mass_utils/lsiter.txt");
     free(lambda);
     #endif
 
@@ -990,11 +991,11 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
         ind += slambda[kk].m;
     }
 
-    write_double_vector_to_txt(x, dimx, "examples/data_spring_mass/x_opt.txt");
-    write_double_vector_to_txt(u, dimu, "examples/data_spring_mass/u_opt.txt");
-    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/deltalambda_opt.txt");
-    write_double_vector_to_txt(lambda, dimlam, "examples/data_spring_mass/lambda_opt.txt");
-    write_int_vector_to_txt(&iter, 1, "examples/data_spring_mass/iter.txt");
+    write_double_vector_to_txt(x, dimx, "examples/spring_mass_utils/x_opt.txt");
+    write_double_vector_to_txt(u, dimu, "examples/spring_mass_utils/u_opt.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/spring_mass_utils/deltalambda_opt.txt");
+    write_double_vector_to_txt(lambda, dimlam, "examples/spring_mass_utils/lambda_opt.txt");
+    write_int_vector_to_txt(&iter, 1, "examples/spring_mass_utils/iter.txt");
 
     #if PROFILE > 0
     write_timers_to_txt();
