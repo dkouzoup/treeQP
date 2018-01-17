@@ -821,10 +821,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         }
 
         // rmod[k] = - r[k]
-        if (kk < Np) {
-            blasfeo_dveccp(nu[kk], &sr[kk], 0, &srmod[kk], 0);
-            blasfeo_dvecsc(nu[kk], -1.0, &srmod[kk], 0);
-        }
+        blasfeo_dveccp(nu[kk], &sr[kk], 0, &srmod[kk], 0);
+        blasfeo_dvecsc(nu[kk], -1.0, &srmod[kk], 0);
 
         // cmod[k] = 0
         cmod[kk] = 0.;
@@ -842,11 +840,10 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
             // qmod[k] -= A[jj]' * lambda[jj]
             blasfeo_dgemv_t(nx[idxkid], nx[idxdad], -1.0, &sA[idxkid-1], 0, 0,
                 &slambda[idxdad], idxpos, 1.0, &sqmod[kk], 0, &sqmod[kk], 0);
-            if (kk < Np) {
-                // rmod[k] -= B[jj]' * lambda[jj]
-                blasfeo_dgemv_t(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
-                    &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
-            }
+
+            // rmod[k] -= B[jj]' * lambda[jj]
+            blasfeo_dgemv_t(nx[idxkid], nu[idxdad], -1.0, &sB[idxkid-1], 0, 0,
+                &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
         }
 
         // --- solve QP
@@ -856,12 +853,10 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // x[k] = median(xmin, x[k], xmax)
         blasfeo_dveccl(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
 
-        if (kk < Np) {
-            // u[k] = R[k]^-1 .* rmod[k]
-            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &su[kk], 0);
-            // u[k] = median(umin, u[k], umax)
-            blasfeo_dveccl(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
-        }
+        // u[k] = R[k]^-1 .* rmod[k]
+        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &su[kk], 0);
+        // u[k] = median(umin, u[k], umax)
+        blasfeo_dveccl(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
 
         // --- calculate dual function term
 
@@ -872,12 +867,10 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         fvals[kk] = -0.5*blasfeo_ddot(nx[kk], &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
         fvals[kk] += blasfeo_ddot(nx[kk], &sqmod[kk], 0, &sx[kk], 0);
 
-        if (kk < Np) {
-            // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &su[kk], 0, &suas[kk], 0);
-            fvals[kk] -= 0.5*blasfeo_ddot(nu[kk], &suas[kk], 0, &su[kk], 0);
-            fvals[kk] += blasfeo_ddot(nu[kk], &srmod[kk], 0, &su[kk], 0);
-        }
+        // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
+        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &su[kk], 0, &suas[kk], 0);
+        fvals[kk] -= 0.5*blasfeo_ddot(nu[kk], &suas[kk], 0, &su[kk], 0);
+        fvals[kk] += blasfeo_ddot(nu[kk], &srmod[kk], 0, &su[kk], 0);
     }
 
     for (kk = 0; kk < Nn; kk++) fval += fvals[kk];
@@ -978,10 +971,8 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
     for (kk = 0; kk < Nn; kk++) {
         blasfeo_unpack_dvec(sx[kk].m, &sx[kk], 0, &x[indx]);
         indx += sx[kk].m;
-        if (kk < Np) {
-            blasfeo_unpack_dvec(su[kk].m, &su[kk], 0, &u[indu]);
-            indu += su[kk].m;
-        }
+        blasfeo_unpack_dvec(su[kk].m, &su[kk], 0, &u[indu]);
+        indu += su[kk].m;
     }
 
     ind = 0;
@@ -1038,8 +1029,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         blasfeo_dvecse(work->sxasPrev[kk].m, 0.0/0.0, &work->sxasPrev[kk], 0);
-        if (kk < Np)
-            blasfeo_dvecse(work->suasPrev[kk].m, 0.0/0.0, &work->suasPrev[kk], 0);
+        blasfeo_dvecse(work->suasPrev[kk].m, 0.0/0.0, &work->suasPrev[kk], 0);
         #endif
     }
 
