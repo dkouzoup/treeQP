@@ -1047,9 +1047,14 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     // ------ initialization
     treeqp_tic(&interface_tmr);
 
-    for (int kk = 0; kk < Nn; kk++) {
+    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
+    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
 
-        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
+        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER)
+        {
+            // TODO(dimitris): TO BE REMOVED!
             blasfeo_ddiaex(nx[kk], 1.0, (struct blasfeo_dmat *)&qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
             blasfeo_ddiaex(nu[kk], 1.0, (struct blasfeo_dmat *)&qp_in->R[kk], 0, 0, &work->sR[kk], 0);
 
@@ -1058,6 +1063,14 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             for (int nn = 0; nn < qp_in->nu[kk]; nn++)
                 DVECEL_LIBSTR(&work->sRinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sR[kk], nn);
 
+            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)work->stage_qp_data[kk];
+            blasfeo_ddiaex(nx[kk], 1.0, (struct blasfeo_dmat *)&qp_in->Q[kk], 0, 0, clipping_solver_data->sQ, 0);
+            blasfeo_ddiaex(nu[kk], 1.0, (struct blasfeo_dmat *)&qp_in->R[kk], 0, 0, clipping_solver_data->sR, 0);
+
+            for (int nn = 0; nn < qp_in->nx[kk]; nn++)
+                DVECEL_LIBSTR(clipping_solver_data->sQinv, nn) = 1.0/DVECEL_LIBSTR(clipping_solver_data->sQ, nn);
+            for (int nn = 0; nn < qp_in->nu[kk]; nn++)
+                DVECEL_LIBSTR(clipping_solver_data->sRinv, nn) = 1.0/DVECEL_LIBSTR(clipping_solver_data->sR, nn);
         }
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1178,6 +1191,105 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
 }
 
 
+
+static int stage_qp_calculate_size(int nx, int nu, stage_qp_t qp_solver)
+{
+    int bytes  = 0;
+
+    switch (qp_solver)
+    {
+        case TREEQP_CLIPPING_SOLVER:
+            bytes += sizeof(treeqp_tdunes_clipping_solver_data);
+            bytes += 6*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
+            bytes += 3*blasfeo_memsize_dvec(nx);  // Q, Qinv, QinvCal
+            bytes += 3*blasfeo_memsize_dvec(nu);  // R, Rinv, RinvCal
+            break;
+        case TREEQP_QPOASES_SOLVER:
+            // TODO(dimitris)
+            break;
+        default:
+            printf("[TREEQP] Error! Unknown solver.\n");
+            exit(1);
+    }
+    return bytes;
+}
+
+
+
+static void stage_qp_assign_structs(stage_qp_t qp_solver, void **stage_qp_data, char **c_double_ptr)
+{
+    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
+    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
+
+    switch (qp_solver)
+    {
+        case TREEQP_CLIPPING_SOLVER:
+
+            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)*c_double_ptr;
+            *c_double_ptr += sizeof(treeqp_tdunes_clipping_solver_data);
+
+            clipping_solver_data->sQ = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            clipping_solver_data->sR = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            clipping_solver_data->sQinv = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            clipping_solver_data->sRinv = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            clipping_solver_data->sQinvCal = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            clipping_solver_data->sRinvCal = (struct blasfeo_dvec *)*c_double_ptr;
+            *c_double_ptr += sizeof(struct blasfeo_dvec);
+
+            *stage_qp_data = (void *) clipping_solver_data;
+            break;
+        case TREEQP_QPOASES_SOLVER:
+            // TODO(dimitris)
+            break;
+        default:
+            printf("[TREEQP] Error! Unknown solver.\n");
+            exit(1);
+    }
+}
+
+
+
+// NOTE(dimitris): structs and data are assigned separately due to alignment requirements
+static void stage_qp_assign_data(int nx, int nu, stage_qp_t qp_solver,
+    void *stage_qp_data, char **c_double_ptr)
+{
+    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
+    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
+
+    switch (qp_solver)
+    {
+        case TREEQP_CLIPPING_SOLVER:
+
+            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)stage_qp_data;
+
+            init_strvec(nx, clipping_solver_data->sQ, c_double_ptr);
+            init_strvec(nu, clipping_solver_data->sR, c_double_ptr);
+            init_strvec(nx, clipping_solver_data->sQinv, c_double_ptr);
+            init_strvec(nu, clipping_solver_data->sRinv, c_double_ptr);
+            init_strvec(nx, clipping_solver_data->sQinvCal, c_double_ptr);
+            init_strvec(nu, clipping_solver_data->sRinvCal, c_double_ptr);
+            break;
+        case TREEQP_QPOASES_SOLVER:
+            // TODO(dimitris)
+            break;
+        default:
+            printf("[TREEQP] Error! Unknown solver.\n");
+            exit(1);
+    }
+}
+
+
+
 int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts)
 {
     struct node *tree = (struct node *) qp_in->tree;
@@ -1201,19 +1313,17 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     // double pointers
     bytes += 2*Nn*sizeof(double);  // fval, cmod
 
-    // struct pointers
+    // stage QP solvers
+    bytes += Nn*sizeof(void *);  // stage_qp_data
     for (int ii = 0; ii < Nn; ii++)
     {
-        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
-        {
-            bytes += 6*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
-        }
-        else if (opts->qp_solver[ii] == TREEQP_QPOASES_SOLVER)
-        {
-            bytes += QProblemB_calculateMemorySize(qp_in->nx[ii] + qp_in->nu[ii]);
-        }
+        bytes += stage_qp_calculate_size(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii]);
     }
 
+    // TODO(dimitris): TO BE REMOVED!
+    bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
+
+    // struct pointers
     bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // qmod, rmod
     #ifdef _CHECK_LAST_ACTIVE_SET_
     bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
@@ -1237,6 +1347,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 
     for (int ii = 0; ii < Nn; ii++)
     {
+        // TODO(dimitris): TO BE REMOVED!
         if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
         {
             bytes += 3*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal
@@ -1283,7 +1394,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     }
 
     make_int_multiple_of(64, &bytes);
-    bytes += 1*64;
+    bytes += 2*64;
 
     return bytes;
 }
@@ -1307,6 +1418,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     // char pointer
     char *c_ptr = (char *) ptr;
 
+    // TODO(dimitris): these destroy alignment of doubles maybe..
+
     // pointers
     work->npar = (int *) c_ptr;
     c_ptr += Nh*sizeof(int);
@@ -1316,7 +1429,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Nn*sizeof(int);
     setup_idxpos(qp_in, work->idxpos);
 
-    // check consistency of stage QP solvers
+    // stage QP solvers
+    work->stage_qp_data = (void **) c_ptr;
+    c_ptr += Nn*sizeof(void *);
+
     for (int ii = 0; ii < Nn; ii++)
     {
         if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
@@ -1327,6 +1443,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
                 exit(1);
             }
         }
+        stage_qp_assign_structs(opts->qp_solver[ii], &work->stage_qp_data[ii], &c_ptr);
     }
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1339,6 +1456,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->blockChanged = (int *) c_ptr;
     c_ptr += Np*sizeof(int);
     #endif
+
+    // TODO(dimitris): TO BE REMOVED!
 
     work->sQ = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
@@ -1428,16 +1547,33 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     align_char_to(64, &c_ptr);
 
+    // first assign blasfeo-based solvers, then the rest, and then align again
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (opts->qp_solver[ii] != TREEQP_QPOASES_SOLVER)
+            stage_qp_assign_data(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii], work->stage_qp_data[ii], &c_ptr);
+    }
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (opts->qp_solver[ii] == TREEQP_QPOASES_SOLVER)
+            stage_qp_assign_data(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii], work->stage_qp_data[ii], &c_ptr);
+    }
+
+    align_char_to(64, &c_ptr);
+
     init_strvec(regDim, work->regMat, &c_ptr);
     blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
 
-    for (int ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        // TODO(dimitris): TO BE REMOVED!
         init_strvec(qp_in->nx[ii], &work->sQ[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->sR[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->sRinv[ii], &c_ptr);
         init_strvec(qp_in->nx[ii], &work->sQinvCal[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->sRinvCal[ii], &c_ptr);
+
         init_strvec(qp_in->nx[ii], &work->sqmod[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->srmod[ii], &c_ptr);
 
@@ -1492,9 +1628,10 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     assert((char *)ptr + treeqp_tdunes_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + treeqp_tdunes_calculate_size(qp_in) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + treeqp_tdunes_calculate_size(qp_in, opts) - c_ptr);
     // exit(1);
 }
+
 
 
 // write dual initial point to workspace ( _AFTER_ creating it )

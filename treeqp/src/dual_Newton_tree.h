@@ -41,6 +41,26 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 
+typedef struct treeqp_clipping_solver_
+{
+    struct blasfeo_dvec *sQ;
+    struct blasfeo_dvec *sR;
+    struct blasfeo_dvec *sQinv;
+    struct blasfeo_dvec *sRinv;
+    struct blasfeo_dvec *sQinvCal;
+    struct blasfeo_dvec *sRinvCal;
+} treeqp_tdunes_clipping_solver_data;
+
+
+
+typedef struct treeqp_qpoases_solver_
+{
+    void *QPB;
+    void *QP;
+} treeqp_tdunes_qpoases_solver_data;
+
+
+
 typedef struct treeqp_tdunes_workspace_
 {
     int Nn;
@@ -48,8 +68,6 @@ typedef struct treeqp_tdunes_workspace_
 
     int *npar;  // 1 x Nh: number of parallel factorizations per stage
     int *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
-
-    stage_qp_t *qp_solver;  // 1 x Nn: type of stage QP solver
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     int *xasChanged;  // 1 x Nn
@@ -60,12 +78,15 @@ typedef struct treeqp_tdunes_workspace_
     double *fval;  // 1 x Nn
     double *cmod;  // 1 x Nn
 
+    void **stage_qp_data;  // 1 x Nn (double pointers to structs, struct depends on chosen solver in opts)
+
     struct blasfeo_dvec *sQ;  // 1 x Nn
     struct blasfeo_dvec *sR;  // 1 x Nn
     struct blasfeo_dvec *sQinv;  // 1 x Nn
     struct blasfeo_dvec *sRinv;  // 1 x Nn
     struct blasfeo_dvec *sQinvCal;  // 1 x Nn
     struct blasfeo_dvec *sRinvCal;  // 1 x Nn
+
     struct blasfeo_dvec *sqmod;  // 1 x Nn
     struct blasfeo_dvec *srmod;  // 1 x Nn
 
