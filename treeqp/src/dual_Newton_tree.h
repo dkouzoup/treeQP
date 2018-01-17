@@ -41,23 +41,16 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 
-typedef struct treeqp_clipping_solver_
+typedef struct
 {
-    struct blasfeo_dvec *sQ;
-    struct blasfeo_dvec *sR;
-    struct blasfeo_dvec *sQinv;
-    struct blasfeo_dvec *sRinv;
-    struct blasfeo_dvec *sQinvCal;
-    struct blasfeo_dvec *sRinvCal;
-} treeqp_tdunes_clipping_solver_data;
-
-
-
-typedef struct treeqp_qpoases_solver_
-{
-    void *QPB;
-    void *QP;
-} treeqp_tdunes_qpoases_solver_data;
+    answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int node_index);
+    int (*calculate_size)(int nx, int nu);
+    void (*assign_structs)(void **data, char **c_double_ptr);
+    void (*assign_data_aligned)(int nx, int nu, void *data, char **c_double_ptr);
+    void (*assign_data_not_aligned)(int nx, int nu, void *data, char **c_double_ptr);
+    void (*init)(tree_ocp_qp_in *qp_in, int node_index, void *work);
+    void (*solve)(void);
+} stage_qp_fcn_ptrs;
 
 
 
@@ -78,7 +71,8 @@ typedef struct treeqp_tdunes_workspace_
     double *fval;  // 1 x Nn
     double *cmod;  // 1 x Nn
 
-    void **stage_qp_data;  // 1 x Nn (double pointers to structs, struct depends on chosen solver in opts)
+    stage_qp_fcn_ptrs *stage_qp_ptrs;  // 1 x Nn (function pointers for stage qp operations)
+    void **stage_qp_data;  // 1 x Nn (double pointers to structs, struct depends on solver)
 
     struct blasfeo_dvec *sQ;  // 1 x Nn
     struct blasfeo_dvec *sR;  // 1 x Nn

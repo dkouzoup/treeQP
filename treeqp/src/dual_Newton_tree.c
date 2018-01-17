@@ -42,6 +42,8 @@
 // TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
 
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/dual_Newton_tree_clipping.h"
+#include "treeqp/src/dual_Newton_tree_qpoases.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 
 #include "treeqp/flags.h"
@@ -60,8 +62,6 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
-
-#include <qpOASES_e.h>
 
 #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
@@ -119,19 +119,6 @@ static void setup_idxpos(tree_ocp_qp_in *qp_in, int *idxpos) {
     // for (int kk = 0; kk < Nn; kk++) {
     //     printf("kk = %d, idxpos = %d\n", kk, idxpos[kk]);
     // }
-}
-
-
-static answer_t is_clipping_solver_applicable(tree_ocp_qp_in *qp_in, int node_index)
-{
-    answer_t ans = YES;
-
-    if (is_strmat_diagonal(&qp_in->Q[node_index]) == NO)
-    {
-        ans = NO;
-    }
-
-    return ans;
 }
 
 
@@ -1047,9 +1034,6 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     // ------ initialization
     treeqp_tic(&interface_tmr);
 
-    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
-    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
-
     for (int kk = 0; kk < Nn; kk++)
     {
         if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER)
@@ -1063,14 +1047,8 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             for (int nn = 0; nn < qp_in->nu[kk]; nn++)
                 DVECEL_LIBSTR(&work->sRinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sR[kk], nn);
 
-            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)work->stage_qp_data[kk];
-            blasfeo_ddiaex(nx[kk], 1.0, (struct blasfeo_dmat *)&qp_in->Q[kk], 0, 0, clipping_solver_data->sQ, 0);
-            blasfeo_ddiaex(nu[kk], 1.0, (struct blasfeo_dmat *)&qp_in->R[kk], 0, 0, clipping_solver_data->sR, 0);
 
-            for (int nn = 0; nn < qp_in->nx[kk]; nn++)
-                DVECEL_LIBSTR(clipping_solver_data->sQinv, nn) = 1.0/DVECEL_LIBSTR(clipping_solver_data->sQ, nn);
-            for (int nn = 0; nn < qp_in->nu[kk]; nn++)
-                DVECEL_LIBSTR(clipping_solver_data->sRinv, nn) = 1.0/DVECEL_LIBSTR(clipping_solver_data->sR, nn);
+            work->stage_qp_ptrs[kk].init(qp_in, kk, work);
         }
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1152,7 +1130,9 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             blasfeo_dveccp(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
                 &qp_out->lam[kk], 0);
         }
-        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER) {
+        // TODO(dimitris): move to stage_qp file
+        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER)
+        {
             // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
             blasfeo_daxpy(nx[kk], -1., &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
             blasfeo_daxpy(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
@@ -1192,98 +1172,35 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
 
 
 
-static int stage_qp_calculate_size(int nx, int nu, stage_qp_t qp_solver)
+void do_nothing(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
 {
-    int bytes  = 0;
-
-    switch (qp_solver)
-    {
-        case TREEQP_CLIPPING_SOLVER:
-            bytes += sizeof(treeqp_tdunes_clipping_solver_data);
-            bytes += 6*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
-            bytes += 3*blasfeo_memsize_dvec(nx);  // Q, Qinv, QinvCal
-            bytes += 3*blasfeo_memsize_dvec(nu);  // R, Rinv, RinvCal
-            break;
-        case TREEQP_QPOASES_SOLVER:
-            // TODO(dimitris)
-            break;
-        default:
-            printf("[TREEQP] Error! Unknown solver.\n");
-            exit(1);
-    }
-    return bytes;
+    // dummy function to replace either assign_data_aligned or assign_data_not_aligned function
 }
 
 
 
-static void stage_qp_assign_structs(stage_qp_t qp_solver, void **stage_qp_data, char **c_double_ptr)
+void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
 {
-    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
-    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
-
     switch (qp_solver)
     {
         case TREEQP_CLIPPING_SOLVER:
-
-            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)*c_double_ptr;
-            *c_double_ptr += sizeof(treeqp_tdunes_clipping_solver_data);
-
-            clipping_solver_data->sQ = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            clipping_solver_data->sR = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            clipping_solver_data->sQinv = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            clipping_solver_data->sRinv = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            clipping_solver_data->sQinvCal = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            clipping_solver_data->sRinvCal = (struct blasfeo_dvec *)*c_double_ptr;
-            *c_double_ptr += sizeof(struct blasfeo_dvec);
-
-            *stage_qp_data = (void *) clipping_solver_data;
+            ptrs->is_applicable = stage_qp_clipping_is_applicable;
+            ptrs->calculate_size = stage_qp_clipping_calculate_size;
+            ptrs->assign_structs = stage_qp_clipping_assign_structs;
+            ptrs->assign_data_aligned = stage_qp_clipping_assign_data;
+            ptrs->assign_data_not_aligned = do_nothing;
+            ptrs->init = stage_qp_clipping_init;
             break;
         case TREEQP_QPOASES_SOLVER:
-            // TODO(dimitris)
+            ptrs->is_applicable = stage_qp_qpoases_is_applicable;
+            ptrs->calculate_size = stage_qp_qpoases_calculate_size;
+            ptrs->assign_structs = stage_qp_qpoases_assign_structs;
+            ptrs->assign_data_aligned = do_nothing;
+            ptrs->assign_data_not_aligned = stage_qp_qpoases_assign_data;
+            ptrs->init = stage_qp_qpoases_init;
             break;
         default:
-            printf("[TREEQP] Error! Unknown solver.\n");
-            exit(1);
-    }
-}
-
-
-
-// NOTE(dimitris): structs and data are assigned separately due to alignment requirements
-static void stage_qp_assign_data(int nx, int nu, stage_qp_t qp_solver,
-    void *stage_qp_data, char **c_double_ptr)
-{
-    treeqp_tdunes_clipping_solver_data *clipping_solver_data;
-    treeqp_tdunes_qpoases_solver_data *qpoases_solver_data;
-
-    switch (qp_solver)
-    {
-        case TREEQP_CLIPPING_SOLVER:
-
-            clipping_solver_data = (treeqp_tdunes_clipping_solver_data *)stage_qp_data;
-
-            init_strvec(nx, clipping_solver_data->sQ, c_double_ptr);
-            init_strvec(nu, clipping_solver_data->sR, c_double_ptr);
-            init_strvec(nx, clipping_solver_data->sQinv, c_double_ptr);
-            init_strvec(nu, clipping_solver_data->sRinv, c_double_ptr);
-            init_strvec(nx, clipping_solver_data->sQinvCal, c_double_ptr);
-            init_strvec(nu, clipping_solver_data->sRinvCal, c_double_ptr);
-            break;
-        case TREEQP_QPOASES_SOLVER:
-            // TODO(dimitris)
-            break;
-        default:
-            printf("[TREEQP] Error! Unknown solver.\n");
+            printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
             exit(1);
     }
 }
@@ -1315,9 +1232,13 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 
     // stage QP solvers
     bytes += Nn*sizeof(void *);  // stage_qp_data
+    bytes += Nn*sizeof(stage_qp_fcn_ptrs);  // stage_qp_ptrs
+
+    stage_qp_fcn_ptrs stage_qp_ptrs;
     for (int ii = 0; ii < Nn; ii++)
     {
-        bytes += stage_qp_calculate_size(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii]);
+        stage_qp_set_fcn_ptrs(&stage_qp_ptrs, opts->qp_solver[ii]);
+        bytes += stage_qp_ptrs.calculate_size(qp_in->nx[ii], qp_in->nu[ii]);
     }
 
     // TODO(dimitris): TO BE REMOVED!
@@ -1400,9 +1321,10 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 }
 
 
-void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
-    treeqp_tdunes_workspace *work, void *ptr) {
 
+void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
+    treeqp_tdunes_workspace *work, void *ptr)
+{
     struct node *tree = (struct node *) qp_in->tree;
     int Nn = qp_in->N;
     int Nh = tree[Nn-1].stage;
@@ -1433,17 +1355,14 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->stage_qp_data = (void **) c_ptr;
     c_ptr += Nn*sizeof(void *);
 
+    work->stage_qp_ptrs = (stage_qp_fcn_ptrs *) c_ptr;
+    c_ptr += Nn*sizeof(stage_qp_fcn_ptrs);
+
     for (int ii = 0; ii < Nn; ii++)
     {
-        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
-        {
-            if (is_clipping_solver_applicable(qp_in, ii) == NO)
-            {
-                printf("[TREEQP]: Error! Specified stage QP solver (clipping) not applicable.\n");
-                exit(1);
-            }
-        }
-        stage_qp_assign_structs(opts->qp_solver[ii], &work->stage_qp_data[ii], &c_ptr);
+        stage_qp_set_fcn_ptrs(&work->stage_qp_ptrs[ii], opts->qp_solver[ii]);
+        work->stage_qp_ptrs[ii].is_applicable(qp_in, ii);
+        work->stage_qp_ptrs[ii].assign_structs(&work->stage_qp_data[ii], &c_ptr);
     }
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1550,13 +1469,13 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     // first assign blasfeo-based solvers, then the rest, and then align again
     for (int ii = 0; ii < Nn; ii++)
     {
-        if (opts->qp_solver[ii] != TREEQP_QPOASES_SOLVER)
-            stage_qp_assign_data(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii], work->stage_qp_data[ii], &c_ptr);
+        work->stage_qp_ptrs[ii].assign_data_aligned(qp_in->nx[ii], qp_in->nu[ii],
+            work->stage_qp_data[ii], &c_ptr);
     }
     for (int ii = 0; ii < Nn; ii++)
     {
-        if (opts->qp_solver[ii] == TREEQP_QPOASES_SOLVER)
-            stage_qp_assign_data(qp_in->nx[ii], qp_in->nu[ii], opts->qp_solver[ii], work->stage_qp_data[ii], &c_ptr);
+        work->stage_qp_ptrs[ii].assign_data_not_aligned(qp_in->nx[ii], qp_in->nu[ii],
+            work->stage_qp_data[ii], &c_ptr);
     }
 
     align_char_to(64, &c_ptr);
