@@ -74,13 +74,6 @@ typedef struct treeqp_tdunes_workspace_
     stage_qp_fcn_ptrs *stage_qp_ptrs;  // 1 x Nn (function pointers for stage qp operations)
     void **stage_qp_data;  // 1 x Nn (double pointers to structs, struct depends on solver)
 
-    struct blasfeo_dvec *sQ;  // 1 x Nn
-    struct blasfeo_dvec *sR;  // 1 x Nn
-    struct blasfeo_dvec *sQinv;  // 1 x Nn
-    struct blasfeo_dvec *sRinv;  // 1 x Nn
-    struct blasfeo_dvec *sQinvCal;  // 1 x Nn
-    struct blasfeo_dvec *sRinvCal;  // 1 x Nn
-
     struct blasfeo_dvec *sqmod;  // 1 x Nn
     struct blasfeo_dvec *srmod;  // 1 x Nn
 

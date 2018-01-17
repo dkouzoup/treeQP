@@ -147,6 +147,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
     struct node *tree = (struct node *)qp_in->tree;
 
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+
     struct blasfeo_dvec *slambda = work->slambda;
     struct blasfeo_dvec *sx = (struct blasfeo_dvec *) work->sx;
     struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
@@ -160,10 +162,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
     struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
     struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
-    struct blasfeo_dvec *sQinv = work->sQinv;
-    struct blasfeo_dvec *sRinv = work->sRinv;
-    struct blasfeo_dvec *sQinvCal = work->sQinvCal;
-    struct blasfeo_dvec *sRinvCal = work->sRinvCal;
+
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
 
@@ -223,36 +222,36 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        blasfeo_dvecmuldot(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sxUnc[kk], 0);
+        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQinv, 0, &sqmod[kk], 0, &sxUnc[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax), xas[k] = active set
         blasfeo_dveccl_mask(nx[kk], &sxmin[kk], 0, &sxUnc[kk], 0, &sxmax[kk], 0,
             &sx[kk], 0, &sxas[kk], 0);
 
         // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        blasfeo_dvecze(nx[kk], &sxas[kk], 0, &sQinv[kk], 0, &sQinvCal[kk], 0);
+        blasfeo_dvecze(nx[kk], &sxas[kk], 0, qp_data[kk]->sQinv, 0, qp_data[kk]->sQinvCal, 0);
 
         // u[k] = R[k]^-1 .* rmod[k]
-        blasfeo_dvecmuldot(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &suUnc[kk], 0);
+        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &suUnc[kk], 0);
 
         // u[k] = median(umin, u[k], umax), uas[k] = active set
         blasfeo_dveccl_mask(nu[kk], &sumin[kk], 0, &suUnc[kk], 0, &sumax[kk], 0, &su[kk], 0,
             &suas[kk], 0);
 
         // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-        blasfeo_dvecze(nu[kk], &suas[kk], 0, &sRinv[kk], 0, &sRinvCal[kk], 0);
+        blasfeo_dvecze(nu[kk], &suas[kk], 0, qp_data[kk]->sRinv, 0, qp_data[kk]->sRinvCal, 0);
     }
 
     #if DEBUG == 1
     for (int kk = 0; kk < Nn; kk++) {
         blasfeo_unpack_dvec(sqmod[kk].m, &sqmod[kk], 0, &hmod[indh]);
         blasfeo_unpack_dvec(sx[kk].m, &sx[kk], 0, &xit[indx]);
-        blasfeo_unpack_dvec(sQinvCal[kk].m, &sQinvCal[kk], 0, &QinvCal[indx]);
+        blasfeo_unpack_dvec(qp_data[kk]->sQinvCal->m, qp_data[kk]->sQinvCal, 0, &QinvCal[indx]);
         indh += sqmod[kk].m;
         indx += sx[kk].m;
         blasfeo_unpack_dvec(srmod[kk].m, &srmod[kk], 0, &hmod[indh]);
         blasfeo_unpack_dvec(su[kk].m, &su[kk], 0, &uit[indu]);
-        blasfeo_unpack_dvec(sRinvCal[kk].m, &sRinvCal[kk], 0, &RinvCal[indu]);
+        blasfeo_unpack_dvec(qp_data[kk]->sRinvCal->m, qp_data[kk]->sRinvCal, 0, &RinvCal[indu]);
         indh += srmod[kk].m;
         indu += su[kk].m;
     }
@@ -379,6 +378,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sWdiag = work->sWdiag;
     #endif
 
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+
     int Nn = work->Nn;
     int Np = work->Np;
 
@@ -386,9 +387,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
     struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
     struct node *tree = (struct node *)qp_in->tree;
-
-    struct blasfeo_dvec *sQinvCal = work->sQinvCal;
-    struct blasfeo_dvec *sRinvCal = work->sRinvCal;
 
     struct blasfeo_dvec *sx = work->sx;
     struct blasfeo_dvec *su = work->su;
@@ -481,8 +479,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         // --- intermediate result (used both for Ut and W)
 
         // M = A[k] * Qinvcal[idxdad]
-                blasfeo_dgemm_nd(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0, &sQinvCal[idxdad], 0, 0.0,
-            &sM[kk], 0, 0, &sM[kk], 0, 0);
+        blasfeo_dgemm_nd(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0,
+            qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // --- hessian contribution of parent (Ut)
 
@@ -503,15 +501,15 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
-        blasfeo_dgemm_nd(nx[kk], nu[idxdad], 1.0,  &sB[kk-1], 0, 0, &sRinvCal[idxdad], 0, 0.0,
-            &sM[kk], 0, 0, &sM[kk], 0, 0);
+        blasfeo_dgemm_nd(nx[kk], nu[idxdad], 1.0,  &sB[kk-1], 0, 0,
+            qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
         // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
         blasfeo_dsyrk_ln(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
-        blasfeo_ddiaad(nx[kk], 1.0, &sQinvCal[kk], 0, &sW[idxdad], idxpos, idxpos);
+        blasfeo_ddiaad(nx[kk], 1.0, qp_data[kk]->sQinvCal, 0, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += regMat (regularization)
         blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
@@ -534,7 +532,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
             // M = A[idxsib] * Qinvcal[idxdad]
             blasfeo_dgemm_nd(nx[idxsib], nx[idxdad], 1.0,  &sA[idxsib-1], 0, 0,
-                &sQinvCal[idxdad], 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
+                qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
             blasfeo_dgemm_nt(nx[kk], nx[idxsib], nx[idxdad], 1.0, &sA[kk-1], 0, 0,
@@ -542,7 +540,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
             // M = B[idxsib]*Rinvcal[idxdad]
             blasfeo_dgemm_nd(nx[idxsib], nu[idxdad], 1.0, &sB[idxsib-1], 0, 0,
-                &sRinvCal[idxdad], 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
+                qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
             // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
             blasfeo_dgemm_nt(nx[kk], nx[idxsib], nu[idxdad], 1.0, &sB[kk-1], 0, 0,
@@ -771,6 +769,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     int *nx = (int *)qp_in->nx;
     int *nu = (int *)qp_in->nu;
 
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+
     double *fvals = work->fval;
     double *cmod = work->cmod;
 
@@ -783,12 +783,9 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
     struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
 
-    struct blasfeo_dvec *sQ = (struct blasfeo_dvec *) work->sQ;
-    struct blasfeo_dvec *sR = (struct blasfeo_dvec *) work->sR;
     struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
     struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
-    struct blasfeo_dvec *sQinv = work->sQinv;
-    struct blasfeo_dvec *sRinv = work->sRinv;
+
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
 
@@ -853,14 +850,14 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
         // --- solve QP
         // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        blasfeo_dvecmuldot(nx[kk], &sQinv[kk], 0, &sqmod[kk], 0, &sx[kk], 0);
+        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQinv, 0, &sqmod[kk], 0, &sx[kk], 0);
 
         // x[k] = median(xmin, x[k], xmax)
         blasfeo_dveccl(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // u[k] = R[k]^-1 .* rmod[k]
-            blasfeo_dvecmuldot(nu[kk], &sRinv[kk], 0, &srmod[kk], 0, &su[kk], 0);
+            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &su[kk], 0);
             // u[k] = median(umin, u[k], umax)
             blasfeo_dveccl(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
         }
@@ -870,13 +867,13 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
         // NOTE: qmod[k] has already a minus sign
         // NOTE: xas used as workspace
-        blasfeo_dvecmuldot(nx[kk], &sQ[kk], 0, &sx[kk], 0, &sxas[kk], 0);
+        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQ, 0, &sx[kk], 0, &sxas[kk], 0);
         fvals[kk] = -0.5*blasfeo_ddot(nx[kk], &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
         fvals[kk] += blasfeo_ddot(nx[kk], &sqmod[kk], 0, &sx[kk], 0);
 
         if (kk < Np) {
             // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-            blasfeo_dvecmuldot(nu[kk], &sR[kk], 0, &su[kk], 0, &suas[kk], 0);
+            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &su[kk], 0, &suas[kk], 0);
             fvals[kk] -= 0.5*blasfeo_ddot(nu[kk], &suas[kk], 0, &su[kk], 0);
             fvals[kk] += blasfeo_ddot(nu[kk], &srmod[kk], 0, &su[kk], 0);
         }
@@ -1036,20 +1033,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     for (int kk = 0; kk < Nn; kk++)
     {
-        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER)
-        {
-            // TODO(dimitris): TO BE REMOVED!
-            blasfeo_ddiaex(nx[kk], 1.0, (struct blasfeo_dmat *)&qp_in->Q[kk], 0, 0, &work->sQ[kk], 0);
-            blasfeo_ddiaex(nu[kk], 1.0, (struct blasfeo_dmat *)&qp_in->R[kk], 0, 0, &work->sR[kk], 0);
-
-            for (int nn = 0; nn < qp_in->nx[kk]; nn++)
-                DVECEL_LIBSTR(&work->sQinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[kk], nn);
-            for (int nn = 0; nn < qp_in->nu[kk]; nn++)
-                DVECEL_LIBSTR(&work->sRinv[kk], nn) = 1.0/DVECEL_LIBSTR(&work->sR[kk], nn);
-
-
-            work->stage_qp_ptrs[kk].init(qp_in, kk, work);
-        }
+        work->stage_qp_ptrs[kk].init(qp_in, kk, work);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         blasfeo_dvecse(work->sxasPrev[kk].m, 0.0/0.0, &work->sxasPrev[kk], 0);
@@ -1122,6 +1106,8 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // ------ copy solution to qp_out
 
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+
     for (int kk = 0; kk < Nn; kk++) {
         blasfeo_dveccp(nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
         blasfeo_dveccp(nu[kk], &work->su[kk], 0, &qp_out->u[kk], 0);
@@ -1136,8 +1122,8 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
             blasfeo_daxpy(nx[kk], -1., &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
             blasfeo_daxpy(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
-            blasfeo_dvecmuldot(nx[kk], &work->sQ[kk], 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
-            blasfeo_dvecmuldot(nu[kk], &work->sR[kk], 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
+            blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQ, 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
+            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
         }
     }
     qp_out->info.iter = NewtonIter;
@@ -1241,9 +1227,6 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
         bytes += stage_qp_ptrs.calculate_size(qp_in->nx[ii], qp_in->nu[ii]);
     }
 
-    // TODO(dimitris): TO BE REMOVED!
-    bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
-
     // struct pointers
     bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // qmod, rmod
     #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1268,13 +1251,6 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 
     for (int ii = 0; ii < Nn; ii++)
     {
-        // TODO(dimitris): TO BE REMOVED!
-        if (opts->qp_solver[ii] == TREEQP_CLIPPING_SOLVER)
-        {
-            bytes += 3*blasfeo_memsize_dvec(qp_in->nx[ii]);  // Q, Qinv, QinvCal
-            bytes += 3*blasfeo_memsize_dvec(qp_in->nu[ii]);  // R, Rinv, RinvCal
-        }
-
         bytes += blasfeo_memsize_dvec(qp_in->nx[ii]);  // qmod
         bytes += blasfeo_memsize_dvec(qp_in->nu[ii]);  // rmod
 
@@ -1376,26 +1352,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     c_ptr += Np*sizeof(int);
     #endif
 
-    // TODO(dimitris): TO BE REMOVED!
-
-    work->sQ = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    work->sR = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    work->sQinv = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    work->sRinv = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    work->sQinvCal = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    work->sRinvCal = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
     work->sqmod = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
@@ -1485,14 +1441,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     for (int ii = 0; ii < Nn; ii++)
     {
-        // TODO(dimitris): TO BE REMOVED!
-        init_strvec(qp_in->nx[ii], &work->sQ[ii], &c_ptr);
-        init_strvec(qp_in->nu[ii], &work->sR[ii], &c_ptr);
-        init_strvec(qp_in->nx[ii], &work->sQinv[ii], &c_ptr);
-        init_strvec(qp_in->nu[ii], &work->sRinv[ii], &c_ptr);
-        init_strvec(qp_in->nx[ii], &work->sQinvCal[ii], &c_ptr);
-        init_strvec(qp_in->nu[ii], &work->sRinvCal[ii], &c_ptr);
-
         init_strvec(qp_in->nx[ii], &work->sqmod[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->srmod[ii], &c_ptr);
 
