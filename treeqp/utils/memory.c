@@ -67,6 +67,34 @@ int align_char_to(int num, char **c_ptr)
 
 
 
+void create_int(int n, int **v, char **ptr)
+{
+#ifdef _USE_VALGRIND_
+    *v = (int *)calloc(n, sizeof(int));
+    print_warning();
+#else
+    *v = (int *)*ptr;
+    *ptr += sizeof(int) * n;
+#endif
+}
+
+
+
+void create_double(int n, double **v, char **ptr)
+{
+    assert((size_t)*ptr % 8 == 0 && "double not 8-byte aligned!");
+
+#ifdef _USE_VALGRIND_
+    *v = (double *)calloc(n, sizeof(double));
+    print_warning();
+#else
+    *v = (double *)*ptr;
+    *ptr += sizeof(double) * n;
+#endif
+}
+
+
+
 // wrappers to blasfeo create or allocate functions
 static void create_strvec(int rows, struct blasfeo_dvec *sV, char **ptr)
 {

@@ -34,8 +34,19 @@
 
 typedef struct treeqp_qpoases_data_
 {
-    void *QP;
-    void *QPB;
+    double *H;
+    double *g;
+    double *lb;
+    double *ub;
+    double *C;
+    double *lc;
+    double *uc;
+    double *prim_sol;
+    double *dual_sol;
+    QProblemB *QPB;
+    QProblem *QP;
+    double cputime;
+    int nwsr;
 } treeqp_tdunes_qpoases_data;
 
 

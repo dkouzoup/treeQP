@@ -41,6 +41,9 @@ extern "C" {
 void make_int_multiple_of(int num, int *size);
 int align_char_to(int num, char **c_ptr);
 
+void create_int(int n, int **v, char **ptr);
+void create_double(int n, double **v, char **ptr);
+
 void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr);
 void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr);
 
