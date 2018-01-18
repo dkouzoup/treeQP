@@ -110,7 +110,8 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->assign_data_aligned = stage_qp_clipping_assign_data;
             ptrs->assign_data_not_aligned = do_nothing;
             ptrs->init = stage_qp_clipping_init;
-            ptrs->solve_stage_qp_extended = stage_qp_clipping_solve_extended;
+            ptrs->solve_extended = stage_qp_clipping_solve_extended;
+            ptrs->solve = stage_qp_clipping_solve;
             break;
         case TREEQP_QPOASES_SOLVER:
             ptrs->is_applicable = stage_qp_qpoases_is_applicable;
@@ -265,7 +266,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         //                  - TODO(dimitris): what else?
 
         // TODO(dimitris): TAKE CARE OF MINUS SIGN WHEN IMPLEMENTING OTHER SOLVERS, SUCH AS QPOASES!!!!!!!!!!!!
-        work->stage_qp_ptrs[kk].solve_stage_qp_extended(qp_in, kk, work);
+        work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
     }
 
     #if DEBUG == 1
@@ -817,11 +818,6 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
 
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *) qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *) qp_in->xmax;
-    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *) qp_in->umin;
-    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *) qp_in->umax;
-
     struct node *tree = (struct node *)qp_in->tree;
 
     struct blasfeo_dvec *slambda = work->slambda;
@@ -874,16 +870,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         }
 
         // --- solve QP
-        // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
-        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQinv, 0, &sqmod[kk], 0, &sx[kk], 0);
-
-        // x[k] = median(xmin, x[k], xmax)
-        blasfeo_dveccl(nx[kk], &sxmin[kk], 0, &sx[kk], 0, &sxmax[kk], 0, &sx[kk], 0);
-
-        // u[k] = R[k]^-1 .* rmod[k]
-        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &su[kk], 0);
-        // u[k] = median(umin, u[k], umax)
-        blasfeo_dveccl(nu[kk], &sumin[kk], 0, &su[kk], 0, &sumax[kk], 0, &su[kk], 0);
+        work->stage_qp_ptrs[kk].solve(qp_in, kk, work);
 
         // --- calculate dual function term
 

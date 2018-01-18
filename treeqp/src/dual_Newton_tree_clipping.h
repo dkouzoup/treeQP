@@ -53,3 +53,5 @@ void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c
 void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
 void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+
+void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);

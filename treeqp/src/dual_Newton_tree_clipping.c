@@ -167,17 +167,14 @@ void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int node_index, voi
     int nx = qp_in->nx[node_index];
     int nu = qp_in->nu[node_index];
 
-    // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)
+    // x[k] = Q[k]^-1 .* qmod[k]
+    // NOTE(dimitris): minus sign already in mod. gradient
     blasfeo_dvecmuldot(nx, clipping_solver_data->sQinv, 0,
         &work->sqmod[node_index], 0, &work->sxUnc[node_index], 0);
 
     // x[k] = median(xmin, x[k], xmax), xas[k] = active set
     blasfeo_dveccl_mask(nx, &qp_in->xmin[node_index], 0, &work->sxUnc[node_index], 0,
         &qp_in->xmax[node_index], 0, &work->sx[node_index], 0, &work->sxas[node_index], 0);
-
-    // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-    blasfeo_dvecze(nx, &work->sxas[node_index], 0, clipping_solver_data->sQinv, 0,
-        clipping_solver_data->sQinvCal, 0);
 
     // u[k] = R[k]^-1 .* rmod[k]
     blasfeo_dvecmuldot(nu, clipping_solver_data->sRinv, 0, &work->srmod[node_index], 0,
@@ -187,8 +184,35 @@ void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int node_index, voi
     blasfeo_dveccl_mask(nu, &qp_in->umin[node_index], 0, &work->suUnc[node_index], 0,
         &qp_in->umax[node_index], 0, &work->su[node_index], 0, &work->suas[node_index], 0);
 
+    // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
+    blasfeo_dvecze(nx, &work->sxas[node_index], 0, clipping_solver_data->sQinv, 0,
+        clipping_solver_data->sQinvCal, 0);
+
     // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
     blasfeo_dvecze(nu, &work->suas[node_index], 0, clipping_solver_data->sRinv, 0,
         clipping_solver_data->sRinvCal, 0);
+}
 
+
+
+void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_clipping_data *clipping_solver_data =
+        (treeqp_tdunes_clipping_data *)work->stage_qp_data[node_index];
+
+    int nx = qp_in->nx[node_index];
+    int nu = qp_in->nu[node_index];
+
+    // x[k] = Q[k]^-1 .* qmod[k]
+    // NOTE(dimitris): minus sign already in mod. gradient
+    blasfeo_dvecmuldot(nx, clipping_solver_data->sQinv, 0, &work->sqmod[node_index], 0, &work->sx[node_index], 0);
+
+    // x[k] = median(xmin, x[k], xmax)
+    blasfeo_dveccl(nx, &qp_in->xmin[node_index], 0, &work->sx[node_index], 0, &qp_in->xmax[node_index], 0, &work->sx[node_index], 0);
+
+    // u[k] = R[k]^-1 .* rmod[k]
+    blasfeo_dvecmuldot(nu, clipping_solver_data->sRinv, 0, &work->srmod[node_index], 0, &work->su[node_index], 0);
+    // u[k] = median(umin, u[k], umax)
+    blasfeo_dveccl(nu, &qp_in->umin[node_index], 0, &work->su[node_index], 0, &qp_in->umax[node_index], 0, &work->su[node_index], 0);
 }

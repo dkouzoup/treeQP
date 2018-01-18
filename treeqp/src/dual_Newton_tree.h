@@ -49,8 +49,8 @@ typedef struct
     void (*assign_data_aligned)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data_not_aligned)(int nx, int nu, void *data, char **c_double_ptr);
     void (*init)(tree_ocp_qp_in *qp_in, int node_index, void *work);
-    void (*solve_stage_qp_extended)(tree_ocp_qp_in *qp_in, int node_index, void *work);
-    void (*solve)(void);
+    void (*solve_extended)(tree_ocp_qp_in *qp_in, int node_index, void *work);
+    void (*solve)(tree_ocp_qp_in *qp_in, int node_index, void *work);
 } stage_qp_fcn_ptrs;
 
 
