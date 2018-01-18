@@ -46,8 +46,15 @@ typedef struct treeqp_qpoases_data_
     QProblemB *QPB;
     QProblem *QP;
     struct blasfeo_dmat *sCholZTHZ;  // (nx+nu-n_act) x (nx+nu-n_act)
-    struct blasfeo_dmat *sZT;  // (nx+nu-n_act) x (nx+nu) TODO(dimitris): OR TRANSPOSED?
+    struct blasfeo_dmat *sZ;  // (nx+nu) x (nx+nu-n_act)
     struct blasfeo_dmat *sP;   // (nx+nu) x (nx+nu)
+
+    // TODO TEMP!
+    struct blasfeo_dvec *sQ;
+    struct blasfeo_dvec *sR;
+    struct blasfeo_dvec *sQinvCal;
+    struct blasfeo_dvec *sRinvCal;
+
     double cputime;
     int nwsr;
 } treeqp_tdunes_qpoases_data;

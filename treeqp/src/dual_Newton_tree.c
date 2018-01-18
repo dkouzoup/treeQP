@@ -76,7 +76,7 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 
     // TODO(dimitris): replace with calculate_size/create for args
     opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
-    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -267,7 +267,6 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         // (b) qpoases:     - solve stage QP
         //                  - TODO(dimitris): what else?
 
-        // TODO(dimitris): TAKE CARE OF MINUS SIGN WHEN IMPLEMENTING OTHER SOLVERS, SUCH AS QPOASES!!!!!!!!!!!!
         work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
     }
 
@@ -409,7 +408,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sWdiag = work->sWdiag;
     #endif
 
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
     int Nn = work->Nn;
     int Np = work->Np;
@@ -800,7 +800,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     int *nx = (int *)qp_in->nx;
     int *nu = (int *)qp_in->nu;
 
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
     double *fvals = work->fval;
     double *cmod = work->cmod;
@@ -1113,7 +1114,8 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // ------ copy solution to qp_out
 
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
     for (int kk = 0; kk < Nn; kk++) {
         blasfeo_dveccp(nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
@@ -1131,6 +1133,10 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             blasfeo_daxpy(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
             blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQ, 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
             blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
+        }
+        else if (opts->qp_solver[kk] == TREEQP_QPOASES_SOLVER)
+        {
+            // TODO(dimitris): get dual multipliers from qpOASES
         }
     }
     qp_out->info.iter = NewtonIter;

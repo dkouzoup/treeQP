@@ -38,6 +38,7 @@
 #include "blasfeo/include/blasfeo_common.h"
 #include "blasfeo/include/blasfeo_d_aux.h"
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
+#include "blasfeo/include/blasfeo_d_blas.h"
 
 #include <qpOASES_e.h>
 
@@ -64,8 +65,14 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     bytes += 1 * nvd * sizeof(double);  // prim_sol
     bytes += (nvd+ngd) * sizeof(double);  // dual_sol
 
-    bytes += 3 * sizeof(struct blasfeo_dmat);  // sCholZTHZ, sZT, sP
+    bytes += 3 * sizeof(struct blasfeo_dmat);  // sCholZTHZ, sZ, sP
     bytes += 3 * blasfeo_memsize_dmat(nvd, nvd);
+
+    // TODO(dimitris): TEMP
+    bytes += 4 * sizeof(struct blasfeo_dvec);  // sQ, sR, sQinvCal, sRinvCal
+    bytes += 2 * blasfeo_memsize_dvec(nx);
+    bytes += 2 * blasfeo_memsize_dvec(nu);
+
 
     if (ngd > 0)
     {   // QProblem
@@ -91,11 +98,21 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
     qpoases_solver_data->sCholZTHZ = (struct blasfeo_dmat *)*c_double_ptr;
     *c_double_ptr += sizeof(struct blasfeo_dmat);
 
-    qpoases_solver_data->sZT = (struct blasfeo_dmat *)*c_double_ptr;
+    qpoases_solver_data->sZ = (struct blasfeo_dmat *)*c_double_ptr;
     *c_double_ptr += sizeof(struct blasfeo_dmat);
 
     qpoases_solver_data->sP = (struct blasfeo_dmat *)*c_double_ptr;
     *c_double_ptr += sizeof(struct blasfeo_dmat);
+
+    // TODO(dimitris): TEMP
+    qpoases_solver_data->sQ = (struct blasfeo_dvec *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dvec);
+    qpoases_solver_data->sR = (struct blasfeo_dvec *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dvec);
+    qpoases_solver_data->sQinvCal = (struct blasfeo_dvec *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dvec);
+    qpoases_solver_data->sRinvCal = (struct blasfeo_dvec *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dvec);
 
     *stage_qp_data = (void *) qpoases_solver_data;
 }
@@ -123,9 +140,16 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
 
     assert((size_t)*c_double_ptr % 8 == 0 && "double not 8-byte aligned!");
 
+    // TODO(dimitris): WRITE assign_aligned_data AND assign_not_aligned_data FUNCTIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sCholZTHZ, c_double_ptr);
-    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZT, c_double_ptr);
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZ, c_double_ptr);
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
+
+    // TODO(dimitris): TEMP
+    init_strvec(nx, qpoases_solver_data->sQ, c_double_ptr);
+    init_strvec(nu, qpoases_solver_data->sR, c_double_ptr);
+    init_strvec(nx, qpoases_solver_data->sQinvCal, c_double_ptr);
+    init_strvec(nu, qpoases_solver_data->sRinvCal, c_double_ptr);
 
     if (ngd > 0)
     {   // QProblem
@@ -150,30 +174,41 @@ static void QProblemB_build_elimination_matrix(QProblemB *QPB, int node_index,
     int nvd = QProblemB_getNV(QPB);
     int nzd = QProblemB_getNZ(QPB);  // nx + nu - n_act
 
+    // extract Cholesky factor
     blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_solver_data->sCholZTHZ, 0, 0);
 
-    // TODO(dimitris): do this operation more efficiently
-    int iimap, jjmap;
-    blasfeo_dgese(nvd, nvd, 0.0, qpoases_solver_data->sP, 0, 0);
-    for (int jj = 0; jj < nzd; jj++)
+    // TODO(dimitris): use this for QP (not used in QPB)
+    // blasfeo_pack_dmat(nvd, nvd, QPB->flipper->Q, nvd, qpoases_solver_data->sZ, 0, 0);
+
+    // build Z
+    int pos;
+    blasfeo_dgese(nvd, nvd, 0.0, qpoases_solver_data->sZ, 0, 0);
+    for (int ii = 0; ii < nzd; ii++)
     {
-        jjmap = QPB->bounds->freee->number[jj];
-        for (int ii = 0; ii < nzd; ii++)
-        {
-            iimap = QPB->bounds->freee->number[ii];
-            DMATEL_LIBSTR(qpoases_solver_data->sP, iimap, jjmap) =
-                DMATEL_LIBSTR(qpoases_solver_data->sCholZTHZ, ii, jj);
-        }
+        pos = QPB->bounds->freee->number[ii];
+        DMATEL_LIBSTR(qpoases_solver_data->sZ, pos, ii) = 1.0;
     }
-    // THIS IS ONLY FOR QProblem, NOT QProblemB
-    // blasfeo_pack_dmat(nvd, nvd, QPB->flipper->Q, nvd, qpoases_solver_data->sZT, 0, 0);
 
-    printf("nz = %d\n\n", nzd);
-    printf("extracted R (strmat):\n");
-    blasfeo_print_dmat(nzd, nzd, qpoases_solver_data->sCholZTHZ, 0, 0);
+    // calculate P (matrix substitution + symmetric matrix matrix multiplication)
 
-    printf("formed P (strmat):\n");
-    blasfeo_print_dmat(nvd, nvd, qpoases_solver_data->sP, 0, 0);
+    // D <= alpha * B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
+    blasfeo_dtrsm_rltn(nvd, nzd, 1.0, qpoases_solver_data->sCholZTHZ, 0, 0,
+        qpoases_solver_data->sZ, 0, 0, qpoases_solver_data->sZ, 0, 0);
+
+    // D <= beta * C + alpha * A * B^T
+    // TODO(dimitris): replace with dsyrk!
+    // TODO(dimitris): are m, n, k correct?
+    blasfeo_dgemm_nt(nvd, nvd, nzd, 1.0, qpoases_solver_data->sZ, 0, 0, qpoases_solver_data->sZ,
+        0, 0, 0.0, qpoases_solver_data->sP, 0, 0, qpoases_solver_data->sP, 0, 0);
+
+    // printf("P (strmat):\n");
+    // blasfeo_print_dmat(nvd, nvd, qpoases_solver_data->sP, 0, 0);
+
+    // TODO(dimitris): TEMP
+    int nx = work->sx[node_index].m;
+    int nu = work->su[node_index].m;
+    blasfeo_ddiaex(nx, 1.0, qpoases_solver_data->sP, 0, 0, qpoases_solver_data->sQinvCal, 0);
+    blasfeo_ddiaex(nu, 1.0, qpoases_solver_data->sP, nx, nx, qpoases_solver_data->sRinvCal, 0);
 }
 
 
@@ -186,6 +221,11 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
     int nx = qp_in->nx[node_index];
     int nu = qp_in->nu[node_index];
+
+    // TODO(dimitris): Figure out why this is needed
+    // *probably because it's used as scrap space in eval_dual, fix it
+    blasfeo_dvecse(nx, 0.0, &work->sxas[node_index], 0);
+    blasfeo_dvecse(nu, 0.0, &work->suas[node_index], 0);
 
     QProblemB *QPB = qpoases_solver_data->QPB;
     // TODO(dimitris): handle general constraints
@@ -255,7 +295,10 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     // }
     // exit(1);
 
-    // solve first QP instance
+
+    // TODO TEMP
+    blasfeo_ddiaex(nx, 1.0, &qp_in->Q[node_index], 0, 0, qpoases_solver_data->sQ, 0);
+    blasfeo_ddiaex(nu, 1.0, &qp_in->R[node_index], 0, 0, qpoases_solver_data->sR, 0);
 }
 
 
@@ -281,6 +324,9 @@ static void QProblemB_solve(tree_ocp_qp_in *qp_in, int node_index,  treeqp_tdune
 
     // TODO(dimitris): can we also pass "0" for non-changing bounds?
 	QProblemB_hotstart(QPB, qpoases_solver_data->g, qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
+
+    blasfeo_pack_dvec(nx, &QPB->x[0], &work->sx[node_index], 0);
+    blasfeo_pack_dvec(nu, &QPB->x[nx], &work->su[node_index], 0);
 }
 
 

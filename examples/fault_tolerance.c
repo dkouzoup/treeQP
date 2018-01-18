@@ -235,7 +235,7 @@ int main() {
 
         // run some sanity checks
         for (int jj = 0; jj < nx; jj++) {
-            assert(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) == x0[jj]);
+            assert(ABS(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) - x0[jj]) < 1e-10);
         }
         assert(qp_outs[mpc_config].info.iter < opts.maxIter && "maximum number of iterations reached");
 
