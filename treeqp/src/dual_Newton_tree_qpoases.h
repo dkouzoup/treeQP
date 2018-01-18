@@ -64,3 +64,6 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
 
 void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
+void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+
+void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);

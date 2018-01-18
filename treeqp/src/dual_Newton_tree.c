@@ -120,6 +120,8 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->assign_data_aligned = do_nothing;
             ptrs->assign_data_not_aligned = stage_qp_qpoases_assign_data;
             ptrs->init = stage_qp_qpoases_init;
+            ptrs->solve_extended = stage_qp_qpoases_solve_extended;
+            ptrs->solve = stage_qp_qpoases_solve;
             break;
         default:
             printf("[TREEQP] Error! Unknown stage QP solver specified.\n");

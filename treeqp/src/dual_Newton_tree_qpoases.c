@@ -257,3 +257,55 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
     // solve first QP instance
 }
+
+
+
+static void QProblemB_solve(tree_ocp_qp_in *qp_in, int node_index,  treeqp_tdunes_workspace *work)
+{
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    int nx = qp_in->nx[node_index];
+    int nu = qp_in->nu[node_index];
+
+    QProblemB *QPB = qpoases_solver_data->QPB;
+
+    // TODO(dimitris): TEMP!
+    int nWSR = 1000;
+    double cputime = 1000;
+
+    // g_new = - [xmod; umod]
+    blasfeo_unpack_dvec(nx, &work->sqmod[node_index], 0, &qpoases_solver_data->g[0]);
+    blasfeo_unpack_dvec(nu, &work->srmod[node_index], 0, &qpoases_solver_data->g[nx]);
+    for (int ii = 0; ii < nx+nu; ii++) qpoases_solver_data->g[ii] = -qpoases_solver_data->g[ii];
+
+    // TODO(dimitris): can we also pass "0" for non-changing bounds?
+	QProblemB_hotstart(QPB, qpoases_solver_data->g, qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
+}
+
+
+
+void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    QProblemB *QPB = qpoases_solver_data->QPB;
+
+    QProblemB_solve(qp_in, node_index, work);
+    QProblemB_build_elimination_matrix(QPB, node_index, work);
+}
+
+
+
+void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    QProblemB *QPB = qpoases_solver_data->QPB;
+
+    QProblemB_solve(qp_in, node_index, work);
+}
