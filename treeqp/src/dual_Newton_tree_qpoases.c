@@ -64,6 +64,9 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     bytes += 1 * nvd * sizeof(double);  // prim_sol
     bytes += (nvd+ngd) * sizeof(double);  // dual_sol
 
+    bytes += 3 * sizeof(struct blasfeo_dmat);  // sCholZTHZ, sZT, sP
+    bytes += 3 * blasfeo_memsize_dmat(nvd, nvd);
+
     if (ngd > 0)
     {   // QProblem
         bytes += QProblem_calculateMemorySize(nvd, ngd);
@@ -72,7 +75,6 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     {   // QProblemB
         bytes += QProblemB_calculateMemorySize(nvd);
     }
-    make_int_multiple_of(8, &bytes);
 
     return bytes;
 }
@@ -85,6 +87,15 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
 
     qpoases_solver_data = (treeqp_tdunes_qpoases_data *)*c_double_ptr;
     *c_double_ptr += sizeof(treeqp_tdunes_qpoases_data);
+
+    qpoases_solver_data->sCholZTHZ = (struct blasfeo_dmat *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dmat);
+
+    qpoases_solver_data->sZT = (struct blasfeo_dmat *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dmat);
+
+    qpoases_solver_data->sP = (struct blasfeo_dmat *)*c_double_ptr;
+    *c_double_ptr += sizeof(struct blasfeo_dmat);
 
     *stage_qp_data = (void *) qpoases_solver_data;
 }
@@ -112,6 +123,10 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
 
     assert((size_t)*c_double_ptr % 8 == 0 && "double not 8-byte aligned!");
 
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sCholZTHZ, c_double_ptr);
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZT, c_double_ptr);
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
+
     if (ngd > 0)
     {   // QProblem
         QProblem_assignMemory(nvd, ngd, (QProblem **) &(qpoases_solver_data->QP), *c_double_ptr);
@@ -122,6 +137,43 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
         QProblemB_assignMemory(nvd, (QProblemB **) &(qpoases_solver_data->QPB), *c_double_ptr);
         *c_double_ptr += QProblemB_calculateMemorySize(nvd);
     }
+}
+
+
+
+static void QProblemB_build_elimination_matrix(QProblemB *QPB, int node_index,
+    treeqp_tdunes_workspace *work)
+{
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    int nvd = QProblemB_getNV(QPB);
+    int nzd = QProblemB_getNZ(QPB);  // nx + nu - n_act
+
+    blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_solver_data->sCholZTHZ, 0, 0);
+
+    // TODO(dimitris): do this operation more efficiently
+    int iimap, jjmap;
+    blasfeo_dgese(nvd, nvd, 0.0, qpoases_solver_data->sP, 0, 0);
+    for (int jj = 0; jj < nzd; jj++)
+    {
+        jjmap = QPB->bounds->freee->number[jj];
+        for (int ii = 0; ii < nzd; ii++)
+        {
+            iimap = QPB->bounds->freee->number[ii];
+            DMATEL_LIBSTR(qpoases_solver_data->sP, iimap, jjmap) =
+                DMATEL_LIBSTR(qpoases_solver_data->sCholZTHZ, ii, jj);
+        }
+    }
+    // THIS IS ONLY FOR QProblem, NOT QProblemB
+    // blasfeo_pack_dmat(nvd, nvd, QPB->flipper->Q, nvd, qpoases_solver_data->sZT, 0, 0);
+
+    printf("nz = %d\n\n", nzd);
+    printf("extracted R (strmat):\n");
+    blasfeo_print_dmat(nzd, nzd, qpoases_solver_data->sCholZTHZ, 0, 0);
+
+    printf("formed P (strmat):\n");
+    blasfeo_print_dmat(nvd, nvd, qpoases_solver_data->sP, 0, 0);
 }
 
 
@@ -154,18 +206,27 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     blasfeo_unpack_dvec(nx, &qp_in->xmax[node_index], 0, &qpoases_solver_data->ub[0]);
     blasfeo_unpack_dvec(nu, &qp_in->umax[node_index], 0, &qpoases_solver_data->ub[nx]);
 
+    // TEEEEEEEEEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // qpoases_solver_data->lb[0] = -0.01;
+    // qpoases_solver_data->lb[1] = -1;
+    // qpoases_solver_data->lb[2] = -0.5;
+
     // solve first QP instance
 
-	int nWSR = 10;      // TODO(dimitris): move those max values to options
+	int nWSR = 10;  // TODO(dimitris): move those max values to options
     double cputime = 1000;
 
     QProblemBCON(QPB, nx+nu, HST_POSDEF);
     QProblemB_setPrintLevel(QPB, PL_MEDIUM);  // TODO(dimitris): other options?
     QProblemB_printProperties(QPB);  // TODO(dimitris): what is this for?
 
-    // TODO(dimitris): CHECK FLAG!
-	QProblemB_init(QPB, qpoases_solver_data->H, qpoases_solver_data->g,
+	return_t status = QProblemB_init(QPB, qpoases_solver_data->H, qpoases_solver_data->g,
         qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
+
+    assert(status == 0 && "initialization of qpOASES failed!");
+
+    // TEEEEEEEEEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // QProblemB_build_elimination_matrix(QPB, node_index, work);
 
     // QProblemB_getPrimalSolution(QPB, qpoases_solver_data->prim_sol);
     // printf("primal sol:\n");

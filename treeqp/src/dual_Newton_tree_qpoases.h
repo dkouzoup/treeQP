@@ -41,10 +41,13 @@ typedef struct treeqp_qpoases_data_
     double *C;
     double *lc;
     double *uc;
-    double *prim_sol;
+    double *prim_sol;  // TODO(dimitris): maybe directly convert to blasfeo_dvec?
     double *dual_sol;
     QProblemB *QPB;
     QProblem *QP;
+    struct blasfeo_dmat *sCholZTHZ;  // (nx+nu-n_act) x (nx+nu-n_act)
+    struct blasfeo_dmat *sZT;  // (nx+nu-n_act) x (nx+nu) TODO(dimitris): OR TRANSPOSED?
+    struct blasfeo_dmat *sP;   // (nx+nu) x (nx+nu)
     double cputime;
     int nwsr;
 } treeqp_tdunes_qpoases_data;
