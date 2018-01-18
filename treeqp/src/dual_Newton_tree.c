@@ -91,45 +91,85 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 }
 
 
-static void setup_npar(int Nh, int Nn, struct node *tree, int *npar) {
-    // initialize vector to zero
-    for (int kk = 0; kk < Nh; kk++) {
-        npar[kk] = 0;
-    }
-    // enumerate nodes per stage
-    for (int kk = 0; kk < Nn; kk++) {
-        npar[tree[kk].stage]++;
+
+void do_nothing(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+{
+    // dummy function to replace either assign_data_aligned or assign_data_not_aligned function
+}
+
+
+
+void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
+{
+    switch (qp_solver)
+    {
+        case TREEQP_CLIPPING_SOLVER:
+            ptrs->is_applicable = stage_qp_clipping_is_applicable;
+            ptrs->calculate_size = stage_qp_clipping_calculate_size;
+            ptrs->assign_structs = stage_qp_clipping_assign_structs;
+            ptrs->assign_data_aligned = stage_qp_clipping_assign_data;
+            ptrs->assign_data_not_aligned = do_nothing;
+            ptrs->init = stage_qp_clipping_init;
+            ptrs->solve_stage_qp_extended = stage_qp_clipping_solve_extended;
+            break;
+        case TREEQP_QPOASES_SOLVER:
+            ptrs->is_applicable = stage_qp_qpoases_is_applicable;
+            ptrs->calculate_size = stage_qp_qpoases_calculate_size;
+            ptrs->assign_structs = stage_qp_qpoases_assign_structs;
+            ptrs->assign_data_aligned = do_nothing;
+            ptrs->assign_data_not_aligned = stage_qp_qpoases_assign_data;
+            ptrs->init = stage_qp_qpoases_init;
+            break;
+        default:
+            printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
+            exit(1);
     }
 }
 
 
-static void setup_idxpos(tree_ocp_qp_in *qp_in, int *idxpos) {
+
+static void setup_npar(int Nh, int Nn, struct node *tree, int *npar)
+{
+    // initialize vector to zero
+    for (int kk = 0; kk < Nh; kk++) npar[kk] = 0;
+
+    // enumerate nodes per stage
+    for (int kk = 0; kk < Nn; kk++) npar[tree[kk].stage]++;
+}
+
+
+
+static void setup_idxpos(tree_ocp_qp_in *qp_in, int *idxpos)
+{
     int Nn = qp_in->N;
     int idxdad;
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    for (int kk = 0; kk < Nn; kk++) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
         idxdad = tree[kk].dad;
         idxpos[kk] = 0;
-        for (int ii = 0; ii < tree[kk].idxkid; ii++) {
+        for (int ii = 0; ii < tree[kk].idxkid; ii++)
+        {
             idxpos[kk] += qp_in->nx[tree[idxdad].kids[ii]];
         }
     }
-    // for (int kk = 0; kk < Nn; kk++) {
-    //     printf("kk = %d, idxpos = %d\n", kk, idxpos[kk]);
-    // }
+    // for (int kk = 0; kk < Nn; kk++) printf("kk = %d, idxpos = %d\n", kk, idxpos[kk]);
 }
 
 
 
-static int maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
+static int maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in)
+{
     int maxDim = 0;
     int currDim, idxkid;
 
-    for (int ii = 0; ii < qp_in->N; ii++) {
+    for (int ii = 0; ii < qp_in->N; ii++)
+    {
         currDim = 0;
-        for (int jj = 0; jj < qp_in->tree[ii].nkids; jj++) {
+        for (int jj = 0; jj < qp_in->tree[ii].nkids; jj++)
+        {
             idxkid = qp_in->tree[ii].kids[jj];
             currDim += qp_in->nx[idxkid];
         }
@@ -139,7 +179,9 @@ static int maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in) {
 }
 
 
-static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work) {
+
+static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work)
+{
     int idxkid, idxdad, idxpos;
     int Nn = qp_in->N;
     int *nx = (int *)qp_in->nx;
@@ -147,15 +189,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
-
     struct blasfeo_dvec *slambda = work->slambda;
-    struct blasfeo_dvec *sx = (struct blasfeo_dvec *) work->sx;
-    struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
-    struct blasfeo_dvec *sxUnc = (struct blasfeo_dvec *) work->sxUnc;
-    struct blasfeo_dvec *suUnc = (struct blasfeo_dvec *) work->suUnc;
-    struct blasfeo_dvec *sxas = (struct blasfeo_dvec *) work->sxas;
-    struct blasfeo_dvec *suas = (struct blasfeo_dvec *) work->suas;
 
     struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
     struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
@@ -165,11 +199,6 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
-
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *) qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *) qp_in->xmax;
-    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *) qp_in->umin;
-    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *) qp_in->umax;
 
     #if DEBUG == 1
     int indh = 0;
@@ -183,23 +212,29 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     double *uit = malloc(dimu*sizeof(double));
     double *QinvCal = malloc(dimx*sizeof(double));
     double *RinvCal = malloc(dimu*sizeof(double));
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    struct blasfeo_dvec *sx = (struct blasfeo_dvec *) work->sx;
+    struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
     #endif
 
     #ifdef PARALLEL
     #pragma omp parallel for private(idxkid, idxdad, idxpos)
     #endif
-    for (int kk = 0; kk < Nn; kk++) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
         idxdad = tree[kk].dad;
         idxpos = work->idxpos[kk];
 
         // --- update QP gradient
 
         // qmod[k] = - q[k] + lambda[k]
-        if (kk == 0) {
-            // lambda[0] = 0
+        if (kk == 0)
+        {   // lambda[0] = 0
             for (int jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
-        } else {
+        }
+        else
+        {
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
         }
 
@@ -207,7 +242,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         blasfeo_dveccp(nu[kk], &sr[kk], 0, &srmod[kk], 0);
         blasfeo_dvecsc(nu[kk], -1.0, &srmod[kk], 0);
 
-        for (int ii = 0; ii < tree[kk].nkids; ii++) {
+        for (int ii = 0; ii < tree[kk].nkids; ii++)
+        {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
             idxpos = work->idxpos[idxkid];
@@ -220,31 +256,21 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
                 &slambda[idxdad], idxpos, 1.0, &srmod[kk], 0, &srmod[kk], 0);
         }
 
-        // --- solve QP and calculate QinvCal/RinvCal
+        // --- solve QP
+        //
+        // (a) clipping:    - solve stage QP
+        //                  - store unconstrained solution (to calculate multipliers later)
+        //                  - calculate QinvCal, RinvCal vectors (to build dual blocks later)
+        // (b) qpoases:     - solve stage QP
+        //                  - TODO(dimitris): what else?
 
-        // x[k] = Q[k]^-1 .* qmod[k] (NOTE: minus sign already in mod. gradient)  // TODO(dimitris): TAKE CARE OF THIS WHEN IMPLEMENTING OTHER SOLVERS, SUCH AS QPOASES!!!!!!!!!!!!
-        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQinv, 0, &sqmod[kk], 0, &sxUnc[kk], 0);
-
-        // x[k] = median(xmin, x[k], xmax), xas[k] = active set
-        blasfeo_dveccl_mask(nx[kk], &sxmin[kk], 0, &sxUnc[kk], 0, &sxmax[kk], 0,
-            &sx[kk], 0, &sxas[kk], 0);
-
-        // QinvCal[kk] = Qinv[kk] .* (1 - abs(xas[kk])), aka elimination matrix
-        blasfeo_dvecze(nx[kk], &sxas[kk], 0, qp_data[kk]->sQinv, 0, qp_data[kk]->sQinvCal, 0);
-
-        // u[k] = R[k]^-1 .* rmod[k]
-        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sRinv, 0, &srmod[kk], 0, &suUnc[kk], 0);
-
-        // u[k] = median(umin, u[k], umax), uas[k] = active set
-        blasfeo_dveccl_mask(nu[kk], &sumin[kk], 0, &suUnc[kk], 0, &sumax[kk], 0, &su[kk], 0,
-            &suas[kk], 0);
-
-        // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
-        blasfeo_dvecze(nu[kk], &suas[kk], 0, qp_data[kk]->sRinv, 0, qp_data[kk]->sRinvCal, 0);
+        // TODO(dimitris): TAKE CARE OF MINUS SIGN WHEN IMPLEMENTING OTHER SOLVERS, SUCH AS QPOASES!!!!!!!!!!!!
+        work->stage_qp_ptrs[kk].solve_stage_qp_extended(qp_in, kk, work);
     }
 
     #if DEBUG == 1
-    for (int kk = 0; kk < Nn; kk++) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
         blasfeo_unpack_dvec(sqmod[kk].m, &sqmod[kk], 0, &hmod[indh]);
         blasfeo_unpack_dvec(sx[kk].m, &sx[kk], 0, &xit[indx]);
         blasfeo_unpack_dvec(qp_data[kk]->sQinvCal->m, qp_data[kk]->sQinvCal, 0, &QinvCal[indx]);
@@ -269,6 +295,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     free(RinvCal);
     #endif
 }
+
 
 
 #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -1144,41 +1171,6 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
             idxsib = qp_in->tree[idxdad].kids[jj];
             *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
         }
-    }
-}
-
-
-
-void do_nothing(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
-{
-    // dummy function to replace either assign_data_aligned or assign_data_not_aligned function
-}
-
-
-
-void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
-{
-    switch (qp_solver)
-    {
-        case TREEQP_CLIPPING_SOLVER:
-            ptrs->is_applicable = stage_qp_clipping_is_applicable;
-            ptrs->calculate_size = stage_qp_clipping_calculate_size;
-            ptrs->assign_structs = stage_qp_clipping_assign_structs;
-            ptrs->assign_data_aligned = stage_qp_clipping_assign_data;
-            ptrs->assign_data_not_aligned = do_nothing;
-            ptrs->init = stage_qp_clipping_init;
-            break;
-        case TREEQP_QPOASES_SOLVER:
-            ptrs->is_applicable = stage_qp_qpoases_is_applicable;
-            ptrs->calculate_size = stage_qp_qpoases_calculate_size;
-            ptrs->assign_structs = stage_qp_qpoases_assign_structs;
-            ptrs->assign_data_aligned = do_nothing;
-            ptrs->assign_data_not_aligned = stage_qp_qpoases_assign_data;
-            ptrs->init = stage_qp_qpoases_init;
-            break;
-        default:
-            printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
-            exit(1);
     }
 }
 

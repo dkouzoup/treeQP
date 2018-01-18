@@ -163,6 +163,7 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     QProblemB_setPrintLevel(QPB, PL_MEDIUM);  // TODO(dimitris): other options?
     QProblemB_printProperties(QPB);  // TODO(dimitris): what is this for?
 
+    // TODO(dimitris): CHECK FLAG!
 	QProblemB_init(QPB, qpoases_solver_data->H, qpoases_solver_data->g,
         qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
 
