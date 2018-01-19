@@ -219,6 +219,33 @@ void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
 
 
+void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_clipping_data *clipping_solver_data =
+        (treeqp_tdunes_clipping_data *)work->stage_qp_data[node_index];
+
+    int nx = qp_in->nx[node_index];
+    int nu = qp_in->nu[node_index];
+
+    double *fval = &work->fval[node_index];
+    double cmod = work->cmod[node_index];
+
+    // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
+    // NOTE: qmod[k] has already a minus sign
+    // NOTE: xas used as workspace
+    blasfeo_dvecmuldot(nx, clipping_solver_data->sQ, 0, &work->sx[node_index], 0, &work->sxas[node_index], 0);
+    *fval = -0.5*blasfeo_ddot(nx, &work->sxas[node_index], 0, &work->sx[node_index], 0) - cmod;
+    *fval += blasfeo_ddot(nx, &work->sqmod[node_index], 0, &work->sx[node_index], 0);
+
+    // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
+    blasfeo_dvecmuldot(nu, clipping_solver_data->sR, 0, &work->su[node_index], 0, &work->suas[node_index], 0);
+    *fval -= 0.5*blasfeo_ddot(nu, &work->suas[node_index], 0, &work->su[node_index], 0);
+    *fval += blasfeo_ddot(nu, &work->srmod[node_index], 0, &work->su[node_index], 0);
+}
+
+
+
 // TODO(dimitris): think how to improve inputs of all these functions
 void stage_qp_clipping_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_)
 {

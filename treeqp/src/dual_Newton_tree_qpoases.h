@@ -50,8 +50,6 @@ typedef struct treeqp_qpoases_data_
     struct blasfeo_dmat *sP;   // (nx+nu) x (nx+nu)
 
     // TODO TEMP!
-    struct blasfeo_dvec *sQ;
-    struct blasfeo_dvec *sR;
     struct blasfeo_dvec *sQinvCal;
     struct blasfeo_dvec *sRinvCal;
 
@@ -74,5 +72,7 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
 void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+
+void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
 void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_);

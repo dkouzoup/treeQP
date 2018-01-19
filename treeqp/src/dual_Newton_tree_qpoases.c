@@ -69,9 +69,9 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     bytes += 3 * blasfeo_memsize_dmat(nvd, nvd);
 
     // TODO(dimitris): TEMP
-    bytes += 4 * sizeof(struct blasfeo_dvec);  // sQ, sR, sQinvCal, sRinvCal
-    bytes += 2 * blasfeo_memsize_dvec(nx);
-    bytes += 2 * blasfeo_memsize_dvec(nu);
+    bytes += 2 * sizeof(struct blasfeo_dvec);  // sQinvCal, sRinvCal
+    bytes += 1 * blasfeo_memsize_dvec(nx);
+    bytes += 1 * blasfeo_memsize_dvec(nu);
 
 
     if (ngd > 0)
@@ -105,10 +105,6 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
     *c_double_ptr += sizeof(struct blasfeo_dmat);
 
     // TODO(dimitris): TEMP
-    qpoases_solver_data->sQ = (struct blasfeo_dvec *)*c_double_ptr;
-    *c_double_ptr += sizeof(struct blasfeo_dvec);
-    qpoases_solver_data->sR = (struct blasfeo_dvec *)*c_double_ptr;
-    *c_double_ptr += sizeof(struct blasfeo_dvec);
     qpoases_solver_data->sQinvCal = (struct blasfeo_dvec *)*c_double_ptr;
     *c_double_ptr += sizeof(struct blasfeo_dvec);
     qpoases_solver_data->sRinvCal = (struct blasfeo_dvec *)*c_double_ptr;
@@ -146,8 +142,6 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
 
     // TODO(dimitris): TEMP
-    init_strvec(nx, qpoases_solver_data->sQ, c_double_ptr);
-    init_strvec(nu, qpoases_solver_data->sR, c_double_ptr);
     init_strvec(nx, qpoases_solver_data->sQinvCal, c_double_ptr);
     init_strvec(nu, qpoases_solver_data->sRinvCal, c_double_ptr);
 
@@ -294,11 +288,6 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     //     printf("\n");
     // }
     // exit(1);
-
-
-    // TODO TEMP
-    blasfeo_ddiaex(nx, 1.0, &qp_in->Q[node_index], 0, 0, qpoases_solver_data->sQ, 0);
-    blasfeo_ddiaex(nu, 1.0, &qp_in->R[node_index], 0, 0, qpoases_solver_data->sR, 0);
 }
 
 
@@ -322,7 +311,6 @@ static void QProblemB_solve(tree_ocp_qp_in *qp_in, int node_index,  treeqp_tdune
     blasfeo_unpack_dvec(nu, &work->srmod[node_index], 0, &qpoases_solver_data->g[nx]);
     for (int ii = 0; ii < nx+nu; ii++) qpoases_solver_data->g[ii] = -qpoases_solver_data->g[ii];
 
-    // TODO(dimitris): can we also pass "0" for non-changing bounds?
 	QProblemB_hotstart(QPB, qpoases_solver_data->g, qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
 
     blasfeo_pack_dvec(nx, &QPB->x[0], &work->sx[node_index], 0);
@@ -354,6 +342,37 @@ void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     QProblemB *QPB = qpoases_solver_data->QPB;
 
     QProblemB_solve(qp_in, node_index, work);
+}
+
+
+
+void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    int nx = qp_in->nx[node_index];
+    int nu = qp_in->nu[node_index];
+
+    double *fval = &work->fval[node_index];
+    double cmod = work->cmod[node_index];
+
+    // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
+    // NOTE: qmod[k] has already a minus sign
+    // NOTE: xas used as workspace
+
+    // z <= beta * y + alpha * A * x, A symmetric and only lower triangular part of A is accessed
+    blasfeo_dsymv_l(nx, nx, 1.0, &qp_in->Q[node_index], 0, 0, &work->sx[node_index], 0, 0.0,
+        &work->sxas[node_index], 0, &work->sxas[node_index], 0);
+    *fval = -0.5*blasfeo_ddot(nx, &work->sxas[node_index], 0, &work->sx[node_index], 0) - cmod;
+    *fval += blasfeo_ddot(nx, &work->sqmod[node_index], 0, &work->sx[node_index], 0);
+
+    // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
+    blasfeo_dsymv_l(nu, nu, 1.0, &qp_in->R[node_index], 0, 0, &work->su[node_index], 0, 0.0,
+        &work->suas[node_index], 0, &work->suas[node_index], 0);
+    *fval -= 0.5*blasfeo_ddot(nu, &work->suas[node_index], 0, &work->su[node_index], 0);
+    *fval += blasfeo_ddot(nu, &work->srmod[node_index], 0, &work->su[node_index], 0);
 }
 
 

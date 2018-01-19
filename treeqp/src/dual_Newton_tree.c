@@ -113,6 +113,7 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->solve_extended = stage_qp_clipping_solve_extended;
             ptrs->solve = stage_qp_clipping_solve;
             ptrs->export_mu = stage_qp_clipping_export_mu;
+            ptrs->eval_dual_term = stage_qp_clipping_eval_dual_term;
             break;
         case TREEQP_QPOASES_SOLVER:
             ptrs->is_applicable = stage_qp_qpoases_is_applicable;
@@ -124,6 +125,7 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->solve_extended = stage_qp_qpoases_solve_extended;
             ptrs->solve = stage_qp_qpoases_solve;
             ptrs->export_mu = stage_qp_qpoases_export_mu;
+            ptrs->eval_dual_term = stage_qp_qpoases_eval_dual_term;
             break;
         default:
             printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
@@ -215,9 +217,6 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     double *hmod = malloc(dimh*sizeof(double));
     double *xit = malloc(dimx*sizeof(double));
     double *uit = malloc(dimu*sizeof(double));
-    double *QinvCal = malloc(dimx*sizeof(double));
-    double *RinvCal = malloc(dimu*sizeof(double));
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
     struct blasfeo_dvec *sx = (struct blasfeo_dvec *) work->sx;
     struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
     #endif
@@ -277,12 +276,10 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     {
         blasfeo_unpack_dvec(sqmod[kk].m, &sqmod[kk], 0, &hmod[indh]);
         blasfeo_unpack_dvec(sx[kk].m, &sx[kk], 0, &xit[indx]);
-        blasfeo_unpack_dvec(qp_data[kk]->sQinvCal->m, qp_data[kk]->sQinvCal, 0, &QinvCal[indx]);
         indh += sqmod[kk].m;
         indx += sx[kk].m;
         blasfeo_unpack_dvec(srmod[kk].m, &srmod[kk], 0, &hmod[indh]);
         blasfeo_unpack_dvec(su[kk].m, &su[kk], 0, &uit[indu]);
-        blasfeo_unpack_dvec(qp_data[kk]->sRinvCal->m, qp_data[kk]->sRinvCal, 0, &RinvCal[indu]);
         indh += srmod[kk].m;
         indu += su[kk].m;
     }
@@ -290,13 +287,9 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     write_double_vector_to_txt(hmod, dimh, "examples/spring_mass_utils/hmod.txt");
     write_double_vector_to_txt(xit, dimx, "examples/spring_mass_utils/xit.txt");
     write_double_vector_to_txt(uit, dimu, "examples/spring_mass_utils/uit.txt");
-    write_double_vector_to_txt(QinvCal, dimx, "examples/spring_mass_utils/Qinvcal.txt");
-    write_double_vector_to_txt(RinvCal, dimu, "examples/spring_mass_utils/Rinvcal.txt");
     free(hmod);
     free(xit);
     free(uit);
-    free(QinvCal);
-    free(RinvCal);
     #endif
 }
 
@@ -792,8 +785,9 @@ static double gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
 }
 
 
-static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work) {
-    int ii, jj, kk, idxkid, idxpos, idxdad;
+static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work)
+{
+    int idxkid, idxpos, idxdad;
     double fval = 0;
 
     int Nn = work->Nn;
@@ -802,16 +796,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     int *nx = (int *)qp_in->nx;
     int *nu = (int *)qp_in->nu;
 
-    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
-    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
-
     double *fvals = work->fval;
     double *cmod = work->cmod;
-
-    struct blasfeo_dvec *sx = work->sx;
-    struct blasfeo_dvec *su = work->su;
-    struct blasfeo_dvec *sxas = work->sxas;
-    struct blasfeo_dvec *suas = work->suas;
 
     struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
     struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
@@ -822,10 +808,10 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
+    struct blasfeo_dvec *slambda = work->slambda;
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    struct blasfeo_dvec *slambda = work->slambda;
     #ifdef PARALLEL
     #pragma omp parallel for private(ii, jj, idxkid, idxpos, idxdad)
     #endif
@@ -833,7 +819,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     // - without calculating as
     // - without calculating elimination matrix
     // - with calculating modified constant term
-    for (kk = 0; kk < Nn; kk++) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
         idxdad = tree[kk].dad;
         idxpos = work->idxpos[kk];
 
@@ -842,7 +829,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // qmod[k] = - q[k] + lambda[k]
         if (kk == 0) {
             // lambda[0] = 0
-            for (jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
+            for (int jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);
@@ -855,7 +842,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // cmod[k] = 0
         cmod[kk] = 0.;
 
-        for (ii = 0; ii < tree[kk].nkids; ii++) {
+        for (int ii = 0; ii < tree[kk].nkids; ii++)
+        {
             idxkid = tree[kk].kids[ii];
             idxdad = tree[idxkid].dad;
             idxpos = work->idxpos[idxkid];
@@ -878,24 +866,14 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         work->stage_qp_ptrs[kk].solve(qp_in, kk, work);
 
         // --- calculate dual function term
-
-        // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
-        // NOTE: qmod[k] has already a minus sign
-        // NOTE: xas used as workspace
-        blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQ, 0, &sx[kk], 0, &sxas[kk], 0);
-        fvals[kk] = -0.5*blasfeo_ddot(nx[kk], &sxas[kk], 0, &sx[kk], 0) - cmod[kk];
-        fvals[kk] += blasfeo_ddot(nx[kk], &sqmod[kk], 0, &sx[kk], 0);
-
-        // feval -= (1/2)u[k]' * R[k] * u[k] - u[k]' * rmod[k]
-        blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &su[kk], 0, &suas[kk], 0);
-        fvals[kk] -= 0.5*blasfeo_ddot(nu[kk], &suas[kk], 0, &su[kk], 0);
-        fvals[kk] += blasfeo_ddot(nu[kk], &srmod[kk], 0, &su[kk], 0);
+        work->stage_qp_ptrs[kk].eval_dual_term(qp_in, kk, work);
     }
 
-    for (kk = 0; kk < Nn; kk++) fval += fvals[kk];
+    for (int kk = 0; kk < Nn; kk++) fval += fvals[kk];
 
     return fval;
 }
+
 
 
 static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
@@ -1115,9 +1093,6 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tic(&interface_tmr);
 
     // ------ copy solution to qp_out
-
-    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
-    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
     for (int kk = 0; kk < Nn; kk++)
     {
