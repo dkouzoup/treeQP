@@ -216,3 +216,21 @@ void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     // u[k] = median(umin, u[k], umax)
     blasfeo_dveccl(nu, &qp_in->umin[node_index], 0, &work->su[node_index], 0, &qp_in->umax[node_index], 0, &work->su[node_index], 0);
 }
+
+
+
+// TODO(dimitris): think how to improve inputs of all these functions
+void stage_qp_clipping_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_clipping_data *clipping_solver_data =
+        (treeqp_tdunes_clipping_data *)work->stage_qp_data[node_index];
+
+    int nx = qp_out->x[node_index].m;
+    int nu = qp_out->u[node_index].m;
+
+    blasfeo_daxpy(nx, -1., &qp_out->x[node_index], 0, &work->sxUnc[node_index], 0, &qp_out->mu_x[node_index], 0);
+    blasfeo_daxpy(nu, -1., &qp_out->u[node_index], 0, &work->suUnc[node_index], 0, &qp_out->mu_u[node_index], 0);
+    blasfeo_dvecmuldot(nx, clipping_solver_data->sQ, 0, &qp_out->mu_x[node_index], 0, &qp_out->mu_x[node_index], 0);
+    blasfeo_dvecmuldot(nu, clipping_solver_data->sR, 0, &qp_out->mu_u[node_index], 0, &qp_out->mu_u[node_index], 0);
+}

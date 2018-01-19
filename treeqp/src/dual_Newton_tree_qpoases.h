@@ -74,3 +74,5 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
 void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+
+void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_);

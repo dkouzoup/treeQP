@@ -112,6 +112,7 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_clipping_init;
             ptrs->solve_extended = stage_qp_clipping_solve_extended;
             ptrs->solve = stage_qp_clipping_solve;
+            ptrs->export_mu = stage_qp_clipping_export_mu;
             break;
         case TREEQP_QPOASES_SOLVER:
             ptrs->is_applicable = stage_qp_qpoases_is_applicable;
@@ -122,6 +123,7 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_qpoases_init;
             ptrs->solve_extended = stage_qp_qpoases_solve_extended;
             ptrs->solve = stage_qp_qpoases_solve;
+            ptrs->export_mu = stage_qp_qpoases_export_mu;
             break;
         default:
             printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
@@ -1117,27 +1119,18 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
     treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
-    for (int kk = 0; kk < Nn; kk++) {
+    for (int kk = 0; kk < Nn; kk++)
+    {
         blasfeo_dveccp(nx[kk], &work->sx[kk], 0, &qp_out->x[kk], 0);
         blasfeo_dveccp(nu[kk], &work->su[kk], 0, &qp_out->u[kk], 0);
 
-        if (kk > 0) {
+        if (kk > 0)
+        {
             blasfeo_dveccp(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
                 &qp_out->lam[kk], 0);
         }
-        // TODO(dimitris): move to stage_qp file
-        if (opts->qp_solver[kk] == TREEQP_CLIPPING_SOLVER)
-        {
-            // mu_x[kk] = (xUnc[k] - x[k])*Q[k] = -(Q[k]*x[k]+q[k])*abs(xas[k])
-            blasfeo_daxpy(nx[kk], -1., &qp_out->x[kk], 0, &work->sxUnc[kk], 0, &qp_out->mu_x[kk], 0);
-            blasfeo_daxpy(nu[kk], -1., &qp_out->u[kk], 0, &work->suUnc[kk], 0, &qp_out->mu_u[kk], 0);
-            blasfeo_dvecmuldot(nx[kk], qp_data[kk]->sQ, 0, &qp_out->mu_x[kk], 0, &qp_out->mu_x[kk], 0);
-            blasfeo_dvecmuldot(nu[kk], qp_data[kk]->sR, 0, &qp_out->mu_u[kk], 0, &qp_out->mu_u[kk], 0);
-        }
-        else if (opts->qp_solver[kk] == TREEQP_QPOASES_SOLVER)
-        {
-            // TODO(dimitris): get dual multipliers from qpOASES
-        }
+
+        work->stage_qp_ptrs[kk].export_mu(qp_out, kk, work);
     }
     qp_out->info.iter = NewtonIter;
 

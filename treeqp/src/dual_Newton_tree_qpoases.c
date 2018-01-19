@@ -355,3 +355,30 @@ void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
     QProblemB_solve(qp_in, node_index, work);
 }
+
+
+
+void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    treeqp_tdunes_qpoases_data *qpoases_solver_data =
+        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index];
+
+    QProblemB *QPB = qpoases_solver_data->QPB;
+
+    int nx = qp_out->x[node_index].m;
+    int nu = qp_out->u[node_index].m;
+
+    blasfeo_pack_dvec(nx, &QPB->y[0], &qp_out->mu_x[node_index], 0);
+    blasfeo_pack_dvec(nu, &QPB->y[nx], &qp_out->mu_u[node_index], 0);
+
+    // TODO(dimitris): have same convention as qpOASES instead of flipping sign here
+    for (int ii = 0; ii < nx; ii++)
+    {
+        DVECEL_LIBSTR(&qp_out->mu_x[node_index], ii) = - DVECEL_LIBSTR(&qp_out->mu_x[node_index], ii);
+    }
+    for (int ii = 0; ii < nu; ii++)
+    {
+        DVECEL_LIBSTR(&qp_out->mu_u[node_index], ii) = - DVECEL_LIBSTR(&qp_out->mu_u[node_index], ii);
+    }
+}
