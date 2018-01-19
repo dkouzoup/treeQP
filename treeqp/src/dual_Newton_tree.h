@@ -51,6 +51,8 @@ typedef struct
     void (*init)(tree_ocp_qp_in *qp_in, int node_index, void *work);
     void (*solve_extended)(tree_ocp_qp_in *qp_in, int node_index, void *work);
     void (*solve)(tree_ocp_qp_in *qp_in, int node_index, void *work);
+    void (*init_W)(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
+    void (*update_W)(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index, int row_offset, int col_offset, void *work_);
     void (*eval_dual_term)(tree_ocp_qp_in *qp_in, int node_index, void *work_);
     void (*export_mu)(tree_ocp_qp_out *qp_out, int node_index, void *work_);
 } stage_qp_fcn_ptrs;

@@ -76,7 +76,7 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 
     // TODO(dimitris): replace with calculate_size/create for args
     opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
-    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -112,8 +112,10 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_clipping_init;
             ptrs->solve_extended = stage_qp_clipping_solve_extended;
             ptrs->solve = stage_qp_clipping_solve;
-            ptrs->export_mu = stage_qp_clipping_export_mu;
+            ptrs->init_W = stage_qp_clipping_init_W;
+            ptrs->update_W = stage_qp_clipping_update_W;
             ptrs->eval_dual_term = stage_qp_clipping_eval_dual_term;
+            ptrs->export_mu = stage_qp_clipping_export_mu;
             break;
         case TREEQP_QPOASES_SOLVER:
             ptrs->is_applicable = stage_qp_qpoases_is_applicable;
@@ -124,8 +126,10 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_qpoases_init;
             ptrs->solve_extended = stage_qp_qpoases_solve_extended;
             ptrs->solve = stage_qp_qpoases_solve;
-            ptrs->export_mu = stage_qp_qpoases_export_mu;
+            ptrs->init_W = stage_qp_qpoases_init_W;
+            ptrs->update_W = stage_qp_qpoases_update_W;
             ptrs->eval_dual_term = stage_qp_qpoases_eval_dual_term;
+            ptrs->export_mu = stage_qp_qpoases_export_mu;
             break;
         default:
             printf("[TREEQP] Error! Unknown stage QP solver specified.\n");
@@ -405,9 +409,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sWdiag = work->sWdiag;
     #endif
 
-    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
-    // treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
-
     int Nn = work->Nn;
     int Np = work->Np;
 
@@ -510,11 +511,16 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         {
         #endif
 
-        // --- intermediate result (used both for Ut and W)
+        // --- hessian contribution of node (diagonal block of W)
+        work->stage_qp_ptrs[kk].init_W(qp_in, kk, idxdad, idxpos, work);
 
-        // M = A[k] * Qinvcal[idxdad]
-        blasfeo_dgemm_nd(nx[kk], nx[idxdad], 1.0,  &sA[kk-1], 0, 0,
-            qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
+        // W[idxdad]+offset += regMat (regularization)
+        blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
+
+        #ifdef _CHECK_LAST_ACTIVE_SET_
+        // save diagonal block that will be overwritten in factorization
+        blasfeo_dgecp(nx[kk], nx[kk], &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
+        #endif
 
         // --- hessian contribution of parent (Ut)
 
@@ -530,31 +536,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             blasfeo_dgesc(nx[idxdad], nx[kk], -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
-        // --- hessian contribution of node (diagonal block of W)
-
-        // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[k]'
-        blasfeo_dsyrk_ln(nx[kk], nx[idxdad], 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
-            idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
-
-        // M = B[k]*Rinvcal[idxdad]
-        blasfeo_dgemm_nd(nx[kk], nu[idxdad], 1.0,  &sB[kk-1], 0, 0,
-            qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, nx[idxdad], &sM[kk], 0, nx[idxdad]);
-
-        // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[k]'
-        blasfeo_dsyrk_ln(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, nx[idxdad], 1.0, &sW[idxdad],
-            idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
-
-        // W[idxdad]+offset += Qinvcal[k]
-        blasfeo_ddiaad(nx[kk], 1.0, qp_data[kk]->sQinvCal, 0, &sW[idxdad], idxpos, idxpos);
-
-        // W[idxdad]+offset += regMat (regularization)
-        blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
-
-        #ifdef _CHECK_LAST_ACTIVE_SET_
-        // save diagonal block that will be overwritten in factorization
-        blasfeo_dgecp(nx[kk], nx[kk], &sW[idxdad], idxpos, idxpos, &sWdiag[kk], 0, 0);
-        #endif
-
         // --- hessian contribution of preceding siblings (off-diagonal blocks of W)
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -568,21 +549,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             idxsib = tree[idxdad].kids[ii];
             if (idxsib == kk) break;  // completed all preceding siblings
 
-            // M = A[idxsib] * Qinvcal[idxdad]
-            blasfeo_dgemm_nd(nx[idxsib], nx[idxdad], 1.0,  &sA[idxsib-1], 0, 0,
-                qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
-
-            // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[idxsib]'
-            blasfeo_dgemm_nt(nx[kk], nx[idxsib], nx[idxdad], 1.0, &sA[kk-1], 0, 0,
-                &sM[kk], 0, 0, 0.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
-
-            // M = B[idxsib]*Rinvcal[idxdad]
-            blasfeo_dgemm_nd(nx[idxsib], nu[idxdad], 1.0, &sB[idxsib-1], 0, 0,
-                qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, nx[idxdad], &sM[kk], 0, nx[idxdad]);
-
-            // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[idxsib]'
-            blasfeo_dgemm_nt(nx[kk], nx[idxsib], nu[idxdad], 1.0, &sB[kk-1], 0, 0,
-                &sM[kk], 0, nx[idxdad], 1.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
+            work->stage_qp_ptrs[kk].update_W(qp_in, kk, idxsib, idxdad, idxpos, idxii, work);
 
             // idxiiOLD = ii*qp_in->nx[1];
             idxii += nx[idxsib];
