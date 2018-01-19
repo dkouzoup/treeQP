@@ -813,7 +813,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     struct node *tree = (struct node *)qp_in->tree;
 
     #ifdef PARALLEL
-    #pragma omp parallel for private(ii, jj, idxkid, idxpos, idxdad)
+    #pragma omp parallel for private(idxkid, idxpos, idxdad)
     #endif
     // NOTE: same code as in solve_stage_problems but:
     // - without calculating as
