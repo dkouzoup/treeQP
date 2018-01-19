@@ -212,7 +212,7 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     int nx = qp_in->nx[node_index];
     int nu = qp_in->nu[node_index];
 
-    // TODO(dimitris): Figure out why this is needed
+    // TODO(dimitris): figure out why this is needed (weird results for NREP > 1 otherwise)
     // *probably because it's used as scrap space in eval_dual, fix it
     blasfeo_dvecse(nx, 0.0, &work->sxas[node_index], 0);
     blasfeo_dvecse(nu, 0.0, &work->suas[node_index], 0);
@@ -254,9 +254,6 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
         qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
 
     assert(status == 0 && "initialization of qpOASES failed!");
-
-    // TEEEEEEEEEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // QProblemB_build_elimination_matrix(QPB, node_index, work);
 
     // QProblemB_getPrimalSolution(QPB, qpoases_solver_data->prim_sol);
     // printf("primal sol:\n");

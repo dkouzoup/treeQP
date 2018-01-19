@@ -76,7 +76,7 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 
     // TODO(dimitris): replace with calculate_size/create for args
     opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
-    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -388,8 +388,10 @@ static double calculate_error_in_residuals(termination_t condition, treeqp_tdune
 }
 
 
+
 static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+{
 
     int idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
     double error;
@@ -403,8 +405,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sWdiag = work->sWdiag;
     #endif
 
-    // treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
-    treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
+    treeqp_tdunes_clipping_data **qp_data = (treeqp_tdunes_clipping_data **)work->stage_qp_data;
+    // treeqp_tdunes_qpoases_data **qp_data = (treeqp_tdunes_qpoases_data **)work->stage_qp_data;
 
     int Nn = work->Nn;
     int Np = work->Np;
@@ -432,7 +434,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     double res[dimres];
     int dimW = 0;
     int dimUt = 0;
-    for (int kk = 0; kk < Np; kk++) {
+    for (int kk = 0; kk < Np; kk++)
+    {
         dimW += sW[kk].n*sW[kk].n;  // NOTE(dimitris): not m, as it may be equal to n+1
         if (kk > 0) dimUt += sUt[kk-1].m*sUt[kk-1].n;
     }
@@ -443,7 +446,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
     #ifdef _CHECK_LAST_ACTIVE_SET_
     // TODO(dimitris): check if it's worth to parallelize
-    for (int kk = Nn-1; kk >= 0; kk--) {
+    for (int kk = Nn-1; kk >= 0; kk--)
+    {
         isLeaf = (tree[kk].nkids > 0 ? 0:1);
         // NOTE(dimitris): updates both xasChanged/uasChanged and xasPrev/uasPrev
         compare_with_previous_active_set(isLeaf, kk, work);
@@ -457,7 +461,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     #endif
     // Calculate dual gradient
     // TODO(dimitris): can we merge with solution of stage QPs without problems in parallelizing?
-    for (int kk = Nn-1; kk > 0; kk--) {
+    for (int kk = Nn-1; kk > 0; kk--)
+    {
         idxdad = tree[kk].dad;
         idxpos = work->idxpos[kk];
 
@@ -480,14 +485,16 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
     // Check termination condition
     error = calculate_error_in_residuals(opts->termCondition, work);
-    if (error < opts->stationarityTolerance) {
+    if (error < opts->stationarityTolerance)
+    {
         return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
     }
     #ifdef PARALLEL
     #pragma omp parallel for private(idxdad, idxpos, idxsib, idxii, ns, asDadChanged)
     #endif
     // Calculate dual Hessian
-    for (int kk = Nn-1; kk > 0; kk--) {
+    for (int kk = Nn-1; kk > 0; kk--)
+    {
         idxdad = tree[kk].dad;
         idxpos = work->idxpos[kk];
 
@@ -499,7 +506,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         // TODO(dimitris): if only xasChanged, remove QinvCalPrev and add new
-        if (asDadChanged || xasChanged[kk]) {
+        if (asDadChanged || xasChanged[kk])
+        {
         #endif
 
         // --- intermediate result (used both for Ut and W)
@@ -511,27 +519,29 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         // --- hessian contribution of parent (Ut)
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        if (asDadChanged && tree[idxdad].dad >= 0) {
+        if (asDadChanged && tree[idxdad].dad >= 0)
+        {
         #else
-        if (tree[idxdad].dad >= 0) {
+        if (tree[idxdad].dad >= 0)
+        {
         #endif
-            // Ut[idxdad]+offset = M' = - A[k] *  Qinvcal[idxdad]
+            // Ut[idxdad]+offset = M' = - Qinvcal[idxdad] * A[k]'
             blasfeo_dgetr(nx[kk], nx[idxdad], &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
             blasfeo_dgesc(nx[idxdad], nx[kk], -1.0, &sUt[idxdad-1], 0, idxpos);
         }
 
         // --- hessian contribution of node (diagonal block of W)
 
-        // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[k]'
+        // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[k]'
         blasfeo_dsyrk_ln(nx[kk], nx[idxdad], 1.0, &sA[kk-1], 0, 0, &sM[kk], 0, 0, 0.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // M = B[k]*Rinvcal[idxdad]
         blasfeo_dgemm_nd(nx[kk], nu[idxdad], 1.0,  &sB[kk-1], 0, 0,
-            qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
+            qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, nx[idxdad], &sM[kk], 0, nx[idxdad]);
 
-        // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[k]'
-        blasfeo_dsyrk_ln(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, 0, 1.0, &sW[idxdad],
+        // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[k]'
+        blasfeo_dsyrk_ln(nx[kk], nu[idxdad], 1.0, &sB[kk-1], 0, 0, &sM[kk], 0, nx[idxdad], 1.0, &sW[idxdad],
             idxpos, idxpos, &sW[idxdad], idxpos, idxpos);
 
         // W[idxdad]+offset += Qinvcal[k]
@@ -548,11 +558,13 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         // --- hessian contribution of preceding siblings (off-diagonal blocks of W)
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        if (asDadChanged) {
+        if (asDadChanged)
+        {
         #endif
         ns = tree[idxdad].nkids - 1;  // number of siblings
         idxii = 0;
-        for (int ii = 0; ii < ns; ii++) {
+        for (int ii = 0; ii < ns; ii++)
+        {
             idxsib = tree[idxdad].kids[ii];
             if (idxsib == kk) break;  // completed all preceding siblings
 
@@ -560,17 +572,17 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             blasfeo_dgemm_nd(nx[idxsib], nx[idxdad], 1.0,  &sA[idxsib-1], 0, 0,
                 qp_data[idxdad]->sQinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
 
-            // W[idxdad]+offset = A[k]*M^T = A[k]*Qinvcal[idxdad]*A[idxsib]'
+            // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[idxsib]'
             blasfeo_dgemm_nt(nx[kk], nx[idxsib], nx[idxdad], 1.0, &sA[kk-1], 0, 0,
                 &sM[kk], 0, 0, 0.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
 
             // M = B[idxsib]*Rinvcal[idxdad]
             blasfeo_dgemm_nd(nx[idxsib], nu[idxdad], 1.0, &sB[idxsib-1], 0, 0,
-                qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, 0, &sM[kk], 0, 0);
+                qp_data[idxdad]->sRinvCal, 0, 0.0, &sM[kk], 0, nx[idxdad], &sM[kk], 0, nx[idxdad]);
 
-            // W[idxdad]+offset += B[k]*M^T = B[k]*Rinvcal[idxdad]*B[idxsib]'
+            // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[idxsib]'
             blasfeo_dgemm_nt(nx[kk], nx[idxsib], nu[idxdad], 1.0, &sB[kk-1], 0, 0,
-                &sM[kk], 0, 0, 1.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
+                &sM[kk], 0, nx[idxdad], 1.0, &sW[idxdad], idxpos, idxii, &sW[idxdad], idxpos, idxii);
 
             // idxiiOLD = ii*qp_in->nx[1];
             idxii += nx[idxsib];
@@ -580,19 +592,23 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         #endif
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
-        } else {
+        }
+        else
+        {
             blasfeo_dgecp(nx[kk], nx[kk], &sWdiag[kk], 0, 0, &sW[idxdad], idxpos, idxpos);
         }
         #endif
     }
 
     #if DEBUG == 1
-    for (int kk = 0; kk < Np; kk++) {
+    for (int kk = 0; kk < Np; kk++)
+    {
         blasfeo_unpack_dvec(sres[kk].m, &sres[kk], 0, &res[indres]);
         indres += sres[kk].m;
         blasfeo_unpack_dmat(sW[kk].n, sW[kk].n, &sW[kk], 0, 0, &W[indW], sW[kk].n);
         indW += sW[kk].n*sW[kk].n;
-        if (kk > 0) {
+        if (kk > 0)
+        {
             blasfeo_unpack_dmat( sUt[kk-1].m, sUt[kk-1].n, &sUt[kk-1], 0, 0,
                 &Ut[indUt], sUt[kk-1].m);
             indUt += sUt[kk-1].m*sUt[kk-1].n;
@@ -605,6 +621,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
     return TREEQP_OK;
 }
+
 
 
 static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
@@ -1118,21 +1135,31 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 }
 
 
-static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int *colsM){
 
+static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int *colsM)
+{
     int idxdad = qp_in->tree[idx].dad;
     int idxsib;
 
-    if (idx == 0) {
+    if (idx == 0)
+    {
         *rowsM = 0;
         *colsM = 0;
-    } else {
-        *colsM = MAX(qp_in->nx[idxdad], qp_in->nu[idxdad]);
+    } else
+    {
+        *colsM = qp_in->nx[idxdad] + qp_in->nu[idxdad];
         *rowsM = 0;
 
-        for (int jj = 0; jj < qp_in->tree[idxdad].nkids; jj++) {
+        for (int jj = 0; jj < qp_in->tree[idxdad].nkids; jj++)
+        {
             idxsib = qp_in->tree[idxdad].kids[jj];
-            *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
+            *rowsM = MAX(*rowsM, qp_in->nx[idxsib]);
+            // TODO(dimitris): test that old code below was indeed wrong (currently nx > nu always)
+            // *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
+            if (qp_in->nx[idxsib] < qp_in->nu[idxsib])
+            {
+                assert(1 == 0 && "Case not tested yet! Comment out and check if code seg. faults.");
+            }
         }
     }
 }
