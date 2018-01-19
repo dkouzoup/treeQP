@@ -66,12 +66,6 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     bytes += 3 * sizeof(struct blasfeo_dmat);  // sCholZTHZ, sZ, sP
     bytes += 3 * blasfeo_memsize_dmat(nvd, nvd);
 
-    // TODO(dimitris): TEMP
-    bytes += 2 * sizeof(struct blasfeo_dvec);  // sQinvCal, sRinvCal
-    bytes += 1 * blasfeo_memsize_dvec(nx);
-    bytes += 1 * blasfeo_memsize_dvec(nu);
-
-
     if (ngd > 0)
     {   // QProblem
         bytes += QProblem_calculateMemorySize(nvd, ngd);
@@ -102,12 +96,6 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
     qpoases_solver_data->sP = (struct blasfeo_dmat *)*c_double_ptr;
     *c_double_ptr += sizeof(struct blasfeo_dmat);
 
-    // TODO(dimitris): TEMP
-    qpoases_solver_data->sQinvCal = (struct blasfeo_dvec *)*c_double_ptr;
-    *c_double_ptr += sizeof(struct blasfeo_dvec);
-    qpoases_solver_data->sRinvCal = (struct blasfeo_dvec *)*c_double_ptr;
-    *c_double_ptr += sizeof(struct blasfeo_dvec);
-
     *stage_qp_data = (void *) qpoases_solver_data;
 }
 
@@ -136,10 +124,6 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sCholZTHZ, c_double_ptr);
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZ, c_double_ptr);
     init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
-
-    // TODO(dimitris): TEMP
-    init_strvec(nx, qpoases_solver_data->sQinvCal, c_double_ptr);
-    init_strvec(nu, qpoases_solver_data->sRinvCal, c_double_ptr);
 
     if (ngd > 0)
     {   // QProblem
@@ -193,12 +177,6 @@ static void QProblemB_build_elimination_matrix(QProblemB *QPB, int node_index,
 
     // printf("P (strmat):\n");
     // blasfeo_print_dmat(nvd, nvd, qpoases_solver_data->sP, 0, 0);
-
-    // TODO(dimitris): TEMP
-    int nx = work->sx[node_index].m;
-    int nu = work->su[node_index].m;
-    blasfeo_ddiaex(nx, 1.0, qpoases_solver_data->sP, 0, 0, qpoases_solver_data->sQinvCal, 0);
-    blasfeo_ddiaex(nu, 1.0, qpoases_solver_data->sP, nx, nx, qpoases_solver_data->sRinvCal, 0);
 }
 
 
@@ -344,9 +322,6 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
-
-    struct blasfeo_dvec *sQinvCal =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sQinvCal;
 
     struct blasfeo_dmat *sP =
         ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sP;
