@@ -92,13 +92,6 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 
 
 
-void do_nothing(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
-{
-    // dummy function to replace either assign_data_aligned or assign_data_not_aligned function
-}
-
-
-
 void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
 {
     switch (qp_solver)
@@ -107,8 +100,8 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->is_applicable = stage_qp_clipping_is_applicable;
             ptrs->calculate_size = stage_qp_clipping_calculate_size;
             ptrs->assign_structs = stage_qp_clipping_assign_structs;
-            ptrs->assign_data_aligned = stage_qp_clipping_assign_data;
-            ptrs->assign_data_not_aligned = do_nothing;
+            ptrs->assign_blasfeo_data = stage_qp_clipping_assign_blasfeo_data;
+            ptrs->assign_data = stage_qp_clipping_assign_data;
             ptrs->init = stage_qp_clipping_init;
             ptrs->solve_extended = stage_qp_clipping_solve_extended;
             ptrs->solve = stage_qp_clipping_solve;
@@ -121,8 +114,8 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->is_applicable = stage_qp_qpoases_is_applicable;
             ptrs->calculate_size = stage_qp_qpoases_calculate_size;
             ptrs->assign_structs = stage_qp_qpoases_assign_structs;
-            ptrs->assign_data_aligned = do_nothing;
-            ptrs->assign_data_not_aligned = stage_qp_qpoases_assign_data;
+            ptrs->assign_blasfeo_data = stage_qp_qpoases_assign_blasfeo_data;
+            ptrs->assign_data = stage_qp_qpoases_assign_data;
             ptrs->init = stage_qp_qpoases_init;
             ptrs->solve_extended = stage_qp_qpoases_solve_extended;
             ptrs->solve = stage_qp_qpoases_solve;
@@ -1375,12 +1368,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     // first assign blasfeo-based solvers, then the rest, and then align again
     for (int ii = 0; ii < Nn; ii++)
     {
-        work->stage_qp_ptrs[ii].assign_data_aligned(qp_in->nx[ii], qp_in->nu[ii],
+        work->stage_qp_ptrs[ii].assign_blasfeo_data(qp_in->nx[ii], qp_in->nu[ii],
             work->stage_qp_data[ii], &c_ptr);
     }
     for (int ii = 0; ii < Nn; ii++)
     {
-        work->stage_qp_ptrs[ii].assign_data_not_aligned(qp_in->nx[ii], qp_in->nu[ii],
+        work->stage_qp_ptrs[ii].assign_data(qp_in->nx[ii], qp_in->nu[ii],
             work->stage_qp_data[ii], &c_ptr);
     }
 

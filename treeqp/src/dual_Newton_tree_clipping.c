@@ -117,7 +117,7 @@ void stage_qp_clipping_assign_structs(void **stage_qp_data, char **c_double_ptr)
 
 
 // NOTE(dimitris): structs and data are assigned separately due to alignment requirements
-void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+void stage_qp_clipping_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
 {
     treeqp_tdunes_clipping_data *clipping_solver_data;
     clipping_solver_data = (treeqp_tdunes_clipping_data *)stage_qp_data;
@@ -128,6 +128,13 @@ void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c
     init_strvec(nu, clipping_solver_data->sRinv, c_double_ptr);
     init_strvec(nx, clipping_solver_data->sQinvCal, c_double_ptr);
     init_strvec(nu, clipping_solver_data->sRinvCal, c_double_ptr);
+}
+
+
+
+void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+{
+    // dummy function
 }
 
 

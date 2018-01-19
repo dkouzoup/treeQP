@@ -101,6 +101,18 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
 
 
 
+void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+{
+    treeqp_tdunes_qpoases_data *qpoases_solver_data;
+    qpoases_solver_data = (treeqp_tdunes_qpoases_data *)stage_qp_data;
+
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sCholZTHZ, c_double_ptr);
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZ, c_double_ptr);
+    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
+}
+
+
+
 // NOTE(dimitris): structs and data are assigned separately due to alignment requirements
 void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
 {
@@ -119,11 +131,6 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
     create_double(ngd, &qpoases_solver_data->uc, c_double_ptr);
 
     assert((size_t)*c_double_ptr % 8 == 0 && "double not 8-byte aligned!");
-
-    // TODO(dimitris): WRITE assign_aligned_data AND assign_not_aligned_data FUNCTIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sCholZTHZ, c_double_ptr);
-    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sZ, c_double_ptr);
-    init_strmat(nx+nu, nx+nu, qpoases_solver_data->sP, c_double_ptr);
 
     if (ngd > 0)
     {   // QProblem
@@ -214,11 +221,6 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     blasfeo_unpack_dvec(nx, &qp_in->xmax[node_index], 0, &qpoases_solver_data->ub[0]);
     blasfeo_unpack_dvec(nu, &qp_in->umax[node_index], 0, &qpoases_solver_data->ub[nx]);
 
-    // TEEEEEEEEEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // qpoases_solver_data->lb[0] = -0.01;
-    // qpoases_solver_data->lb[1] = -1;
-    // qpoases_solver_data->lb[2] = -0.5;
-
     if (node_index > 0)
     {
         blasfeo_dgecp(nx, qp_in->A[node_index-1].n, &qp_in->A[node_index-1], 0, 0, &work->sAB[node_index-1], 0, 0);
@@ -238,33 +240,6 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
         qpoases_solver_data->lb, qpoases_solver_data->ub, &nWSR, &cputime);
 
     assert(status == 0 && "initialization of qpOASES failed!");
-
-    // QProblemB_getPrimalSolution(QPB, qpoases_solver_data->prim_sol);
-    // printf("primal sol:\n");
-    // for (int ii = 0; ii < nx+nu; ii++)
-    // {
-    //     printf("%f\t", qpoases_solver_data->prim_sol[ii]);
-    // }
-    // printf("\n\n");
-    // exit(1);
-
-    // printf("Q:\n");
-    // blasfeo_print_dmat(nx, nx, &qp_in->Q[node_index], 0, 0);
-    // printf("R:\n");
-    // blasfeo_print_dmat(nu, nu, &qp_in->R[node_index], 0, 0);
-    // printf("S:\n");
-    // blasfeo_print_dmat(nu, nx, &qp_in->S[node_index], 0, 0);
-    // printf("\n\n");
-    // printf("matrix H (row major):\n");
-    // for (int ii = 0; ii < nx+nu; ii++)
-    // {
-    //     for (int jj = 0; jj < nx+nu; jj++)
-    //     {
-    //         printf("%f\t", qpoases_solver_data->H[ii*(nx+nu)+jj]);
-    //     }
-    //     printf("\n");
-    // }
-    // exit(1);
 }
 
 
