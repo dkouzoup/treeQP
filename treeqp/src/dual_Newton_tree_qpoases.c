@@ -62,8 +62,6 @@ int stage_qp_qpoases_calculate_size(int nx, int nu)
     bytes += 1 * nvd * ngd * sizeof(double);  // C
     bytes += 3 * nvd * sizeof(double);  // g, lb, ub
     bytes += 2 * ngd * sizeof(double);  // lc, uc
-    bytes += 1 * nvd * sizeof(double);  // prim_sol
-    bytes += (nvd+ngd) * sizeof(double);  // dual_sol
 
     bytes += 3 * sizeof(struct blasfeo_dmat);  // sCholZTHZ, sZ, sP
     bytes += 3 * blasfeo_memsize_dmat(nvd, nvd);
@@ -131,8 +129,6 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
     create_double(nvd, &qpoases_solver_data->ub, c_double_ptr);
     create_double(ngd, &qpoases_solver_data->lc, c_double_ptr);
     create_double(ngd, &qpoases_solver_data->uc, c_double_ptr);
-    create_double(nvd, &qpoases_solver_data->prim_sol, c_double_ptr);
-    create_double(nvd+ngd, &qpoases_solver_data->dual_sol, c_double_ptr);
 
     assert((size_t)*c_double_ptr % 8 == 0 && "double not 8-byte aligned!");
 
