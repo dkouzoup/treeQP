@@ -338,7 +338,7 @@ void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 }
 
 
-// TODO TEMP!!!
+
 // build W[n] + offset = C[m] * P[n] * C[m]' + E' * P[m] * E + reg, with C[m] = [A[m] B[m]]
 void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
     void *work_)
@@ -347,13 +347,12 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
 
     struct blasfeo_dvec *sQinvCal =
         ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sQinvCal;
-    struct blasfeo_dvec *sQinvCal_dad =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sQinvCal;
-    struct blasfeo_dvec *sRinvCal_dad =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sRinvCal;
 
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) &qp_in->A[node_index-1];
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) &qp_in->B[node_index-1];
+    struct blasfeo_dmat *sP =
+        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sP;
+    struct blasfeo_dmat *sP_dad =
+        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sP;
+
     struct blasfeo_dmat *sM = &work->sM[node_index];
     struct blasfeo_dmat *sW_dad = &work->sW[dad_index];
 
@@ -362,22 +361,26 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
     int nxdad = qp_in->nx[dad_index];
     int nudad = qp_in->nu[dad_index];
 
-    // M = A[k] * Qinvcal[idxdad] (used both for Ut and W)
-    blasfeo_dgemm_nd(nx, nxdad, 1.0, sA, 0, 0, sQinvCal_dad, 0, 0.0, sM, 0, 0, sM, 0, 0);
+    // TODO(dimitris): MOVE TO WORKSPACE!!!!
+    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) &qp_in->A[node_index-1];
+    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) &qp_in->B[node_index-1];
+    struct blasfeo_dmat sCtmp;
+    struct blasfeo_dmat *sC = &sCtmp;
+    blasfeo_allocate_dmat(nx, nxdad+nudad, sC);
+    blasfeo_dgecp(nx, nxdad, sA, 0, 0, sC, 0, 0);
+    blasfeo_dgecp(nx, nudad, sB, 0, 0, sC, 0, nxdad);
 
-    // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[k]'
-    blasfeo_dsyrk_ln(nx, nxdad, 1.0, sA, 0, 0, sM, 0, 0, 0.0, sW_dad, offset, offset,
+    // TODO(dimitris): check with @giaf that this is more efficient than blasfeo_dgemm_nn
+    // M = C[k] * P[idxdad] (used both for Ut and W)
+    blasfeo_dgemm_nt(nx, nxdad+nudad, nxdad+nudad, 1.0, sC, 0, 0, sP_dad, 0, 0, 0.0,
+        sM, 0, 0, sM, 0, 0);
+
+    // W[idxdad]+offset = C[k]*M' = C[k]*P[idxdad]*C[k]'
+    blasfeo_dsyrk_ln(nx, nxdad+nudad, 1.0, sC, 0, 0, sM, 0, 0, 0.0, sW_dad, offset, offset,
         sW_dad, offset, offset);
 
-    // M = B[k]*Rinvcal[idxdad]
-    blasfeo_dgemm_nd(nx, nudad, 1.0,  sB, 0, 0, sRinvCal_dad, 0, 0.0, sM, 0, nxdad, sM, 0, nxdad);
-
-    // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[k]'
-    blasfeo_dsyrk_ln(nx, nudad, 1.0, sB, 0, 0, sM, 0, nxdad, 1.0, sW_dad, offset, offset,
-        sW_dad, offset, offset);
-
-    // W[idxdad]+offset += Qinvcal[k]
-    blasfeo_ddiaad(nx, 1.0, sQinvCal, 0, sW_dad, offset, offset);
+    // W[idxdad]+offset += E'*P[k]*E
+    blasfeo_dgead(nx, nx, 1.0, sP, 0, 0, sW_dad, offset, offset);
 }
 
 
@@ -393,32 +396,37 @@ void stage_qp_qpoases_update_W(tree_ocp_qp_in *qp_in, int node_index, int sib_in
     int nxdad = qp_in->nx[dad_index];
     int nudad = qp_in->nu[dad_index];
 
-    struct blasfeo_dvec *sQinvCal_dad =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sQinvCal;
-    struct blasfeo_dvec *sRinvCal_dad =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sRinvCal;
+    struct blasfeo_dmat *sP_dad =
+        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sP;
 
+    // TODO(dimitris): MOVE TO WORKSPACE!!!!
     struct blasfeo_dmat *sA = (struct blasfeo_dmat *) &qp_in->A[node_index-1];
     struct blasfeo_dmat *sB = (struct blasfeo_dmat *) &qp_in->B[node_index-1];
     struct blasfeo_dmat *sA_sib = (struct blasfeo_dmat *) &qp_in->A[sib_index-1];
     struct blasfeo_dmat *sB_sib = (struct blasfeo_dmat *) &qp_in->B[sib_index-1];
 
+    struct blasfeo_dmat sCtmp, sCtmp_sib;
+    struct blasfeo_dmat *sC = &sCtmp;
+    struct blasfeo_dmat *sC_sib = &sCtmp_sib;
+
+    blasfeo_allocate_dmat(nx, nxdad+nudad, sC);
+    blasfeo_dgecp(nx, nxdad, sA, 0, 0, sC, 0, 0);
+    blasfeo_dgecp(nx, nudad, sB, 0, 0, sC, 0, nxdad);
+
+    blasfeo_allocate_dmat(nxsib, nxdad+nudad, sC_sib);
+    blasfeo_dgecp(nxsib, nxdad, sA_sib, 0, 0, sC_sib, 0, 0);
+    blasfeo_dgecp(nxsib, nudad, sB_sib, 0, 0, sC_sib, 0, nxdad);
+
     struct blasfeo_dmat *sM = &work->sM[node_index];
     struct blasfeo_dmat *sW_dad = &work->sW[dad_index];
 
-    // M = A[idxsib] * Qinvcal[idxdad]
-    blasfeo_dgemm_nd(nxsib, nxdad, 1.0,  sA_sib, 0, 0, sQinvCal_dad, 0, 0.0, sM, 0, 0, sM, 0, 0);
+    // TODO(dimitris): check with @giaf that this is more efficient than blasfeo_dgemm_nn
+    // M = C[idxsib] * P[idxdad]
+    blasfeo_dgemm_nt(nxsib, nxdad+nudad, nxdad+nudad, 1.0, sC_sib, 0, 0, sP_dad, 0, 0, 0.0,
+        sM, 0, 0, sM, 0, 0);
 
-    // W[idxdad]+offset = A[k]*M' = A[k]*Qinvcal[idxdad]*A[idxsib]'
-    blasfeo_dgemm_nt(nx, nxsib, nxdad, 1.0, sA, 0, 0, sM, 0, 0, 0.0,
-        sW_dad, row_offset, col_offset, sW_dad, row_offset, col_offset);
-
-    // M = B[idxsib]*Rinvcal[idxdad]
-    blasfeo_dgemm_nd(nxsib, nudad, 1.0, sB_sib, 0, 0, sRinvCal_dad, 0, 0.0, sM, 0, nxdad,
-        sM, 0, nxdad);
-
-    // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[idxsib]'
-    blasfeo_dgemm_nt(nx, nxsib, nudad, 1.0, sB, 0, 0, sM, 0, nxdad, 1.0,
+    // W[idxdad]+offset += C[k]*M' = C[k]*P[idxdad]*C[idxsib]'
+    blasfeo_dgemm_nt(nx, nxsib, nxdad+nudad, 1.0, sC, 0, 0, sM, 0, 0, 0.0,
         sW_dad, row_offset, col_offset, sW_dad, row_offset, col_offset);
 }
 
