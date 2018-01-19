@@ -219,6 +219,12 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
     // qpoases_solver_data->lb[1] = -1;
     // qpoases_solver_data->lb[2] = -0.5;
 
+    if (node_index > 0)
+    {
+        blasfeo_dgecp(nx, qp_in->A[node_index-1].n, &qp_in->A[node_index-1], 0, 0, &work->sAB[node_index-1], 0, 0);
+        blasfeo_dgecp(nx, qp_in->B[node_index-1].n, &qp_in->B[node_index-1], 0, 0, &work->sAB[node_index-1], 0, qp_in->A[node_index-1].n);
+    }
+
     // solve first QP instance
 
 	int nWSR = 10;  // TODO(dimitris): move those max values to options
@@ -328,6 +334,7 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
     struct blasfeo_dmat *sP_dad =
         ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sP;
 
+    struct blasfeo_dmat *sC = &work->sAB[node_index-1];
     struct blasfeo_dmat *sM = &work->sM[node_index];
     struct blasfeo_dmat *sW_dad = &work->sW[dad_index];
 
@@ -335,15 +342,6 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
     int nu = qp_in->nu[node_index];
     int nxdad = qp_in->nx[dad_index];
     int nudad = qp_in->nu[dad_index];
-
-    // TODO(dimitris): MOVE TO WORKSPACE!!!!
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) &qp_in->A[node_index-1];
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) &qp_in->B[node_index-1];
-    struct blasfeo_dmat sCtmp;
-    struct blasfeo_dmat *sC = &sCtmp;
-    blasfeo_allocate_dmat(nx, nxdad+nudad, sC);
-    blasfeo_dgecp(nx, nxdad, sA, 0, 0, sC, 0, 0);
-    blasfeo_dgecp(nx, nudad, sB, 0, 0, sC, 0, nxdad);
 
     // TODO(dimitris): check with @giaf that this is more efficient than blasfeo_dgemm_nn
     // M = C[k] * P[idxdad] (used both for Ut and W)
@@ -374,23 +372,8 @@ void stage_qp_qpoases_update_W(tree_ocp_qp_in *qp_in, int node_index, int sib_in
     struct blasfeo_dmat *sP_dad =
         ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sP;
 
-    // TODO(dimitris): MOVE TO WORKSPACE!!!!
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) &qp_in->A[node_index-1];
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) &qp_in->B[node_index-1];
-    struct blasfeo_dmat *sA_sib = (struct blasfeo_dmat *) &qp_in->A[sib_index-1];
-    struct blasfeo_dmat *sB_sib = (struct blasfeo_dmat *) &qp_in->B[sib_index-1];
-
-    struct blasfeo_dmat sCtmp, sCtmp_sib;
-    struct blasfeo_dmat *sC = &sCtmp;
-    struct blasfeo_dmat *sC_sib = &sCtmp_sib;
-
-    blasfeo_allocate_dmat(nx, nxdad+nudad, sC);
-    blasfeo_dgecp(nx, nxdad, sA, 0, 0, sC, 0, 0);
-    blasfeo_dgecp(nx, nudad, sB, 0, 0, sC, 0, nxdad);
-
-    blasfeo_allocate_dmat(nxsib, nxdad+nudad, sC_sib);
-    blasfeo_dgecp(nxsib, nxdad, sA_sib, 0, 0, sC_sib, 0, 0);
-    blasfeo_dgecp(nxsib, nudad, sB_sib, 0, 0, sC_sib, 0, nxdad);
+    struct blasfeo_dmat *sC = &work->sAB[node_index-1];
+    struct blasfeo_dmat *sC_sib = &work->sAB[sib_index-1];
 
     struct blasfeo_dmat *sM = &work->sM[node_index];
     struct blasfeo_dmat *sW_dad = &work->sW[dad_index];

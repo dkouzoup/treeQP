@@ -1141,7 +1141,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     int Nh = tree[Nn-1].stage;
     int Np = get_number_of_parent_nodes(Nn, tree);
     int regDim = maximum_hessian_block_dimension(qp_in);
-    int dim, idxkid;
+    int dim, idxkid, ncolAB;
     int rowsM, colsM;
 
     // int pointers
@@ -1173,6 +1173,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
     #endif
     bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
+    bytes += (Nn-1)*sizeof(struct blasfeo_dmat);  // AB
     bytes += Nn*sizeof(struct blasfeo_dmat);  // M
     bytes += 2*Np*sizeof(struct blasfeo_dmat);  // W, CholW
     bytes += 2*(Np-1)*sizeof(struct blasfeo_dmat);  // Ut, CholUt
@@ -1204,6 +1205,12 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         bytes += blasfeo_memsize_dvec(qp_in->nu[ii]);  // uasPrev
         #endif
+
+        if (ii > 0)
+        {
+            ncolAB = qp_in->nx[tree[ii].dad] + qp_in->nu[tree[ii].dad];
+            bytes += blasfeo_memsize_dmat(qp_in->nx[ii], ncolAB);  // AB
+        }
 
         update_M_dimensions(ii, qp_in, &rowsM, &colsM);
         bytes += blasfeo_memsize_dmat(rowsM, colsM);  // M
@@ -1246,7 +1253,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     int Nh = tree[Nn-1].stage;
     int Np = get_number_of_parent_nodes(Nn, tree);
     int regDim = maximum_hessian_block_dimension(qp_in);
-    int dim, idxkid;
+    int dim, idxkid, ncolAB;
     int rowsM, colsM;
 
     // save some useful dimensions to workspace
@@ -1300,6 +1307,9 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     work->regMat = (struct blasfeo_dvec *) c_ptr;
     c_ptr += 1*sizeof(struct blasfeo_dvec);
+
+    work->sAB = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
 
     work->sM = (struct blasfeo_dmat *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dmat);
@@ -1391,6 +1401,12 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         init_strvec(qp_in->nx[ii], &work->sxasPrev[ii], &c_ptr);
         init_strmat(qp_in->nx[ii], qp_in->nx[ii], &work->sWdiag[ii], &c_ptr);
         #endif
+
+        if (ii > 0)
+        {
+            ncolAB = qp_in->nx[tree[ii].dad] + qp_in->nu[tree[ii].dad];
+            init_strmat(qp_in->nx[ii], ncolAB, &work->sAB[ii-1], &c_ptr);
+        }
 
         update_M_dimensions(ii, qp_in, &rowsM, &colsM);
         init_strmat(rowsM, colsM, &work->sM[ii], &c_ptr);
