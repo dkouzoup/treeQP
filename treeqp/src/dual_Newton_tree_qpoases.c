@@ -298,14 +298,11 @@ void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
 
 
-// build W[n] + offset = C[m] * P[n] * C[m]' + E' * P[m] * E + reg, with C[m] = [A[m] B[m]]
-void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
+void stage_qp_qpoases_set_CmPnCmT(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
 
-    struct blasfeo_dmat *sP =
-        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sP;
     struct blasfeo_dmat *sP_dad =
         ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[dad_index])->sP;
 
@@ -326,6 +323,21 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
     // W[idxdad]+offset = C[k]*M' = C[k]*P[idxdad]*C[k]'
     blasfeo_dsyrk_ln(nx, nxdad+nudad, 1.0, sC, 0, 0, sM, 0, 0, 0.0, sW_dad, offset, offset,
         sW_dad, offset, offset);
+}
+
+
+
+void stage_qp_qpoases_add_EPmE(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
+    void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+
+    struct blasfeo_dmat *sP =
+        ((treeqp_tdunes_qpoases_data *)work->stage_qp_data[node_index])->sP;
+
+    struct blasfeo_dmat *sW_dad = &work->sW[dad_index];
+
+    int nx = qp_in->nx[node_index];
 
     // W[idxdad]+offset += E'*P[k]*E
     blasfeo_dgead(nx, nx, 1.0, sP, 0, 0, sW_dad, offset, offset);
@@ -333,8 +345,7 @@ void stage_qp_qpoases_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_inde
 
 
 
-// update W[n] + offset += C[m] * P[n] * C[k]'
-void stage_qp_qpoases_update_W(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index,
+void stage_qp_qpoases_add_CmPnCkT(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index,
     int row_offset, int col_offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;

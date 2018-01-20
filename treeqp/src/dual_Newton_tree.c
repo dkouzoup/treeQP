@@ -76,7 +76,13 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 
     // TODO(dimitris): replace with calculate_size/create for args
     opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
-    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+
+    // for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (ii % 2 == 0) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        else opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+    }
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -105,8 +111,9 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_clipping_init;
             ptrs->solve_extended = stage_qp_clipping_solve_extended;
             ptrs->solve = stage_qp_clipping_solve;
-            ptrs->init_W = stage_qp_clipping_init_W;
-            ptrs->update_W = stage_qp_clipping_update_W;
+            ptrs->set_CmPnCmT = stage_qp_clipping_set_CmPnCmT;
+            ptrs->add_EPmE = stage_qp_clipping_add_EPmE;
+            ptrs->add_CmPnCkT = stage_qp_clipping_add_CmPnCkT;
             ptrs->eval_dual_term = stage_qp_clipping_eval_dual_term;
             ptrs->export_mu = stage_qp_clipping_export_mu;
             break;
@@ -119,8 +126,9 @@ void stage_qp_set_fcn_ptrs(stage_qp_fcn_ptrs *ptrs, stage_qp_t qp_solver)
             ptrs->init = stage_qp_qpoases_init;
             ptrs->solve_extended = stage_qp_qpoases_solve_extended;
             ptrs->solve = stage_qp_qpoases_solve;
-            ptrs->init_W = stage_qp_qpoases_init_W;
-            ptrs->update_W = stage_qp_qpoases_update_W;
+            ptrs->set_CmPnCmT = stage_qp_qpoases_set_CmPnCmT;
+            ptrs->add_EPmE = stage_qp_qpoases_add_EPmE;
+            ptrs->add_CmPnCkT = stage_qp_qpoases_add_CmPnCkT;
             ptrs->eval_dual_term = stage_qp_qpoases_eval_dual_term;
             ptrs->export_mu = stage_qp_qpoases_export_mu;
             break;
@@ -505,9 +513,14 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         #endif
 
         // --- hessian contribution of node (diagonal block of W)
-        work->stage_qp_ptrs[kk].init_W(qp_in, kk, idxdad, idxpos, work);
 
-        // W[idxdad]+offset += regMat (regularization)
+        // W[idxdad] + offset = C[k] * P[idxdad] * C[k]', with C[k] = [A[k] B[k]]
+        work->stage_qp_ptrs[idxdad].set_CmPnCmT(qp_in, kk, idxdad, idxpos, work);
+
+        // W[idxdad] + offset += E * P[k] * E', with E = [I 0]
+        work->stage_qp_ptrs[kk].add_EPmE(qp_in, kk, idxdad, idxpos, work);
+
+        // W[idxdad] + offset += regMat (regularization)
         blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
@@ -524,7 +537,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         if (tree[idxdad].dad >= 0)
         {
         #endif
-            // Ut[idxdad]+offset = M' = - Qinvcal[idxdad] * A[k]'
+            // Ut[idxdad] + offset = M' = - Qinvcal[idxdad] * A[k]'
             blasfeo_dgetr(nx[kk], nx[idxdad], &sM[kk], 0, 0, &sUt[idxdad-1], 0, idxpos);
             blasfeo_dgesc(nx[idxdad], nx[kk], -1.0, &sUt[idxdad-1], 0, idxpos);
         }
@@ -542,7 +555,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             idxsib = tree[idxdad].kids[ii];
             if (idxsib == kk) break;  // completed all preceding siblings
 
-            work->stage_qp_ptrs[kk].update_W(qp_in, kk, idxsib, idxdad, idxpos, idxii, work);
+            // W[idxdad] + offset += C[k] * P[idxdad] * C[idxsib]'
+            work->stage_qp_ptrs[idxdad].add_CmPnCkT(qp_in, kk, idxsib, idxdad, idxpos, idxii, work);
 
             // idxiiOLD = ii*qp_in->nx[1];
             idxii += nx[idxsib];

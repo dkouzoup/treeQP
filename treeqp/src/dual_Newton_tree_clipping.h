@@ -58,9 +58,11 @@ void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int node_index, voi
 
 void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 
-void stage_qp_clipping_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
+void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
 
-void stage_qp_clipping_update_W(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index, int row_offset, int col_offset, void *work_);
+void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
+
+void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index, int row_offset, int col_offset, void *work_);
 
 void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int node_index, void *work_);
 

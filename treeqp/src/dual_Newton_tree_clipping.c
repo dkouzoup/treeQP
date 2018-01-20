@@ -161,6 +161,14 @@ void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int node_index, void *work_)
         DVECEL_LIBSTR(clipping_solver_data->sRinv, nn) =
             1.0/DVECEL_LIBSTR(clipping_solver_data->sR, nn);
     }
+
+    // NOTE(dimitris): needed if we mix clipping and qpoases for the stage QPs
+    // TODO(dimitris): skip if _ONLY_ clipping solvers are used?
+    if (node_index > 0)
+    {
+        blasfeo_dgecp(nx, qp_in->A[node_index-1].n, &qp_in->A[node_index-1], 0, 0, &work->sAB[node_index-1], 0, 0);
+        blasfeo_dgecp(nx, qp_in->B[node_index-1].n, &qp_in->B[node_index-1], 0, 0, &work->sAB[node_index-1], 0, qp_in->A[node_index-1].n);
+    }
 }
 
 
@@ -226,14 +234,11 @@ void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_)
 
 
 
-// build W[n] + offset = C[m] * P[n] * C[m]' + E' * P[m] * E + reg, with C[m] = [A[m] B[m]]
-void stage_qp_clipping_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
+void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
 
-    struct blasfeo_dvec *sQinvCal =
-        ((treeqp_tdunes_clipping_data *)work->stage_qp_data[node_index])->sQinvCal;
     struct blasfeo_dvec *sQinvCal_dad =
         ((treeqp_tdunes_clipping_data *)work->stage_qp_data[dad_index])->sQinvCal;
     struct blasfeo_dvec *sRinvCal_dad =
@@ -262,19 +267,29 @@ void stage_qp_clipping_init_W(tree_ocp_qp_in *qp_in, int node_index, int dad_ind
     // W[idxdad]+offset += B[k]*M' = B[k]*Rinvcal[idxdad]*B[k]'
     blasfeo_dsyrk_ln(nx, nudad, 1.0, sB, 0, 0, sM, 0, nxdad, 1.0, sW_dad, offset, offset,
         sW_dad, offset, offset);
+}
+
+
+
+void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset,
+    void *work_)
+{
+    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+
+    struct blasfeo_dvec *sQinvCal =
+        ((treeqp_tdunes_clipping_data *)work->stage_qp_data[node_index])->sQinvCal;
+
+    struct blasfeo_dmat *sW_dad = &work->sW[dad_index];
+
+    int nx = qp_in->nx[node_index];
 
     // W[idxdad]+offset += Qinvcal[k]
     blasfeo_ddiaad(nx, 1.0, sQinvCal, 0, sW_dad, offset, offset);
 }
 
-// // extract Ut[n] + offset = - E * P[n] * C[m]', with E = [I 0], as a by-product of init_W
-// void stage_qp_clipping_extract_Ut()
-// {
 
-// }
 
-// update W[n] + offset += C[m] * P[n] * C[k]'
-void stage_qp_clipping_update_W(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index,
+void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index,
     int row_offset, int col_offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
