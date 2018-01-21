@@ -290,6 +290,7 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     struct blasfeo_dmat *sQ = (struct blasfeo_dmat *) qp_in->Q;
     struct blasfeo_dmat *sR = (struct blasfeo_dmat *) qp_in->R;
+    struct blasfeo_dmat *sS = (struct blasfeo_dmat *) qp_in->S;
     struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
     struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
 
@@ -298,11 +299,11 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     treeqp_tic(&interface_tmr);
 
-    for (int ii = 0; ii < Nn; ii++) {
-
-        // TODO(dimitris): Add S' (nx x nu) term to lower diagonal part
+    for (int ii = 0; ii < Nn; ii++)
+    {
         blasfeo_dgecp(nu[ii], nu[ii], &sR[ii], 0, 0, &work->sRSQrq[ii], 0, 0);
         blasfeo_dgecp(nx[ii], nx[ii], &sQ[ii], 0, 0, &work->sRSQrq[ii], nu[ii], nu[ii]);
+        blasfeo_dgetr(nx[ii], nu[ii], &sS[ii], 0, 0, &work->sRSQrq[ii], nu[ii], 0);
 
         blasfeo_drowin(nu[ii], 1.0, &sr[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], 0);
         blasfeo_drowin(nx[ii], 1.0, &sq[ii], 0, &work->sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
