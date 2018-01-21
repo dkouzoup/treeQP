@@ -43,19 +43,19 @@ extern "C" {
 
 typedef struct
 {
-    answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int node_index);
+    answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int idx);
     int (*calculate_size)(int nx, int nu);
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data)(int nx, int nu, void *data, char **c_double_ptr);
-    void (*init)(tree_ocp_qp_in *qp_in, int node_index, void *work);
-    void (*solve_extended)(tree_ocp_qp_in *qp_in, int node_index, void *work);
-    void (*solve)(tree_ocp_qp_in *qp_in, int node_index, void *work);
-    void (*set_CmPnCmT)(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
-    void (*add_EPmE)(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
-    void (*add_CmPnCkT)(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index, int row_offset, int col_offset, void *work_);
-    void (*eval_dual_term)(tree_ocp_qp_in *qp_in, int node_index, void *work_);
-    void (*export_mu)(tree_ocp_qp_out *qp_out, int node_index, void *work_);
+    void (*init)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    void (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    void (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    void (*set_CmPnCmT)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_EPmE)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_CmPnCkT)(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
+    void (*eval_dual_term)(tree_ocp_qp_in *qp_in, int idx, void *work_);
+    void (*export_mu)(tree_ocp_qp_out *qp_out, int idx, void *work_);
 } stage_qp_fcn_ptrs;
 
 

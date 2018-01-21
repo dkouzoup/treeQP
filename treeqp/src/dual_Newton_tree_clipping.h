@@ -42,7 +42,7 @@ typedef struct treeqp_clipping_data_
 
 
 
-answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int node_index);
+answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int idx);
 
 int stage_qp_clipping_calculate_size(int nx, int nu);
 
@@ -52,18 +52,18 @@ void stage_qp_clipping_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, 
 
 void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr);
 
-void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
+void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
 
-void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int node_index, int dad_index, int offset, void *work_);
+void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
 
-void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int node_index, int sib_index, int dad_index, int row_offset, int col_offset, void *work_);
+void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
 
-void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int node_index, void *work_);
+void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_clipping_export_mu(tree_ocp_qp_out *qp_out, int node_index, void *work_);
+void stage_qp_clipping_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_);
