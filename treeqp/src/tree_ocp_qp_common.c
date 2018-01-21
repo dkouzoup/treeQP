@@ -142,22 +142,22 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
         idx = ii;
         idxp = tree[idx].dad;
         if (ii > 0) {
-            init_strmat(nx[idx], nx[idxp], (struct blasfeo_dmat *) &qp_in->A[idx-1], &c_ptr);
-            init_strmat(nx[idx], nu[idxp], (struct blasfeo_dmat *) &qp_in->B[idx-1], &c_ptr);
-            init_strvec(nx[idx], (struct blasfeo_dvec *) &qp_in->b[idx-1], &c_ptr);
+            init_strmat(nx[idx], nx[idxp], &qp_in->A[idx-1], &c_ptr);
+            init_strmat(nx[idx], nu[idxp], &qp_in->B[idx-1], &c_ptr);
+            init_strvec(nx[idx], &qp_in->b[idx-1], &c_ptr);
         }
 
-        init_strmat(nx[idx], nx[idx], (struct blasfeo_dmat *) &qp_in->Q[idx], &c_ptr);
-        init_strmat(nu[idx], nu[idx], (struct blasfeo_dmat *) &qp_in->R[idx], &c_ptr);
-        init_strmat(nu[idx], nx[idx], (struct blasfeo_dmat *) &qp_in->S[idx], &c_ptr);
+        init_strmat(nx[idx], nx[idx], &qp_in->Q[idx], &c_ptr);
+        init_strmat(nu[idx], nu[idx], &qp_in->R[idx], &c_ptr);
+        init_strmat(nu[idx], nx[idx], &qp_in->S[idx], &c_ptr);
 
-        init_strvec(nx[idx], (struct blasfeo_dvec *) &qp_in->q[idx], &c_ptr);
-        init_strvec(nu[idx], (struct blasfeo_dvec *) &qp_in->r[idx], &c_ptr);
+        init_strvec(nx[idx], &qp_in->q[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->r[idx], &c_ptr);
 
-        init_strvec(nx[idx], (struct blasfeo_dvec *) &qp_in->xmin[idx], &c_ptr);
-        init_strvec(nx[idx], (struct blasfeo_dvec *) &qp_in->xmax[idx], &c_ptr);
-        init_strvec(nu[idx], (struct blasfeo_dvec *) &qp_in->umin[idx], &c_ptr);
-        init_strvec(nu[idx], (struct blasfeo_dvec *) &qp_in->umax[idx], &c_ptr);
+        init_strvec(nx[idx], &qp_in->xmin[idx], &c_ptr);
+        init_strvec(nx[idx], &qp_in->xmax[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->umin[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->umax[idx], &c_ptr);
     }
 
     assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree) >= c_ptr);
@@ -272,15 +272,15 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     int *nx = (int *)qp_in->nx;
     int *nu = (int *)qp_in->nu;
 
-    struct blasfeo_dvec *sx = (struct blasfeo_dvec *)qp_out->x;
-    struct blasfeo_dvec *su = (struct blasfeo_dvec *)qp_out->u;
-    struct blasfeo_dmat *sQ = (struct blasfeo_dmat *)qp_in->Q;
-    struct blasfeo_dmat *sR = (struct blasfeo_dmat *)qp_in->R;
-    struct blasfeo_dmat *sS = (struct blasfeo_dmat *)qp_in->S;
-    struct blasfeo_dvec *sq = (struct blasfeo_dvec *)qp_in->q;
-    struct blasfeo_dvec *sr = (struct blasfeo_dvec *)qp_in->r;
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *)qp_in->A;
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *)qp_in->B;
+    struct blasfeo_dvec *sx = qp_out->x;
+    struct blasfeo_dvec *su = qp_out->u;
+    struct blasfeo_dmat *sQ = qp_in->Q;
+    struct blasfeo_dmat *sR = qp_in->R;
+    struct blasfeo_dmat *sS = qp_in->S;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
+    struct blasfeo_dmat *sA = qp_in->A;
+    struct blasfeo_dmat *sB = qp_in->B;
     struct node *tree = (struct node *) qp_in->tree;
 
     struct blasfeo_dvec tmp_x, tmp_u;
@@ -423,18 +423,18 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
         printf("\n\n");
 
         printf("Q[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[ii], (struct blasfeo_dmat *) &qp_in->Q[ii], 0, 0);
+        blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[ii], &qp_in->Q[ii], 0, 0);
 
         printf("R[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nu[ii], (struct blasfeo_dmat *) &qp_in->R[ii], 0, 0);
+        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nu[ii], &qp_in->R[ii], 0, 0);
 
         printf("S[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nx[ii], (struct blasfeo_dmat *) &qp_in->S[ii], 0, 0);
+        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nx[ii], &qp_in->S[ii], 0, 0);
 
         printf("q[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_in->nx[ii], (struct blasfeo_dvec *) &qp_in->q[ii], 0);
+        blasfeo_print_tran_dvec(qp_in->nx[ii], &qp_in->q[ii], 0);
         printf("r[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_in->nu[ii], (struct blasfeo_dvec *) &qp_in->r[ii], 0);
+        blasfeo_print_tran_dvec(qp_in->nu[ii], &qp_in->r[ii], 0);
 
         // printf("real = %d\n\n", qp_in->tree[ii].real);
         if (ii > 0) {
@@ -443,9 +443,9 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in) {
             printf("A[%d] = \n", ii-1);
             blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[jj], (struct blasfeo_dmat*) &qp_in->A[ii-1], 0, 0);
             printf("B[%d] = \n", ii-1);
-            blasfeo_print_dmat(qp_in->nx[ii], qp_in->nu[jj], (struct blasfeo_dmat *) &qp_in->B[ii-1], 0, 0);
+            blasfeo_print_dmat(qp_in->nx[ii], qp_in->nu[jj], &qp_in->B[ii-1], 0, 0);
             printf("b[%d] = \n", ii-1);
-            blasfeo_print_tran_dvec(qp_in->nx[ii], (struct blasfeo_dvec *) &qp_in->b[ii-1], 0);
+            blasfeo_print_tran_dvec(qp_in->nx[ii], &qp_in->b[ii-1], 0);
         }
     }
 }
@@ -458,17 +458,17 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
 
     int Nn = qp_in->N;
     struct node *tree = (struct node *) qp_in->tree;
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
-    struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
-    struct blasfeo_dmat *sQ = (struct blasfeo_dmat *) qp_in->Q;
-    struct blasfeo_dmat *sR = (struct blasfeo_dmat *) qp_in->R;
-    struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
-    struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *) qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *) qp_in->xmax;
-    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *) qp_in->umin;
-    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *) qp_in->umax;
+    struct blasfeo_dmat *sA = qp_in->A;
+    struct blasfeo_dmat *sB = qp_in->B;
+    struct blasfeo_dvec *sb = qp_in->b;
+    struct blasfeo_dmat *sQ = qp_in->Q;
+    struct blasfeo_dmat *sR = qp_in->R;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
 
     int re, nx, nu, nxp, nup;
     double scalingFactor;
@@ -584,9 +584,9 @@ void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree
 
     int Nn = qp_in->N;
 
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *)qp_in->A;
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *)qp_in->B;
-    struct blasfeo_dvec *sb = (struct blasfeo_dvec *)qp_in->b;
+    struct blasfeo_dmat *sA = qp_in->A;
+    struct blasfeo_dmat *sB = qp_in->B;
+    struct blasfeo_dvec *sb = qp_in->b;
 
     int idxA = 0;
     int idxB = 0;
@@ -615,11 +615,11 @@ void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, doubl
 
     int Nn = qp_in->N;
 
-    struct blasfeo_dmat *sQ = (struct blasfeo_dmat *)qp_in->Q;
-    struct blasfeo_dmat *sR = (struct blasfeo_dmat *)qp_in->R;
-    struct blasfeo_dmat *sS = (struct blasfeo_dmat *)qp_in->S;
-    struct blasfeo_dvec *sq = (struct blasfeo_dvec *)qp_in->q;
-    struct blasfeo_dvec *sr = (struct blasfeo_dvec *)qp_in->r;
+    struct blasfeo_dmat *sQ = qp_in->Q;
+    struct blasfeo_dmat *sR = qp_in->R;
+    struct blasfeo_dmat *sS = qp_in->S;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
 
     struct blasfeo_dvec sQvec, sRvec;
 
@@ -657,10 +657,10 @@ void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in) {
     double inf = 1e12;
     int Nn = qp_in->N;
 
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *)qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *)qp_in->xmax;
-    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *)qp_in->umin;
-    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *)qp_in->umax;
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
 
     for (int ii = 0; ii < Nn; ii++) {
         blasfeo_dvecse(sxmin[ii].m, -inf, &sxmin[ii], 0);
@@ -682,10 +682,10 @@ void tree_ocp_qp_in_set_constant_bounds(double *xmin, double *xmax, double *umin
     int nx = qp_in->nx[1];
     int nu = qp_in->nu[0];
 
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *)qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *)qp_in->xmax;
-    struct blasfeo_dvec *sumin = (struct blasfeo_dvec *)qp_in->umin;
-    struct blasfeo_dvec *sumax = (struct blasfeo_dvec *)qp_in->umax;
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
 
     for (int ii = 0; ii < Nn; ii++) {
         assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
@@ -708,8 +708,8 @@ void tree_ocp_qp_in_set_constant_bounds(double *xmin, double *xmax, double *umin
 // TODO(dimitris): extend to set b instead if nx[0] = 0
 void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0) {
 
-    struct blasfeo_dvec *sxmin = (struct blasfeo_dvec *)qp_in->xmin;
-    struct blasfeo_dvec *sxmax = (struct blasfeo_dvec *)qp_in->xmax;
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
 
     blasfeo_pack_dvec(sxmin[0].m, x0, &sxmin[0], 0);
     blasfeo_pack_dvec(sxmax[0].m, x0, &sxmax[0], 0);
