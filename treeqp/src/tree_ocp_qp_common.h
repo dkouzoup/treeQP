@@ -38,7 +38,8 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 // info returned by solver
-typedef struct {
+typedef struct
+{
     int iter;
     double solver_time;
     double interface_time;
@@ -46,7 +47,8 @@ typedef struct {
 
 
 // input to solver
-typedef struct {
+typedef struct
+{
     int N;  // TODO(dimitris): think again about convention of N and N+1
     int *nx;
     int *nu;
@@ -73,7 +75,8 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree,
     tree_ocp_qp_in *qp_in, void *ptr);
 
 // output of solver
-typedef struct {
+typedef struct
+{
     treeqp_info_t info;
     struct blasfeo_dvec *x;
     struct blasfeo_dvec *u;
@@ -120,4 +123,4 @@ void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const c
 }  /* extern "C" */
 #endif
 
-#endif  // TREEQP_SRC_TREE_OCP_QP_COMMON_H_
+#endif  /* TREEQP_SRC_TREE_OCP_QP_COMMON_H_ */

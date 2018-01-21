@@ -149,6 +149,9 @@ int main() {
     }
     printf("ITERS = %d\n", qp_out.info.iter);
 
+    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("\nMaximum error in KKT residuals:\t%2.2e\n\n", kkt_err);
+
     free(qp_solver_memory);
     free(qp_out_memory);
     free(qp_in_memory);
