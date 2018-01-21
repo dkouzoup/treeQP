@@ -16,5 +16,8 @@ include/*
 *c_cpp_properties.json
 *.lnt
 
+# MATLAB
+*.m~
+
 #TMP FILES
 tmp/
