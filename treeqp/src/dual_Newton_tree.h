@@ -48,7 +48,7 @@ typedef struct
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data)(int nx, int nu, void *data, char **c_double_ptr);
-    void (*init)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    void (*init)(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
     void (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
     void (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
     void (*set_CmPnCmT)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);

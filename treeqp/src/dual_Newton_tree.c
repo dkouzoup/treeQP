@@ -156,7 +156,7 @@ static void setup_idxpos(tree_ocp_qp_in *qp_in, int *idxpos)
     int Nn = qp_in->N;
     int idxdad;
 
-    struct node *tree = (struct node *)qp_in->tree;
+    struct node *tree = qp_in->tree;
 
     for (int kk = 0; kk < Nn; kk++)
     {
@@ -1013,7 +1013,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     for (int kk = 0; kk < Nn; kk++)
     {
-        work->stage_qp_ptrs[kk].init(qp_in, kk, work);
+        work->stage_qp_ptrs[kk].init(qp_in, kk, opts->qp_solver[tree[kk].dad], work);
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         blasfeo_dvecse(work->sxasPrev[kk].m, 0.0/0.0, &work->sxasPrev[kk], 0);

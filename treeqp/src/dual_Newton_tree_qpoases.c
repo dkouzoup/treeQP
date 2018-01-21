@@ -185,7 +185,7 @@ static void QProblemB_build_elimination_matrix(QProblemB *QPB, int idx,
 
 
 
-void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, void *work_)
+void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_qpoases_data *qpoases_data =

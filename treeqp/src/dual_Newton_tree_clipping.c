@@ -138,7 +138,7 @@ void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c
 
 
 
-void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, void *work_)
+void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -162,12 +162,11 @@ void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, void *work_)
     }
 
     // NOTE(dimitris): AB matrices needed if we mix clipping and qpoases for the stage QPs
-    // TODO(dimitris): skip if _ONLY_ clipping solvers are used?
     struct blasfeo_dmat *sA = &qp_in->A[idx-1];
     struct blasfeo_dmat *sB = &qp_in->B[idx-1];
     struct blasfeo_dmat *sAB = &work->sAB[idx-1];
 
-    if (idx > 0)
+    if ((idx > 0) && (solver_dad == TREEQP_QPOASES_SOLVER))
     {
         blasfeo_dgecp(nx, sA->n, sA, 0, 0, sAB, 0, 0);
         blasfeo_dgecp(nx, sB->n, sB, 0, 0, sAB, 0, sA->n);
