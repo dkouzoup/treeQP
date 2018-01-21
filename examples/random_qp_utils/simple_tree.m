@@ -4,6 +4,8 @@
 
 clear all; clc
 
+CLIPPING = false;
+
 %% define dimensions
 
 % nc = [2 2 1 0 0 0];  % number of children of each node
@@ -26,7 +28,7 @@ end
 
 %% generate random tree
 
-agents = generate_random_tree(nc, nx, nu);
+agents = generate_random_tree(nc, nx, nu, CLIPPING);
 
 for ii = 1:length(agents)
     disp(['Node ' num2str(ii)])
@@ -49,7 +51,7 @@ end
 obj = 0;
 for ii = 1:length(agents)
     obj = obj + 0.5*x{ii}'*agents(ii).Q*x{ii} + 0.5*u{ii}'*agents(ii).R*u{ii} + ...
-        x{ii}'*agents(ii).q + u{ii}'*agents(ii).r;
+        u{ii}'*agents(ii).S*x{ii} + x{ii}'*agents(ii).q + u{ii}'*agents(ii).r;
 end
 
 opts  = sdpsettings('solver','quadprog');
@@ -69,4 +71,4 @@ end
 
 %% code generate data for c
 
-code_generate_tree(agents, 'data.c', 1)
+code_generate_tree(agents, 'data.c', CLIPPING)

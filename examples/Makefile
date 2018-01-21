@@ -40,7 +40,7 @@ examples: $(OBJS)
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
-	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
 	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/load_data.c $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 clean:

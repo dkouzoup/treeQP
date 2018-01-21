@@ -652,6 +652,54 @@ void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, doubl
 }
 
 
+
+void tree_ocp_qp_in_read_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
+    tree_ocp_qp_in *qp_in)
+{
+    int Nn = qp_in->N;
+
+    struct blasfeo_dmat *sQ = qp_in->Q;
+    struct blasfeo_dmat *sR = qp_in->R;
+    struct blasfeo_dmat *sS = qp_in->S;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
+
+    int idxQ = 0;
+    int idxR = 0;
+    int idxS = 0;
+    int idxq = 0;
+    int idxr = 0;
+
+    for(int ii = 0; ii < Nn; ii++)
+    {
+        blasfeo_pack_dmat(sQ[ii].m, sQ[ii].n, &Q[idxQ], sQ[ii].m, &sQ[ii], 0, 0);
+        idxQ += sQ[ii].m * sQ[ii].n;
+        assert(sQ[ii].m == qp_in->nx[ii]);
+        assert(sQ[ii].n == qp_in->nx[ii]);
+        // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
+
+        blasfeo_pack_dmat(sR[ii].m, sR[ii].n, &R[idxR], sR[ii].m, &sR[ii], 0, 0);
+        idxR += sR[ii].m * sR[ii].n;
+        assert(sR[ii].m == qp_in->nu[ii]);
+        assert(sR[ii].n == qp_in->nu[ii]);
+
+        blasfeo_pack_dmat(sS[ii].m, sS[ii].n, &S[idxS], sS[ii].m, &sS[ii], 0, 0);
+        idxS += sS[ii].m * sS[ii].n;
+        assert(sS[ii].m == qp_in->nu[ii]);
+        assert(sS[ii].n == qp_in->nx[ii]);
+
+        blasfeo_pack_dvec(sq[ii].m, &q[idxq], &sq[ii], 0);
+        idxq += sq[ii].m;
+        assert(sq[ii].m == qp_in->nx[ii]);
+
+        blasfeo_pack_dvec(sr[ii].m, &r[idxr], &sr[ii], 0);
+        idxr += sr[ii].m;
+        assert(sr[ii].m == qp_in->nu[ii]);
+    }
+}
+
+
+
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in) {
 
     double inf = 1e12;

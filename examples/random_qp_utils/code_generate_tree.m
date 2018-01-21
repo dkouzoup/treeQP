@@ -1,4 +1,4 @@
-function code_generate_tree( agents, fname, PRINT_DIAG_WEIGHTS )
+function code_generate_tree( agents, fname, CLIPPING )
 
 % CODE_GENERATE_TREE Write tree data in a c file to be processed by treeQP
 
@@ -12,6 +12,7 @@ dimB = 0;
 dimb = 0;
 dimQ = 0;
 dimR = 0;
+dimS = 0;
 dimq = 0;
 dimr = 0;
 
@@ -21,18 +22,22 @@ for ii = 1:Nnodes
         dimB = dimB + size(agents(ii).B,1)*size(agents(ii).B,2);
         dimb = dimb + size(agents(ii).b,1);
     end
-    if PRINT_DIAG_WEIGHTS
+    if CLIPPING
         dimQ = dimQ + size(agents(ii).Q,1);
         dimR = dimR + size(agents(ii).R,1);
     else
         dimQ = dimQ + size(agents(ii).Q,1)*size(agents(ii).Q,2);
         dimR = dimR + size(agents(ii).R,1)*size(agents(ii).R,2);
+        dimS = dimS + size(agents(ii).S,1)*size(agents(ii).S,2);
     end
     dimq = dimq + size(agents(ii).q,1);
     dimr = dimr + size(agents(ii).r,1);
 end
 
 %% dimensions
+if CLIPPING
+    fprintf(datafile, '\n#define CLIPPING\n');
+end
 
 fprintf(datafile, '\n/* Dimensions */\n\n');
 
@@ -95,7 +100,7 @@ end
 fprintf(datafile,'};\n');
 
 
-if PRINT_DIAG_WEIGHTS
+if CLIPPING
 
     % print Q
     fprintf(datafile,'double Qd[%d] = { ', dimQ);
@@ -118,7 +123,7 @@ if PRINT_DIAG_WEIGHTS
 else
     
     % print Q
-    fprintf(datafile,'double Qf[%d] = { ', dimQ);
+    fprintf(datafile,'double Q[%d] = { ', dimQ);
     for kk = 1:Nnodes
         for jj = 1:size(agents(kk).Q, 2)
             for ii = 1:size(agents(kk).Q,1)
@@ -129,11 +134,22 @@ else
     fprintf(datafile,'};\n');
 
     % print R
-    fprintf(datafile,'double Rf[%d] = { ', dimR);
+    fprintf(datafile,'double R[%d] = { ', dimR);
     for kk = 1:Nnodes
         for jj = 1:size(agents(kk).R, 2)
             for ii = 1:size(agents(kk).R,1)
                 fprintf(datafile,'%1.15e, ', agents(kk).R(ii,jj));
+            end
+        end
+    end
+    fprintf(datafile,'};\n');
+
+    % print S
+    fprintf(datafile,'double S[%d] = { ', dimS);
+    for kk = 1:Nnodes
+        for jj = 1:size(agents(kk).S, 2)
+            for ii = 1:size(agents(kk).S,1)
+                fprintf(datafile,'%1.15e, ', agents(kk).S(ii,jj));
             end
         end
     end

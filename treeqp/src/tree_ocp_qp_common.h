@@ -103,8 +103,9 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
 
 void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, double *r,
-    tree_ocp_qp_in *qp_in);
+void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_read_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
 

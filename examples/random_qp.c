@@ -30,6 +30,7 @@
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/profiling.h"
@@ -43,6 +44,8 @@
 
 #include "examples/random_qp_utils/data.c"
 
+// #define USE_HPMPC
+
 int main() {
     // build a small, asymemtric tree
     //
@@ -55,9 +58,7 @@ int main() {
 
     struct node *tree = malloc(Nn*sizeof(struct node));
     setup_tree(Nn, nc, tree);
-    // for (int ii = 0; ii < Nn; ii++) {
-    //     print_node(&tree[ii]);
-    // }
+    // for (int ii = 0; ii < Nn; ii++) print_node(&tree[ii]);
 
     // set up QP data
     tree_ocp_qp_in qp_in;
@@ -67,23 +68,43 @@ int main() {
     create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_read_dynamics_colmajor(A, B, b, &qp_in);
+    #ifdef CLIPPING
     tree_ocp_qp_in_read_objective_diag(Qd, Rd, q, r, &qp_in);
+    #else
+    tree_ocp_qp_in_read_objective_colmajor(Q, R, S, q, r, &qp_in);
+    #endif
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
 
     print_tree_ocp_qp_in(&qp_in);
 
     // set up QP solver
+#ifndef USE_HPMPC
     treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
 
     opts.maxIter = 10;
-    opts.lineSearchBeta = 0.8;
+    opts.stationarityTolerance = 1.0e-10;
     opts.regType  = TREEQP_NO_REGULARIZATION;
+
+#ifdef CLIPPING
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+#else
+    for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+#endif
 
     treeqp_tdunes_workspace work;
 
     int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
     create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
+
+#else
+    treeqp_hpmpc_options_t opts = treeqp_hpmpc_default_options(Nn);
+    treeqp_hpmpc_workspace work;
+
+    int treeqp_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
+    void *qp_solver_memory = malloc(treeqp_size);
+    create_treeqp_hpmpc(&qp_in, &opts, &work, qp_solver_memory);
+#endif
 
     // set up QP solution
     tree_ocp_qp_out qp_out;
@@ -94,7 +115,11 @@ int main() {
 
     // solve QP
     initialize_timers( );
+#ifndef USE_HPMPC
     treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
+#else
+    treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
+#endif
     update_min_timers(0);
 
 
@@ -105,7 +130,8 @@ int main() {
     // TODO(dimitris): print_ocp_qp_out function
     int indx = 0;
     int indu = 0;
-    for (int ii = 0; ii < qp_in.N; ii++) {
+    for (int ii = 0; ii < qp_in.N; ii++)
+    {
         printf("--------\n");
         printf(" Node %d\n", ii);
         printf("--------\n");
