@@ -1059,8 +1059,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
         dimNxt = nu*commonNodes[ii+1];
 
         // flip sign of residual
-        blasfeo_dveccp(dim, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
-        blasfeo_dvecsc(dim, -1.0, &sDeltalambda[ii], 0);
+        blasfeo_dveccpsc(dim, -1.0, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
 
         // substitution
         blasfeo_dtrsv_lnn(dim, &sCholJayD[ii], 0, 0, &sDeltalambda[ii], 0,
@@ -1071,8 +1070,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
             &sRhsNonAnticip[ii+1], 0, &sRhsNonAnticip[ii+1], 0);
     }
     // ii = Ns-2 (last part of the loop without the update)
-    blasfeo_dveccp(dimNxt, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
-    blasfeo_dvecsc(dimNxt, -1.0, &sDeltalambda[ii], 0);
+    blasfeo_dveccpsc(dimNxt, -1.0, &sRhsNonAnticip[ii], 0, &sDeltalambda[ii], 0);
 
     blasfeo_dtrsv_lnn(dimNxt, &sCholJayD[ii], 0, 0, &sDeltalambda[ii], 0,
         &sRhsNonAnticip[ii], 0);
@@ -1877,10 +1875,8 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         blasfeo_ddiaex(qp_in->nx[jj], scalingFactor, &sQnonScaled[jj], 0, 0, &work->sQ[jj], 0);
         blasfeo_ddiaex(qp_in->nu[jj], scalingFactor, &sRnonScaled[jj], 0, 0, &work->sR[jj], 0);
 
-        blasfeo_dveccp(qp_in->nx[jj], &sqnonScaled[jj], 0, &work->sq[jj], 0);
-        blasfeo_dvecsc(qp_in->nx[jj], scalingFactor, &work->sq[jj], 0);
-        blasfeo_dveccp(qp_in->nu[jj], &srnonScaled[jj], 0, &work->sr[jj], 0);
-        blasfeo_dvecsc(qp_in->nu[jj], scalingFactor, &work->sr[jj], 0);
+        blasfeo_dveccpsc(qp_in->nx[jj], scalingFactor, &sqnonScaled[jj], 0, &work->sq[jj], 0);
+        blasfeo_dveccpsc(qp_in->nu[jj], scalingFactor, &srnonScaled[jj], 0, &work->sr[jj], 0);
         for (int nn = 0; nn < qp_in->nx[jj]; nn++)
             DVECEL_LIBSTR(&work->sQinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[jj], nn);
         for (int nn = 0; nn < qp_in->nu[jj]; nn++)

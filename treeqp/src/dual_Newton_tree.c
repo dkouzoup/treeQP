@@ -248,8 +248,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         }
 
         // rmod[k] = - r[k]
-        blasfeo_dveccp(nu[kk], &sr[kk], 0, &srmod[kk], 0);
-        blasfeo_dvecsc(nu[kk], -1.0, &srmod[kk], 0);
+        blasfeo_dveccpsc(nu[kk], -1.0, &sr[kk], 0, &srmod[kk], 0);
 
         for (int ii = 0; ii < tree[kk].nkids; ii++)
         {
@@ -827,8 +826,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         }
 
         // rmod[k] = - r[k]
-        blasfeo_dveccp(nu[kk], &sr[kk], 0, &srmod[kk], 0);
-        blasfeo_dvecsc(nu[kk], -1.0, &srmod[kk], 0);
+        blasfeo_dveccpsc(nu[kk], -1.0, &sr[kk], 0, &srmod[kk], 0);
 
         // cmod[k] = 0
         cmod[kk] = 0.;
