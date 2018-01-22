@@ -330,7 +330,7 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     {
         blasfeo_dgecp(nu[ii], nu[ii], &qp_in->R[ii], 0, 0, &sRSQrq[ii], 0, 0);
         blasfeo_dgecp(nx[ii], nx[ii], &qp_in->Q[ii], 0, 0, &sRSQrq[ii], nu[ii], nu[ii]);
-        blasfeo_dgetr(nx[ii], nu[ii], &qp_in->S[ii], 0, 0, &sRSQrq[ii], nu[ii], 0);
+        blasfeo_dgetr(nu[ii], nx[ii], &qp_in->S[ii], 0, 0, &sRSQrq[ii], nu[ii], 0);
 
         blasfeo_drowin(nu[ii], 1.0, &qp_in->r[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], 0);
         blasfeo_drowin(nx[ii], 1.0, &qp_in->q[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
