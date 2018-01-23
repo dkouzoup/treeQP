@@ -12,5 +12,6 @@ n_masses.txt
 load_data.c
 markov_sim.c
 markov_tree_*.c
+markov_ms_*.c
 transition_matrix.c
 markov_nominal.c
