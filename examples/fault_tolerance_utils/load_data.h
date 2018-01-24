@@ -27,6 +27,8 @@
 #ifndef EXAMPLES_FAULT_TOLERANCE_UTILS_LOAD_DATA_H_
 #define EXAMPLES_FAULT_TOLERANCE_UTILS_LOAD_DATA_H_
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,6 +69,9 @@ sim_data *load_sim_data( );
 
 int get_number_of_realizations( );
 int get_number_of_trees( );
+int get_number_of_ms_trees( );
+bool pruned_tree_exists(int config);
+bool ms_tree_exists(int config);
 int get_nx( );
 int get_nu( );
 double *get_ptr_transition_matrix( );

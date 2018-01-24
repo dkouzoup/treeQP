@@ -354,7 +354,7 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     blasfeo_free_dvec(&tmp_u);
 
     assert(nKKT == pos && "incorrect size of KKT residuals");
-    // d_print_e_mat(nz, 1, res, nz);
+    // d_print_e_tran_mat(nKKT, 1, res, 1);
 }
 
 

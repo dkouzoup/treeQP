@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <unistd.h>  // NOTE(dimitris): to read current directory
 #include <string.h>
+#include <stdbool.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
@@ -45,6 +46,16 @@
 #include "blasfeo/include/blasfeo_d_blas.h"
 
 #include "examples/fault_tolerance_utils/load_data.h"
+
+
+typedef enum
+{
+    NOMINAL_CONTROLLER = 0,  // nominal MPC
+    PRUNED_TREE_CONTROLLER,  // robust MPC using pruned tree structure
+    MULTI_STAGE_CONTROLLER,  // robust MPC using multi-stage tree structure
+} controller_t;
+
+
 
 double random_real( )
 {
@@ -101,12 +112,25 @@ double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, 
 
 
 
-typedef enum
+bool is_configuration_exported(controller_t controller, int config)
 {
-    NOMINAL_CONTROLLER = 0,  // nominal MPC WITH/WITHOUT STATE INFO???
-    PRUNED_TREE_CONTROLLER,  // robust MPC using pruned tree structure
-    MULTI_STAGE_CONTROLLER,  // robust MPC using multi-stage tree structure
-} controller_t;
+    bool ans = false;
+
+    switch (controller)
+    {
+        case NOMINAL_CONTROLLER:
+            ans = true;
+            break;
+        case PRUNED_TREE_CONTROLLER:
+            ans = pruned_tree_exists(config);
+            break;
+        case MULTI_STAGE_CONTROLLER:
+            ans = ms_tree_exists(config);
+            break;
+    }
+
+    return ans;
+}
 
 
 
@@ -118,9 +142,12 @@ int main()
     // read code generated integrators for simulation
     sim_data *sim = load_sim_data();
 
-    // read code generated controller data
-    controller_t controller = NOMINAL_CONTROLLER;
+    // controller options
+    bool controller_with_varying_spring_configuration = true;
 
+    controller_t controller = PRUNED_TREE_CONTROLLER;
+
+    // read code generated controller data
     input_data *data;
     switch (controller)
     {
@@ -276,7 +303,6 @@ int main()
         cpuTimes[tt] = treeqp_toc(&timer);
 
         // run some sanity checks
-        // TODO(dimitris): CHECK KKTS!
         for (int jj = 0; jj < nx; jj++)
         {
             assert(ABS(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) - x0[jj]) < 1e-10);
@@ -338,11 +364,17 @@ int main()
             }
         }
 
+        printf("> current spring configuration: %d, current controller configuration %d \n", sim_config, mpc_config);
+
         sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
 
-        // NOTE(dimitris): take care that mpc_config has been code generated (otherwise the line
-        //                 below will cause a segfault)
-        // mpc_config = sim_config;
+        if (controller_with_varying_spring_configuration)
+        {
+            if (is_configuration_exported(controller, sim_config))
+            {
+                mpc_config = sim_config;
+            }
+        }
 
         spring_configs[tt+1] = sim_config;
     }
