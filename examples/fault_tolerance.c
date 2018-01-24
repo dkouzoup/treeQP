@@ -256,7 +256,7 @@ int main()
         }
     }
 
-    double kkt_err, dyn_err;
+    double kkt_err;
     double *A, *B, *b;
 
     int mpc_config = n_realizations-1;
@@ -284,8 +284,6 @@ int main()
         assert(qp_outs[mpc_config].info.iter < opts.maxIter && "maximum number of iterations reached");
 
         kkt_err = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
-        dyn_err = maximum_error_in_dynamic_constraints(&qp_ins[mpc_config], &qp_outs[mpc_config]);
-        assert(dyn_err <= opts.stationarityTolerance && "violation of dynamic constraints too high");
         assert(kkt_err <= opts.stationarityTolerance && "violation of KKT conditions too high");
 
         // apply disturbance
@@ -313,7 +311,6 @@ int main()
         printf("-------------------------------------------------------------------------------\n");
         printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_outs[mpc_config].info.iter);
         printf("\tproblem solved in %f ms\n\n", cpuTimes[tt]*1e3);
-        printf("\tmax. violation of dynamic constraints: %2.2e\n\n", dyn_err);
         printf("\tmax. violation of KKT conditions: %2.2e\n\n", kkt_err);
         printf("\tcurrent spring configuration index: %d\n\n", sim_config);
         printf("\tx = ");

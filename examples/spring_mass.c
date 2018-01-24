@@ -137,9 +137,6 @@ int main( ) {
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    double err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints (tdunes):\t %2.2e\n\n", err);
-
     double kkt_err = max_KKT_residual(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
 
@@ -160,9 +157,6 @@ int main( ) {
         printf("overhead:\t %5.2f %% \n", overhead);
         if (overhead > max_overhead) max_overhead = overhead;
     }
-
-    err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints (hpmpc):\t %2.2e\n\n", err);
 
     kkt_err = max_KKT_residual(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpmpc):\t\t\t %2.2e\n\n", kkt_err);

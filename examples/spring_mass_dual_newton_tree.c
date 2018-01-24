@@ -145,8 +145,8 @@ int main( ) {
 
     write_solution_to_txt(&qp_in, Np, qp_out.info.iter, tree, &work);
 
-    double err = maximum_error_in_dynamic_constraints(&qp_in, &qp_out);
-    printf("\nMaximum violation of dynamic constraints: %2.2e\n", err);
+    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);

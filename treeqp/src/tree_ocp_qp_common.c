@@ -222,56 +222,16 @@ void create_tree_ocp_qp_out(int Nn, int *nx, int *nu, tree_ocp_qp_out *qp_out, v
 
 
 
-double maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
-{
-    // calculate maximum state dimension
-    int nxMax = 0;
-    for (int ii = 1; ii < qp_in->N; ii++)
-    {
-        nxMax = MAX(nxMax, qp_in->nx[ii]);
-    }
-
-    // allocate vector of size nxMax for intermediate result
-    struct blasfeo_dvec tmp;
-    blasfeo_allocate_dvec(nxMax, &tmp);
-
-    // calculate maximum error
-    int idx, idxp;
-    double error = -1.0;
-
-    for (int ii = 1; ii < qp_in->N; ii++)
-    {
-        idx = ii;
-        idxp = qp_in->tree[ii].dad;
-        // tmp = A[idx-1]*x[p(idx)] + b[idx-1]
-        blasfeo_dgemv_n(qp_in->nx[idx], qp_in->nx[idxp], 1.0, (struct blasfeo_dmat*) &qp_in->A[idx-1],
-            0, 0, &qp_out->x[idxp], 0, 1.0, (struct blasfeo_dvec*) &qp_in->b[idx-1], 0, &tmp, 0);
-        // tmp = tmp + B[idx-1]*u[p(idx)]
-        blasfeo_dgemv_n(qp_in->nx[idx], qp_in->nu[idxp], 1.0, (struct blasfeo_dmat*)&qp_in->B[idx-1],
-            0, 0, &qp_out->u[idxp], 0, 1.0, &tmp, 0, &tmp, 0);
-
-        // tmp = tmp - x[idx], aka error
-        blasfeo_daxpy(qp_in->nx[idx], -1.0, &qp_out->x[idx], 0, &tmp, 0, &tmp, 0);
-
-        for (int jj = 0; jj < qp_in->nx[idx]; jj++)
-        {
-            error = MAX(error, ABS(DVECEL_LIBSTR(&tmp, jj)));
-        }
-    }
-    blasfeo_free_dvec(&tmp);
-    return error;
-}
-
-
-
-// TODO(dimitris): add complementarity and primal feasibility
+// TODO(dimitris): add general constraints
 void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res)
 {
     int Nn = qp_in->N;
     int nz = number_of_primal_variables(qp_in);
+    int ne = number_of_dynamic_constraints(qp_in);
+    int nKKT = 2*nz + ne;
 
     // initialize to NaN
-    for (int ii = 0; ii < nz; ii++)
+    for (int ii = 0; ii < nKKT; ii++)
     {
         res[ii] = 0.0/0.0;
     }
@@ -293,13 +253,20 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     struct blasfeo_dvec tmp_x, tmp_u;
 
     int idxkid;
-    int idx = 0;
+    int idxdad;
+    int pos = 0;
+
+    double mu;
+
+    int dimx = max_number_of_states(qp_in);
+    int dimu = max_number_of_controls(qp_in);
+    blasfeo_allocate_dvec(dimx, &tmp_x);
+    blasfeo_allocate_dvec(dimu, &tmp_u);
 
     for (int ii = 0; ii < Nn; ii++)
     {
-        // TODO(dimitris): allocate max dim outside
-        blasfeo_allocate_dvec(nx[ii], &tmp_x);
-        blasfeo_allocate_dvec(nu[ii], &tmp_u);
+
+        // --- stationarity (nz x 1)
 
         // tmp_x = Q[ii]*x[ii] + q[ii]
         blasfeo_dgemv_n(nx[ii], nx[ii], 1.0, &sQ[ii], 0, 0, &sx[ii], 0, 1.0, &sq[ii], 0, &tmp_x, 0);
@@ -325,15 +292,68 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
             blasfeo_dgemv_t(nx[idxkid], nu[ii], 1.0, &sB[idxkid-1], 0, 0, &qp_out->lam[idxkid], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
         }
 
-        blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[idx]);
-        idx += nx[ii];
-        blasfeo_unpack_dvec(nu[ii], &tmp_u, 0, &res[idx]);
-        idx += nu[ii];
+        blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[pos]);
+        pos += nx[ii];
+        blasfeo_unpack_dvec(nu[ii], &tmp_u, 0, &res[pos]);
+        pos += nu[ii];
 
-        blasfeo_free_dvec(&tmp_x);
-        blasfeo_free_dvec(&tmp_u);
+        // --- primal feasibility (dynamics, ne x 1)
+
+        if (ii > 0)
+        {
+            idxdad = qp_in->tree[ii].dad;
+
+            // tmp_x = A[ii-1]*x[p(ii)] + b[ii-1]
+            blasfeo_dgemv_n(nx[ii], nx[idxdad], 1.0, &qp_in->A[ii-1], 0, 0,
+                &qp_out->x[idxdad], 0, 1.0, &qp_in->b[ii-1], 0, &tmp_x, 0);
+
+            // tmp_x = tmp_x + B[ii-1]*u[p(iii)]
+            blasfeo_dgemv_n(nx[ii], nu[idxdad], 1.0, &qp_in->B[ii-1], 0, 0,
+                &qp_out->u[idxdad], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
+
+            // tmp_x = tmp_x - x[idx]
+            blasfeo_daxpy(nx[ii], -1.0, &qp_out->x[ii], 0, &tmp_x, 0, &tmp_x, 0);
+
+            blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[pos]);
+            pos += nx[ii];
+        }
+
+        // --- complementarity (nz x 1)
+
+        for (int jj = 0; jj < nx[ii]; jj++)
+        {
+            mu = DVECEL_LIBSTR(&qp_out->mu_x[ii], jj);
+            if ( mu > 0)
+            {
+                res[pos+jj] = mu*(DVECEL_LIBSTR(&qp_out->x[ii], jj) - DVECEL_LIBSTR(&qp_in->xmax[ii], jj));
+            }
+            else
+            {
+                res[pos+jj] = mu*(-DVECEL_LIBSTR(&qp_out->x[ii], jj) + DVECEL_LIBSTR(&qp_in->xmin[ii], jj));
+            }
+        }
+
+        for (int jj = 0; jj < nu[ii]; jj++)
+        {
+            mu = DVECEL_LIBSTR(&qp_out->mu_u[ii], jj);
+            if ( mu > 0)
+            {
+                res[pos+jj] = mu*(DVECEL_LIBSTR(&qp_out->u[ii], jj) - DVECEL_LIBSTR(&qp_in->umax[ii], jj));
+            }
+            else
+            {
+                res[pos+jj] = mu*(-DVECEL_LIBSTR(&qp_out->u[ii], jj) + DVECEL_LIBSTR(&qp_in->umin[ii], jj));
+            }
+        }
+
+        pos += nx[ii];
+        pos += nu[ii];
     }
 
+    blasfeo_free_dvec(&tmp_x);
+    blasfeo_free_dvec(&tmp_u);
+
+    assert(nKKT == pos && "incorrect size of KKT residuals");
     // d_print_e_mat(nz, 1, res, nz);
 }
 
@@ -342,12 +362,15 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
 double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
 {
     int nz = number_of_primal_variables(qp_in);
-    double *res = malloc(nz*sizeof(double));
+    int ne = number_of_dynamic_constraints(qp_in);
+    int nKKT = 2*nz + ne;
+
+    double *res = malloc(nKKT*sizeof(double));
     calculate_KKT_residuals(qp_in, qp_out, res);
 
     double err = ABS(res[0]);
     double cur;
-    for (int ii = 1; ii < nz; ii++)
+    for (int ii = 1; ii < nKKT; ii++)
     {
         cur = ABS(res[ii]);
         if (cur > err) err = cur;
@@ -369,6 +392,17 @@ int number_of_states(tree_ocp_qp_in *qp_in)
 
 
 
+int max_number_of_states(tree_ocp_qp_in *qp_in)
+{
+    int nx_max = 0;
+
+    for (int ii = 0; ii < qp_in->N; ii++) nx_max = MAX(nx_max, qp_in->nx[ii]);
+
+    return nx_max;
+}
+
+
+
 int number_of_controls(tree_ocp_qp_in *qp_in)
 {
     int nu = 0;
@@ -380,9 +414,30 @@ int number_of_controls(tree_ocp_qp_in *qp_in)
 
 
 
+int max_number_of_controls(tree_ocp_qp_in *qp_in)
+{
+    int nu_max = 0;
+
+    for (int ii = 0; ii < qp_in->N; ii++) nu_max = MAX(nu_max, qp_in->nu[ii]);
+
+    return nu_max;
+}
+
+
+
 int number_of_primal_variables(tree_ocp_qp_in *qp_in)
 {
     return number_of_controls(qp_in) + number_of_states(qp_in);
+}
+
+
+
+int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
+{
+    int ne = 0;
+
+    for (int ii = 1; ii < qp_in->N; ii++) ne += qp_in->nx[ii];
+    return ne;
 }
 
 
