@@ -264,7 +264,7 @@ double maximum_error_in_dynamic_constraints(tree_ocp_qp_in *qp_in, tree_ocp_qp_o
 
 
 
-// TODO(dimitris): add complementarity
+// TODO(dimitris): add complementarity and primal feasibility
 void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res)
 {
     int Nn = qp_in->N;

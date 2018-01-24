@@ -31,8 +31,6 @@
 extern "C" {
 #endif
 
-// #define NOMINAL_MPC
-
 #include "treeqp/utils/types.h"
 
 // data of one pruned tree
@@ -60,6 +58,8 @@ typedef struct sim_data_ {
 } sim_data;
 
 input_data *load_data( );
+
+input_data *load_ms_data( );
 
 input_data *load_nominal_data( );
 

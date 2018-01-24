@@ -46,23 +46,27 @@
 
 #include "examples/fault_tolerance_utils/load_data.h"
 
-double random_real( ) {
+double random_real( )
+{
     return (double) rand() / (double) RAND_MAX;
 }
 
 
-int sample_from_markov_chain(double *transition_matrix, int curr_state, int n_realizations) {
 
+int sample_from_markov_chain(double *transition_matrix, int curr_state, int n_realizations)
+{
     double *matrix_row = &transition_matrix[curr_state*n_realizations];
 
     double u = random_real( );
     double accsum = 0;
     int next_state;
 
-    for (int ii = 0; ii < n_realizations; ii++) {
+    for (int ii = 0; ii < n_realizations; ii++)
+    {
         accsum += matrix_row[ii];
         // printf("i = %d, accsum = %2.2e, number = %2.2e, accsum >= u = %d\n", ii, accsum, u, accsum >= u);
-        if (accsum >= u) {
+        if (accsum >= u)
+        {
             next_state = ii;
             break;
         }
@@ -71,19 +75,23 @@ int sample_from_markov_chain(double *transition_matrix, int curr_state, int n_re
 }
 
 
-double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, double *q,
-    double *R, double *r, double *states, double *controls) {
 
+double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, double *q,
+    double *R, double *r, double *states, double *controls)
+{
     double obj = 0;
     double xj, uj;
 
     // NOTE(dimitris): Q, R are assumed constant and diagonal. x0 does not contribute to cost.
-    for (int ii = 0; ii < MPCsteps; ii++) {
-        for (int jj = 0; jj < nx; jj++) {
+    for (int ii = 0; ii < MPCsteps; ii++)
+    {
+        for (int jj = 0; jj < nx; jj++)
+        {
             xj = states[(ii+1)*nx + jj];
             obj += xj*Q[jj]*xj + xj*q[jj];
         }
-        for (int jj = 0; jj < nu; jj++) {
+        for (int jj = 0; jj < nu; jj++)
+        {
             uj = controls[ii*nu + jj];
             obj += uj*R[jj]*xj + uj*r[jj];
         }
@@ -92,20 +100,43 @@ double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, 
 }
 
 
-int main() {
 
+typedef enum
+{
+    NOMINAL_CONTROLLER = 0,  // nominal MPC WITH/WITHOUT STATE INFO???
+    PRUNED_TREE_CONTROLLER,  // robust MPC using pruned tree structure
+    MULTI_STAGE_CONTROLLER,  // robust MPC using multi-stage tree structure
+} controller_t;
+
+
+
+int main()
+{
     // define simulation length and number of considered trees
     int MPCsteps = 100;
 
-    // read code generated data
+    // read code generated integrators for simulation
     sim_data *sim = load_sim_data();
 
-    // NOTE(dimitris): NOMINAL_MPC macro defined in load_data.h
-    #ifdef NOMINAL_MPC
-        input_data *data = load_nominal_data();
-    #else
-        input_data *data = load_data();
-    #endif
+    // read code generated controller data
+    controller_t controller = NOMINAL_CONTROLLER;
+
+    input_data *data;
+    switch (controller)
+    {
+        case NOMINAL_CONTROLLER:
+            data = load_nominal_data();
+            break;
+        case PRUNED_TREE_CONTROLLER:
+            data = load_data();
+            break;
+        case MULTI_STAGE_CONTROLLER:
+            data = load_ms_data();
+            break;
+        default:
+            printf("Unknown specified controller, exiting . . .\n");
+            exit(1);
+    }
 
     int nx = get_nx();
     int nu = get_nu();
@@ -127,22 +158,28 @@ int main() {
     double Fmin = -10;
     double Fmax = 10;
 
-    for (int ii = 0; ii < nx; ii++) {
-        if (ii < nx/2) {
+    for (int ii = 0; ii < nx; ii++)
+    {
+        if (ii < nx/2)
+        {
             xmin[ii] = Pmin;
             xmax[ii] = Pmax;
-        } else {
+        }
+        else
+        {
             xmin[ii] = Vmin;
             xmax[ii] = Vmax;
         }
     }
 
-    for (int ii = 0; ii < n_masses; ii++) {
+    for (int ii = 0; ii < n_masses; ii++)
+    {
         x0[ii] = 0;
         x0[n_masses+ii] = 0;
     }
 
-    for (int ii = 0; ii < nu; ii++) {
+    for (int ii = 0; ii < nu; ii++)
+    {
         umin[ii] = Fmin;
         umax[ii] = Fmax;
     }
@@ -154,7 +191,8 @@ int main() {
     double *cpuTimes = malloc(MPCsteps*sizeof(double));
     double *spring_configs = malloc((MPCsteps+1)*sizeof(double));
 
-    for (int jj = 0; jj < nx; jj++) {
+    for (int jj = 0; jj < nx; jj++)
+    {
         stateTrajectory[jj] = x0[jj];
     }
 
@@ -175,6 +213,8 @@ int main() {
     opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
     opts.regValue = 1e-10;
 
+    for (int ii = 0; ii < max_Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+
     // set up problem data
     struct node **forest = malloc(n_realizations*sizeof(struct node*));
     tree_ocp_qp_in *qp_ins = malloc(n_realizations*sizeof(tree_ocp_qp_in));
@@ -186,9 +226,11 @@ int main() {
 
     int size;
 
-    for (int ii = 0; ii < n_realizations; ii++) {
+    for (int ii = 0; ii < n_realizations; ii++)
+    {
         // create solver only if tree has been generated for this configuration
-        if (data[ii].Nn != -1) {
+        if (data[ii].Nn != -1)
+        {
             //set up tree
             forest[ii] = malloc(data[ii].Nn*sizeof(struct node));
             setup_tree(data[ii].Nn, data[ii].nc, forest[ii]);
@@ -214,7 +256,7 @@ int main() {
         }
     }
 
-    double err;
+    double kkt_err, dyn_err;
     double *A, *B, *b;
 
     int mpc_config = n_realizations-1;
@@ -226,21 +268,25 @@ int main() {
     spring_configs[0] = sim_config;
 
     // MPC loop
-    for (int tt = 0; tt < MPCsteps; tt++) {
-
+    for (int tt = 0; tt < MPCsteps; tt++)
+    {
         // solve QP
         treeqp_tic(&timer);
         treeqp_tdunes_solve(&qp_ins[mpc_config], &qp_outs[mpc_config], &opts, &works[mpc_config]);
         cpuTimes[tt] = treeqp_toc(&timer);
 
         // run some sanity checks
-        for (int jj = 0; jj < nx; jj++) {
+        // TODO(dimitris): CHECK KKTS!
+        for (int jj = 0; jj < nx; jj++)
+        {
             assert(ABS(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) - x0[jj]) < 1e-10);
         }
         assert(qp_outs[mpc_config].info.iter < opts.maxIter && "maximum number of iterations reached");
 
-        err = maximum_error_in_dynamic_constraints(&qp_ins[mpc_config], &qp_outs[mpc_config]);
-        assert(err <= opts.stationarityTolerance && "violation of dynamic constraints too high");
+        kkt_err = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
+        dyn_err = maximum_error_in_dynamic_constraints(&qp_ins[mpc_config], &qp_outs[mpc_config]);
+        assert(dyn_err <= opts.stationarityTolerance && "violation of dynamic constraints too high");
+        assert(kkt_err <= opts.stationarityTolerance && "violation of KKT conditions too high");
 
         // apply disturbance
         if (tt % 10 == 0)
@@ -250,20 +296,25 @@ int main() {
         A = sim[sim_config].A;
         B = sim[sim_config].B;
         b = sim[sim_config].b;
-        for (int ii = 0; ii < nx; ii++) {
+        for (int ii = 0; ii < nx; ii++)
+        {
             x0[ii] = b[ii];
-            for (int jj = 0; jj < nx; jj++) {
+            for (int jj = 0; jj < nx; jj++)
+            {
                 x0[ii] += A[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj);
             }
             for (int jj = 0; jj < nu; jj++)
+            {
                 x0[ii] += B[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
+            }
         }
 
         // print iteration results
         printf("-------------------------------------------------------------------------------\n");
         printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_outs[mpc_config].info.iter);
         printf("\tproblem solved in %f ms\n\n", cpuTimes[tt]*1e3);
-        printf("\tmax. violation of dynamic constraints: %2.2e\n\n", err);
+        printf("\tmax. violation of dynamic constraints: %2.2e\n\n", dyn_err);
+        printf("\tmax. violation of KKT conditions: %2.2e\n\n", kkt_err);
         printf("\tcurrent spring configuration index: %d\n\n", sim_config);
         printf("\tx = ");
         blasfeo_print_exp_tran_dvec(nx, &qp_outs[mpc_config].x[0], 0);
@@ -272,16 +323,20 @@ int main() {
 
 
         // save state and input trajectories
-        for (int jj = 0; jj < nx; jj++) {
+        for (int jj = 0; jj < nx; jj++)
+        {
             stateTrajectory[jj + (tt+1)*nx] = x0[jj];
         }
-        for (int jj = 0; jj < nu; jj++) {
+        for (int jj = 0; jj < nu; jj++)
+        {
             inputTrajectory[jj + tt*nu] = DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
         }
 
         // update bound on x0
-        for (int ii = 0; ii < n_realizations; ii++) {
-            if (data[ii].Nn != -1) {
+        for (int ii = 0; ii < n_realizations; ii++)
+        {
+            if (data[ii].Nn != -1)
+            {
                 tree_ocp_qp_in_set_x0_bounds(&qp_ins[ii], x0);
             }
         }
@@ -290,7 +345,6 @@ int main() {
 
         // NOTE(dimitris): take care that mpc_config has been code generated (otherwise the line
         //                 below will cause a segfault)
-
         // mpc_config = sim_config;
 
         spring_configs[tt+1] = sim_config;
@@ -312,13 +366,16 @@ int main() {
     fprintf(stdout, "\nCurrent working dir: %s\n\n", cwd);
 
     // TODO(dimitris): do this in a more general way
-    if(strstr(cwd, "examples") != NULL) {
+    if(strstr(cwd, "examples") != NULL)
+    {
         // write_qp_out_to_txt(&qp_in, &qp_out, "fault_tolerance_utils");
         write_double_vector_to_txt(stateTrajectory, nx*(MPCsteps+1), "fault_tolerance_utils/xMPC.txt");
         write_double_vector_to_txt(inputTrajectory, nu*MPCsteps, "fault_tolerance_utils/uMPC.txt");
         write_double_vector_to_txt(cpuTimes, MPCsteps, "fault_tolerance_utils/cpuTimes.txt");
         write_int_vector_to_txt(&n_masses, 1, "fault_tolerance_utils/n_masses.txt");
-    } else {
+    }
+    else
+    {
         // write_qp_out_to_txt(&qp_in, &qp_out, "examples/fault_tolerance_utils");
         write_double_vector_to_txt(stateTrajectory, nx*(MPCsteps+1), "examples/fault_tolerance_utils/xMPC.txt");
         write_double_vector_to_txt(inputTrajectory, nu*MPCsteps, "examples/fault_tolerance_utils/uMPC.txt");
@@ -327,8 +384,10 @@ int main() {
     }
 
     // free allocated memory
-    for (int ii = 0; ii < n_realizations; ii++) {
-        if (data[ii].Nn != -1) {
+    for (int ii = 0; ii < n_realizations; ii++)
+    {
+        if (data[ii].Nn != -1)
+        {
             free_tree(data[ii].Nn, forest[ii]);
             free(forest[ii]);
             free(qp_in_memories[ii]);
