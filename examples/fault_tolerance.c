@@ -33,6 +33,7 @@
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/utils.h"
@@ -54,6 +55,14 @@ typedef enum
     PRUNED_TREE_CONTROLLER,  // robust MPC using pruned tree structure
     MULTI_STAGE_CONTROLLER,  // robust MPC using multi-stage tree structure
 } controller_t;
+
+
+
+typedef enum
+{
+    TREEQP_TDUNES = 0,  // dual Newton strategy on tree
+    TREEQP_HPMPC,  // HPMPC (interior point method)
+} solver_t;
 
 
 
@@ -145,6 +154,7 @@ int main()
     // controller options
     bool controller_with_varying_spring_configuration = true;
 
+    solver_t solver = TREEQP_TDUNES;
     controller_t controller = PRUNED_TREE_CONTROLLER;
 
     // read code generated controller data
@@ -224,29 +234,51 @@ int main()
     }
 
     // set up QP solver options
+    treeqp_tdunes_options_t tdunes_opts;
+    treeqp_hpmpc_options_t hpmpc_opts;
+
     int max_Nn = data[0].Nn;
     for (int ii = 1; ii < n_realizations; ii++)
     {
         if (data[ii].Nn > max_Nn) max_Nn = data[ii].Nn;
     }
-    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(max_Nn);
 
-    opts.maxIter = 200;
-    opts.termCondition = TREEQP_INFNORM;
-    opts.stationarityTolerance = 1.0e-8;
-    opts.lineSearchMaxIter = 100;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.8;
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    opts.regValue = 1e-10;
+    int maxIter = 200;
+    double tol = 1e-6;
+    switch (solver)
+    {
+        case TREEQP_TDUNES:
+            tdunes_opts = treeqp_tdunes_default_options(max_Nn);
 
-    for (int ii = 0; ii < max_Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+            tdunes_opts.maxIter = maxIter;
+            tdunes_opts.termCondition = TREEQP_INFNORM;
+            tdunes_opts.stationarityTolerance = tol;
+            tdunes_opts.lineSearchMaxIter = 100;
+            tdunes_opts.lineSearchGamma = 0.1;
+            tdunes_opts.lineSearchBeta = 0.8;
+            tdunes_opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+            tdunes_opts.regValue = 1e-10;
+
+            for (int ii = 0; ii < max_Nn; ii++) tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+            break;
+        case TREEQP_HPMPC:
+            hpmpc_opts = treeqp_hpmpc_default_options(max_Nn);
+            // TODO(dimitris): change maxIter and tol
+            break;
+        default:
+            printf("Unknown specified solver. Exiting . . .\n");
+            exit(1);
+    }
 
     // set up problem data
+    treeqp_tdunes_workspace *works_tdunes;
+    treeqp_hpmpc_workspace *works_hpmpc;
+
     struct node **forest = malloc(n_realizations*sizeof(struct node*));
     tree_ocp_qp_in *qp_ins = malloc(n_realizations*sizeof(tree_ocp_qp_in));
     void **qp_in_memories = malloc(n_realizations*sizeof(void*));
-    treeqp_tdunes_workspace *works = malloc(n_realizations*sizeof(treeqp_tdunes_workspace));
+    works_tdunes = malloc(n_realizations*sizeof(treeqp_tdunes_workspace));
+    works_hpmpc = malloc(n_realizations*sizeof(treeqp_hpmpc_workspace));
     void **solver_memories = malloc(n_realizations*sizeof(void*));
     tree_ocp_qp_out *qp_outs = malloc(n_realizations*sizeof(tree_ocp_qp_out));
     void **qp_out_memories = malloc(n_realizations*sizeof(void*));
@@ -272,9 +304,19 @@ int main()
             tree_ocp_qp_in_set_x0_bounds(&qp_ins[ii], x0);
 
             // set up QP solver
-            size = treeqp_tdunes_calculate_size(&qp_ins[ii], &opts);
-            solver_memories[ii] = malloc(size);
-            create_treeqp_tdunes(&qp_ins[ii], &opts, &works[ii], solver_memories[ii]);
+            switch (solver)
+            {
+                case TREEQP_TDUNES:
+                    size = treeqp_tdunes_calculate_size(&qp_ins[ii], &tdunes_opts);
+                    solver_memories[ii] = malloc(size);
+                    create_treeqp_tdunes(&qp_ins[ii], &tdunes_opts, &works_tdunes[ii], solver_memories[ii]);
+                    break;
+                case TREEQP_HPMPC:
+                    size = treeqp_hpmpc_calculate_size(&qp_ins[ii], &hpmpc_opts);
+                    solver_memories[ii] = malloc(size);
+                    create_treeqp_hpmpc(&qp_ins[ii], &hpmpc_opts, &works_hpmpc[ii], solver_memories[ii]);
+                    break;
+            }
 
             // set up QP solution
             size = tree_ocp_qp_out_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu);
@@ -299,7 +341,15 @@ int main()
     {
         // solve QP
         treeqp_tic(&timer);
-        treeqp_tdunes_solve(&qp_ins[mpc_config], &qp_outs[mpc_config], &opts, &works[mpc_config]);
+        switch (solver)
+        {
+            case TREEQP_TDUNES:
+                treeqp_tdunes_solve(&qp_ins[mpc_config], &qp_outs[mpc_config], &tdunes_opts, &works_tdunes[mpc_config]);
+                break;
+            case TREEQP_HPMPC:
+                treeqp_hpmpc_solve(&qp_ins[mpc_config], &qp_outs[mpc_config], &hpmpc_opts, &works_hpmpc[mpc_config]);
+                break;
+        }
         cpuTimes[tt] = treeqp_toc(&timer);
 
         // run some sanity checks
@@ -307,10 +357,11 @@ int main()
         {
             assert(ABS(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) - x0[jj]) < 1e-10);
         }
-        assert(qp_outs[mpc_config].info.iter < opts.maxIter && "maximum number of iterations reached");
+        assert(qp_outs[mpc_config].info.iter < maxIter && "maximum number of iterations reached");
 
         kkt_err = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
-        assert(kkt_err <= opts.stationarityTolerance && "violation of KKT conditions too high");
+        // printf("KKT = %f\n", kkt_err);
+        assert(kkt_err <= tol && "violation of KKT conditions too high");
 
         // apply disturbance
         if (tt % 10 == 0)
@@ -428,7 +479,8 @@ int main()
     free(qp_in_memories);
     free(qp_ins);
     free(solver_memories);
-    free(works);
+    free(works_tdunes);
+    free(works_hpmpc);
     free(qp_out_memories);
     free(qp_outs);
 
