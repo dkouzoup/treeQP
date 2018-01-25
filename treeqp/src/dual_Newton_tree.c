@@ -1011,7 +1011,15 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     for (int kk = 0; kk < Nn; kk++)
     {
-        work->stage_qp_ptrs[kk].init(qp_in, kk, opts->qp_solver[tree[kk].dad], work);
+        // TODO(dimitris): Clean this up! At root, opts->qp_solver[-1] gives segfault
+        if (kk > 0)
+        {
+            work->stage_qp_ptrs[kk].init(qp_in, kk, opts->qp_solver[tree[kk].dad], work);
+        }
+        else
+        {
+            work->stage_qp_ptrs[kk].init(qp_in, kk, TREEQP_CLIPPING_SOLVER, work);
+        }
 
         #ifdef _CHECK_LAST_ACTIVE_SET_
         blasfeo_dvecse(work->sxasPrev[kk].m, 0.0/0.0, &work->sxasPrev[kk], 0);
