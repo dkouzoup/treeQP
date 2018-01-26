@@ -102,6 +102,8 @@ typedef struct treeqp_tdunes_workspace_
     struct blasfeo_dvec *slambda;  // 1 x Np
     struct blasfeo_dvec *sDeltalambda;  // 1 x Np
 
+    // TODO(dimitris): move xUnc, uUnc to clipping data (not used in qpoases)
+
     struct blasfeo_dvec *sx;  // 1 x Nn
     struct blasfeo_dvec *su;  // 1 x Nn
     struct blasfeo_dvec *sxas;  // 1 x Nn
