@@ -1883,7 +1883,7 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             DVECEL_LIBSTR(&work->sRinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sR[jj], nn);
     }
 
-    int idx, idxp1;
+    int idx, idxm1, idxp1;
     for (int ii = 0; ii < Ns; ii++) {
         for (int kk = 0; kk < Nh; kk++) {
             idx = work->nodeIdx[ii][kk];
@@ -2001,14 +2001,52 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
 
     // ------ copy solution to qp_out
+
+    for (int ii = 0; ii < qp_in->N; ii++) {
+        blasfeo_dvecse(nx, 0.0, &qp_out->lam[ii], 0);
+    }
+
     for (int ii = 0; ii < Ns; ii++) {
         for (int kk = 0; kk < Nh; kk++) {
+            idx = work->nodeIdx[ii][kk+1];
+            idxm1 = work->nodeIdx[ii][kk];
+            idxp1 = work->nodeIdx[ii][kk+2];
+            blasfeo_daxpy(nx, 1.0, &work->smu[ii][kk], 0, &qp_out->lam[idx], 0, &qp_out->lam[idx], 0);
             if (work->boundsRemoved[ii][kk+1] == 0) {
                 // printf("saving node (%d, %d) to node %d\n", ii, kk+1, work->nodeIdx[ii][kk+1]);
-                blasfeo_dveccp(nx, &work->sx[ii][kk], 0, &qp_out->x[work->nodeIdx[ii][kk+1]], 0);
+                blasfeo_dveccp(nx, &work->sx[ii][kk], 0, &qp_out->x[idx], 0);
+                #ifdef NEW_FVAL
+                // TODO(dimitris): this is copy-paste from evaluate dual function..
+                if (kk < Nh-1) {
+                    blasfeo_dgemv_t(nx, nx, -1.0, &qp_in->A[idxp1-1], 0, 0, &work->smu[ii][kk+1],
+                    0, 1.0, &work->smu[ii][kk], 0, &work->sxUnc[ii][kk], 0);
+                } else {
+                    blasfeo_dveccp(nx, &work->smu[ii][kk], 0, &work->sxUnc[ii][kk], 0);
+                }
+                blasfeo_daxpy(nx, -1.0, &work->sq[idx], 0, &work->sxUnc[ii][kk], 0, &work->sxUnc[ii][kk], 0);
+                blasfeo_dvecmuldot(nx, &work->sQinv[idx], 0, &work->sxUnc[ii][kk], 0, &work->sxUnc[ii][kk], 0);
+                #endif
+                blasfeo_daxpy(nx, -1., &qp_out->x[idx], 0, &work->sxUnc[ii][kk], 0, &qp_out->mu_x[idx], 0);
+                blasfeo_dvecmuldot(nx, &work->sQ[idx], 0, &qp_out->mu_x[idx], 0, &qp_out->mu_x[idx], 0);
             }
             if (work->boundsRemoved[ii][kk] == 0) {
-                blasfeo_dveccp(nu, &work->su[ii][kk], 0, &qp_out->u[work->nodeIdx[ii][kk]], 0);
+                blasfeo_dveccp(nu, &work->su[ii][kk], 0, &qp_out->u[idxm1], 0);
+                #ifdef NEW_FVAL
+                blasfeo_dgemv_t(nx, nu, -1.0, &qp_in->B[idx-1], 0, 0, &work->smu[ii][kk], 0, -1.0,
+                    &work->sr[idxm1], 0, &work->suUnc[ii][kk], 0);
+                if ((ii < Ns-1) && (kk < work->commonNodes[ii])) {
+                    blasfeo_daxpy(nu, -1.0, &work->slambda[ii], kk*nu, &work->suUnc[ii][kk], 0,
+                        &work->suUnc[ii][kk], 0);
+                }
+                if ((ii > 0) && (kk < work->commonNodes[ii-1])) {
+                    blasfeo_daxpy(nu, 1.0, &work->slambda[ii-1], kk*nu, &work->suUnc[ii][kk], 0,
+                        &work->suUnc[ii][kk], 0);
+                }
+                blasfeo_dvecmuldot(nu, &work->sRinv[idxm1], 0, &work->suUnc[ii][kk], 0,
+                    &work->suUnc[ii][kk], 0);
+                #endif
+                blasfeo_daxpy(nu, -1., &qp_out->u[idxm1], 0, &work->suUnc[ii][kk], 0, &qp_out->mu_u[idxm1], 0);
+                blasfeo_dvecmuldot(nu, &work->sR[idxm1], 0, &qp_out->mu_u[idxm1], 0, &qp_out->mu_u[idxm1], 0);
             }
         }
     }

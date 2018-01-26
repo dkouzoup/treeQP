@@ -244,7 +244,8 @@ int main()
     }
 
     int maxIter = 200;
-    double tol = 1e-6;
+    double tol = 1e-8;
+
     switch (solver)
     {
         case TREEQP_TDUNES:

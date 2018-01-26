@@ -24,7 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -145,9 +145,6 @@ int main( ) {
 
     write_solution_to_txt(&qp_in, Np, qp_out.info.iter, tree, &work);
 
-    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
-    printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
-
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);
     #endif
@@ -155,6 +152,10 @@ int main( ) {
     for (int ii = 0; ii < 5; ii++) {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
+
+    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
+    assert(kkt_err < 1e-10 && "KKT tolerance in spring_mass_dual_newton_tree.c too high!");
 
     // Free memory
     free(nx);

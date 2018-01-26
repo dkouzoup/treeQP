@@ -24,7 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -139,6 +139,7 @@ int main( ) {
 
     double kkt_err = max_KKT_residual(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
+    assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
 
@@ -160,6 +161,7 @@ int main( ) {
 
     kkt_err = max_KKT_residual(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpmpc):\t\t\t %2.2e\n\n", kkt_err);
+    assert(kkt_err < 1e-10 && "KKT tolerance of tree hpmpc in spring_mass.c too high!");
 
     printf("Maximum overhead of treeQP interface (hpmpc):\t\t %4.2f%%\n\n", max_overhead);
 
