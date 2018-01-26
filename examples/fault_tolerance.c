@@ -154,7 +154,7 @@ int main()
     // controller options
     bool controller_with_varying_spring_configuration = true;
 
-    solver_t solver = TREEQP_TDUNES;
+    solver_t solver = TREEQP_HPMPC;
     controller_t controller = PRUNED_TREE_CONTROLLER;
 
     // read code generated controller data
@@ -211,8 +211,8 @@ int main()
 
     for (int ii = 0; ii < n_masses; ii++)
     {
-        x0[ii] = 0;
-        x0[n_masses+ii] = 0;
+        x0[ii] = 0.0;
+        x0[n_masses+ii] = 0.0;
     }
 
     for (int ii = 0; ii < nu; ii++)
@@ -351,6 +351,7 @@ int main()
                 break;
         }
         cpuTimes[tt] = treeqp_toc(&timer);
+        // print_tree_ocp_qp_out(qp_ins[mpc_config].N, &qp_outs[mpc_config]);
 
         // run some sanity checks
         for (int jj = 0; jj < nx; jj++)

@@ -321,8 +321,10 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
 
     treeqp_timer solver_tmr, interface_tmr;
 
-    // convert input to HPMPC format
     int idxp, idxb;
+    double mu_lb, mu_ub;
+
+    // convert input to HPMPC format
 
     treeqp_tic(&interface_tmr);
 
@@ -373,11 +375,27 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     // copy results to qp_out struct
     treeqp_tic(&interface_tmr);
 
-    // TODO(dimitris): COPY ALSO MULTIPLIERS!
     for (int ii = 0; ii < Nn; ii++)
     {
         blasfeo_dveccp(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
         blasfeo_dveccp(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
+
+        blasfeo_dvecse(nx[ii], 0.0, &qp_out->mu_x[ii], 0);
+        blasfeo_dvecse(nu[ii], 0.0, &qp_out->mu_u[ii], 0);
+        for (int jj = 0; jj < work->nb[ii]; jj++)
+        {
+            idxb = work->idxb[ii][jj];
+            mu_lb = DVECEL_LIBSTR(&work->slam[ii], jj);
+            mu_ub = DVECEL_LIBSTR(&work->slam[ii], jj+nx[ii]+nu[ii]);
+            if (idxb < nu[ii])
+            {
+                DVECEL_LIBSTR(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
+            }
+            else //if (idxb < nu[ii]+nx[ii])
+            {
+                DVECEL_LIBSTR(&qp_out->mu_x[ii], idxb-nu[ii]) +=  mu_ub -mu_lb;
+            }
+        }
     }
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
