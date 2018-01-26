@@ -32,8 +32,18 @@
 
 #include <qpOASES_e.h>
 
+
+typedef struct stage_qp_qpoases_opts_
+{
+    double max_cputime;
+    int max_nwsr;
+} stage_qp_qpoases_opts;
+
+
+
 typedef struct treeqp_qpoases_data_
 {
+    stage_qp_qpoases_opts opts;
     double *H;
     double *g;
     double *lb;
@@ -53,6 +63,8 @@ typedef struct treeqp_qpoases_data_
 
 
 answer_t stage_qp_qpoases_is_applicable(tree_ocp_qp_in *qp_in, int idx);
+
+void stage_qp_qpoases_set_default_opts(stage_qp_qpoases_opts *opts);
 
 int stage_qp_qpoases_calculate_size(int nx, int nu);
 

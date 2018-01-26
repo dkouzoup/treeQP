@@ -49,6 +49,14 @@ answer_t stage_qp_qpoases_is_applicable(tree_ocp_qp_in *qp_in, int idx)
 
 
 
+void stage_qp_qpoases_set_default_opts(stage_qp_qpoases_opts *opts)
+{
+    opts->max_nwsr = 1000;
+    opts->max_cputime = 1000.0;
+}
+
+
+
 int stage_qp_qpoases_calculate_size(int nx, int nu)
 {
     int bytes  = 0;
@@ -194,12 +202,16 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
     int nx = qp_in->nx[idx];
     int nu = qp_in->nu[idx];
 
+    stage_qp_qpoases_set_default_opts(&qpoases_data->opts);
+
     // TODO(dimitris): figure out why this is needed (weird results for NREP > 1 otherwise)
     // *probably because it's used as scrap space in eval_dual, fix it
     blasfeo_dvecse(nx, 0.0, &work->sxas[idx], 0);
     blasfeo_dvecse(nu, 0.0, &work->suas[idx], 0);
 
     QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
+    // QProblemB_reset(QPB);
+
     // TODO(dimitris): handle general constraints
     QProblem *QP = (QProblem *)qpoases_data->QP;
 
@@ -229,8 +241,8 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
 
     // solve first QP instance
 
-	int nWSR = 10;  // TODO(dimitris): move those max values to options
-    double cputime = 1000;
+	int nWSR = qpoases_data->opts.max_nwsr;
+    double cputime = qpoases_data->opts.max_cputime;
 
     QProblemBCON(QPB, nx+nu, HST_POSDEF);
     QProblemB_setPrintLevel(QPB, PL_MEDIUM);  // TODO(dimitris): other options?
@@ -239,6 +251,15 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
 	return_t status = QProblemB_init(QPB, qpoases_data->H, qpoases_data->g,
         qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
 
+    // if (status !=0)
+    // {
+    //     printf("\nUps... Initialization of stage QP %d failed (status flag %d).\n\n", idx, status);
+    //     d_print_mat(nx+nu, nx+nu, qpoases_data->H, nx+nu);
+    //     d_print_mat(1, nx+nu, qpoases_data->g, 1);
+    //     d_print_mat(1, nx+nu, qpoases_data->lb, 1);
+    //     d_print_mat(1, nx+nu, qpoases_data->ub, 1);
+    //     exit(1);
+    // }
     assert(status == 0 && "initialization of qpOASES failed!");
 }
 
@@ -254,9 +275,8 @@ static void QProblemB_solve(tree_ocp_qp_in *qp_in, int idx,  treeqp_tdunes_works
 
     QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
 
-    // TODO(dimitris): TEMP!
-    int nWSR = 1000;
-    double cputime = 1000;
+    int nWSR = qpoases_data->opts.max_nwsr;
+    double cputime = qpoases_data->opts.max_cputime;
 
     // g_new = - [xmod; umod]
     blasfeo_unpack_dvec(nx, &work->sqmod[idx], 0, &qpoases_data->g[0]);
