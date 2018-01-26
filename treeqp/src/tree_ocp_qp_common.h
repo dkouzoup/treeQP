@@ -101,6 +101,8 @@ int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in);
 
 void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
 
+void print_tree_ocp_qp_out(int Nn, tree_ocp_qp_out *qp_out);
+
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in);

@@ -533,6 +533,42 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
 
 
 
+// TODO(dimitris): move prints to utils
+void print_tree_ocp_qp_out(int Nn, tree_ocp_qp_out *qp_out)
+{
+    int nx, nu;
+
+    printf("\nProblem solved in %d iterations (%f ms)\n\n",
+        qp_out->info.iter, qp_out->info.solver_time+qp_out->info.interface_time);
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        nx = qp_out->x[ii].m;
+        nu = qp_out->u[ii].m;
+
+        printf("* Node %d/%d (nx = %d, nu = %d) ---------------------------------\n\n",
+            ii, Nn-1, nx,  nu);
+
+        printf("x[%d] = \n", ii);
+        blasfeo_print_tran_dvec(nx, &qp_out->x[ii], 0);
+
+        printf("u[%d] = \n", ii);
+        blasfeo_print_tran_dvec(nu, &qp_out->u[ii], 0);
+
+        // NOTE(dimitris): always zero at root node
+        printf("lam[%d] = \n", ii);
+        blasfeo_print_tran_dvec(qp_out->lam[ii].m, &qp_out->lam[ii], 0);
+
+        printf("mu_x[%d] = \n", ii);
+        blasfeo_print_tran_dvec(nx, &qp_out->mu_x[ii], 0);
+
+        printf("mu_u[%d] = \n", ii);
+        blasfeo_print_tran_dvec(nu, &qp_out->mu_u[ii], 0);
+    }
+}
+
+
+
 // NOTE(dimitris): weights are scaled to minimize the average cost over all scenarios
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
