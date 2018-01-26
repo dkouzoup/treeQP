@@ -386,7 +386,7 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
         {
             idxb = work->idxb[ii][jj];
             mu_lb = DVECEL_LIBSTR(&work->slam[ii], jj);
-            mu_ub = DVECEL_LIBSTR(&work->slam[ii], jj+nx[ii]+nu[ii]);
+            mu_ub = DVECEL_LIBSTR(&work->slam[ii], jj+work->nb[ii]);
             if (idxb < nu[ii])
             {
                 DVECEL_LIBSTR(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
