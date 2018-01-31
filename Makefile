@@ -83,6 +83,9 @@ run_examples: examples
 	./examples/fault_tolerance.out
 	./examples/spring_mass.out
 
+run_fault_tolerance: examples
+	./examples/fault_tolerance.out
+
 clean:
 	( cd treeqp/src; $(MAKE) clean )
 	( cd treeqp/utils; $(MAKE) clean )
