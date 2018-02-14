@@ -59,22 +59,10 @@ typedef struct sim_data_ {
     double *b;
 } sim_data;
 
-input_data *load_data( );
-
-input_data *load_ms_data( );
-
-input_data *load_nominal_data( );
-
-sim_data *load_sim_data( );
-
+double *get_ptr_transition_matrix( );
 int get_number_of_realizations( );
-int get_number_of_trees( );
-int get_number_of_ms_trees( );
-bool pruned_tree_exists(int config);
-bool ms_tree_exists(int config);
 int get_nx( );
 int get_nu( );
-double *get_ptr_transition_matrix( );
 
 #ifdef __cplusplus
 }  /* extern "C" */
