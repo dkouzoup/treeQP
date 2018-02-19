@@ -35,6 +35,12 @@ extern "C" {
 
 #include "treeqp/utils/types.h"
 
+
+/************************************************
+* data structs
+************************************************/
+
+
 // data of one pruned tree
 typedef struct input_data_ {
     int Nn;
@@ -59,10 +65,35 @@ typedef struct sim_data_ {
     double *b;
 } sim_data;
 
-double *get_ptr_transition_matrix( );
-int get_number_of_realizations( );
-int get_nx( );
-int get_nu( );
+
+/************************************************
+* load functions
+************************************************/
+
+
+void load_dimensions(int *n_config_ptr, int *nx_ptr, int *nu_ptr, char *lib_string);
+
+void load_ptr(void *lib, char *data_string, void **ptr);
+
+sim_data *load_sim_data(int n_config, char *lib_string);
+
+input_data *load_nominal_data(int n_config, char *lib_string);
+
+input_data *load_tree_data(int n_config, char *lib_string);
+
+
+/************************************************
+* utils
+************************************************/
+
+double *get_ptr_transition_matrix(void);
+
+int get_number_of_realizations(void);
+
+int get_nx(void);
+
+int get_nu(void);
+
 
 #ifdef __cplusplus
 }  /* extern "C" */

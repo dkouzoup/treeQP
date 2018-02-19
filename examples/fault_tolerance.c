@@ -30,7 +30,6 @@
 #include <unistd.h>  // NOTE(dimitris): to read current directory
 #include <string.h>
 #include <stdbool.h>
-#include <dlfcn.h>
 
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
@@ -122,268 +121,7 @@ double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, 
 
 
 
-void load_dimensions(int *n_config_ptr, int *nx_ptr, int *nu_ptr, char *lib_string)
-{
-    void *lib = dlopen(lib_string, RTLD_NOW);
-    if (lib == NULL) {
-        printf("dlopen failed: %s\n", dlerror());
-        exit(1);
-    }
-
-    void *fun;
-    int (*fun_ptr)();
-
-    // load n_config
-    fun = dlsym(lib, "get_number_of_realizations");
-    if (fun == NULL) {
-        printf("dlsym failed: %s\n", dlerror());
-        exit(1);
-    }
-    fun_ptr = fun;
-    *n_config_ptr = fun_ptr();
-
-    // load nx
-    fun = dlsym(lib, "get_nx");
-    if (fun == NULL) {
-        printf("dlsym failed: %s\n", dlerror());
-        exit(1);
-    }
-    fun_ptr = fun;
-    *nx_ptr = fun_ptr();
-
-    // load nu
-    fun = dlsym(lib, "get_nu");
-    if (fun == NULL) {
-        printf("dlsym failed: %s\n", dlerror());
-        exit(1);
-    }
-    fun_ptr = fun;
-    *nu_ptr = fun_ptr();
-
-    // printf("NC = %d\n", *n_config_ptr);
-    // printf("NX = %d\n", *nx_ptr);
-    // printf("NU = %d\n", *nu_ptr);
-}
-
-
-
-void load_ptr(void *lib, char *data_string, void **ptr)
-{
-    *ptr = dlsym(lib, data_string);
-    if (ptr == NULL)
-    {
-        printf("dlsym failed: %s\n", dlerror());
-        exit(1);
-    }
-}
-
-
-
-sim_data *load_sim_data(int n_config, char *lib_string)
-{
-    sim_data *data = malloc(n_config*sizeof(sim_data));
-
-    char data_string[256];
-
-    void *lib = dlopen(lib_string, RTLD_NOW);
-    if (lib == NULL) {
-        printf("dlopen failed: %s\n", dlerror());
-        exit(1);
-    }
-
-
-    for (int ii = 0; ii < n_config; ii++)
-    {
-        // load A
-        snprintf(data_string, sizeof(data_string), "Asim_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].A);
-
-        // load B
-        snprintf(data_string, sizeof(data_string), "Bsim_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].B);
-
-        // load b
-        snprintf(data_string, sizeof(data_string), "bsim_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].b);
-    }
-    return data;
-}
-
-
-
-input_data *load_nominal_data(int n_config, char *lib_string)
-{
-    input_data *data = malloc(n_config*sizeof(input_data));
-
-    char data_string[256];
-
-    void *lib = dlopen(lib_string, RTLD_NOW);
-    if (lib == NULL) {
-        printf("dlopen failed: %s\n", dlerror());
-        exit(1);
-    }
-
-    int *Nn_ptr;
-    snprintf(data_string, sizeof(data_string), "Nn_nom");
-    load_ptr(lib, data_string, (void **)&Nn_ptr);
-
-    int *nc_ptr;
-    snprintf(data_string, sizeof(data_string), "nc_nom");
-    load_ptr(lib, data_string, (void **)&nc_ptr);
-
-    int *nx_ptr;
-    snprintf(data_string, sizeof(data_string), "nx_nom");
-    load_ptr(lib, data_string, (void **)&nx_ptr);
-
-    int *nu_ptr;
-    snprintf(data_string, sizeof(data_string), "nu_nom");
-    load_ptr(lib, data_string, (void **)&nu_ptr);
-
-    double *Qnom_ptr;
-    snprintf(data_string, sizeof(data_string), "Qnom");
-    load_ptr(lib, data_string, (void **)&Qnom_ptr);
-
-    double *Rnom_ptr;
-    snprintf(data_string, sizeof(data_string), "Rnom");
-    load_ptr(lib, data_string, (void **)&Rnom_ptr);
-
-    double *qnom_ptr;
-    snprintf(data_string, sizeof(data_string), "qnom");
-    load_ptr(lib, data_string, (void **)&qnom_ptr);
-
-    double *rnom_ptr;
-    snprintf(data_string, sizeof(data_string), "rnom");
-    load_ptr(lib, data_string, (void **)&rnom_ptr);
-
-    for (int ii = 0; ii < n_config; ii++)
-    {
-        // set dimensions (same for all trees)
-        data[ii].Nn = *Nn_ptr;
-        data[ii].nc = nc_ptr;
-        data[ii].nx = nx_ptr;
-        data[ii].nu = nu_ptr;
-
-        // load A
-        snprintf(data_string, sizeof(data_string), "Anom_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].A);
-
-        // load B
-        snprintf(data_string, sizeof(data_string), "Bnom_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].B);
-
-        // load b
-        snprintf(data_string, sizeof(data_string), "bnom_%d", ii);
-        load_ptr(lib, data_string, (void **)&data[ii].b);
-
-        // set objective (same for all trees)
-        data[ii].Qd = Qnom_ptr;
-        data[ii].Rd = Rnom_ptr;
-        data[ii].q = qnom_ptr;
-        data[ii].r = rnom_ptr;
-
-        printf("%d nodes at tree %d\n", data[ii].Nn, ii);
-    }
-    return data;
-}
-
-
-
-input_data *load_tree_data(int n_config, char *lib_string)
-{
-    input_data *data = malloc(n_config*sizeof(input_data));
-
-    char data_string[256];
-
-    void *lib = dlopen(lib_string, RTLD_NOW);
-    if (lib == NULL) {
-        printf("dlopen failed: %s\n", dlerror());
-        exit(1);
-    }
-
-    int Nn;
-    int *Nn_ptr = &Nn;
-
-    // initialization
-    for (int ii = 0; ii < n_config; ii++)
-    {
-        // try to load number of nodes
-        snprintf(data_string, sizeof(data_string), "Nn_%d", ii);
-        load_ptr(lib, data_string, (void **)&Nn_ptr);
-
-        if (Nn_ptr != NULL)  // tree configuration exists
-        {
-            data[ii].Nn = *Nn_ptr;
-            printf("\nNn[%d] = %d\n", ii, data[ii].Nn);
-
-            snprintf(data_string, sizeof(data_string), "nc_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].nc);
-
-            snprintf(data_string, sizeof(data_string), "nx_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].nx);
-
-            snprintf(data_string, sizeof(data_string), "nu_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].nu);
-
-            snprintf(data_string, sizeof(data_string), "Qd_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].Qd);
-
-            snprintf(data_string, sizeof(data_string), "Rd_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].Rd);
-
-            snprintf(data_string, sizeof(data_string), "q_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].q);
-
-            snprintf(data_string, sizeof(data_string), "r_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].r);
-
-            snprintf(data_string, sizeof(data_string), "A_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].A);
-
-            snprintf(data_string, sizeof(data_string), "B_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].B);
-
-            snprintf(data_string, sizeof(data_string), "b_%d", ii);
-            load_ptr(lib, data_string, (void **)&data[ii].b);
-        }
-        else
-        {
-            data[ii].Nn = -1;
-            data[ii].nc = NULL;
-            data[ii].nx = NULL;
-            data[ii].nu = NULL;
-
-            data[ii].A = NULL;
-            data[ii].B = NULL;
-            data[ii].b = NULL;
-
-            data[ii].Qd = NULL;
-            data[ii].Rd = NULL;
-            data[ii].q = NULL;
-            data[ii].r = NULL;
-        }
-    }
-
-    return data;
-}
-
-
-void get_utils_abs_path(int max_str_length, char *path)
-{
-    char cwd[1024];
-    getcwd(cwd, sizeof(cwd));
-
-    if(strstr(cwd, "examples") != NULL)
-    {
-        snprintf(path, max_str_length, "%s/examples/fault_tolerance_utils/", cwd);
-    }
-    else
-    {
-        snprintf(path, max_str_length, "%s/fault_tolerance_utils/", cwd);
-    }
-}
-
-
-
+// TODO(dimitris): make it possible to run executable from _any_ directory
 void get_utils_rel_path(int max_str_length, char *path)
 {
     char cwd[1024];
@@ -402,48 +140,77 @@ void get_utils_rel_path(int max_str_length, char *path)
 
 int main()
 {
-    // define simulation length and number of considered trees
-    int MPCsteps = 100;
-
     char lib_string[256];
-    char utils_abs_path[1024];
     char utils_rel_path[1024];
 
-    char cwd[1024]; // TODO REMOVE!!!
-
-    get_utils_abs_path(sizeof(utils_abs_path), utils_abs_path);
-    get_utils_rel_path(sizeof(utils_rel_path), utils_rel_path);
-
-    int n_realizations, nx, nu;
-
-    snprintf(lib_string, sizeof(lib_string), "%slib_sim_npackets04_nsprings03_nu02.so", utils_rel_path);
-
-    load_dimensions(&n_realizations, &nx, &nu, lib_string);
-
-    // read code generated integrators for simulation
-    sim_data *sim = load_sim_data(n_realizations, lib_string);
-
-    // controller options
-    bool controller_with_varying_spring_configuration = true;
+    /************************************************
+    * problem specification
+    ************************************************/
 
     solver_t solver = TREEQP_HPMPC;
     controller_t controller = PRUNED_TREE_CONTROLLER;
 
-    // read code generated controller data
+    bool controller_with_varying_spring_configuration = true;
+
+    int MPCsteps = 100;
+
+    // common model data
+    int ncontrols = 2;
+    int npackets = 4;
+    int nsprings = 3;
+
+    // common controller data
+    int nhorizon = 10;
+
+    // // common tree controller data
+    // TODO(dimitris): decide whether to put this in filename or not and under what format
+    // double pfault = 0.001;
+
+    // multi-stage controller data
+    int nreal = 3;
+    int nrobust = 4;
+
+    // pruned controller data
+    double pcov = 0.99;
+    int nscenmax = 40;
+    // int adaptive = 0;
+
+    /************************************************
+    * load data from dynamic libraries
+    ************************************************/
+
+    get_utils_rel_path(sizeof(utils_rel_path), utils_rel_path);
+
+    snprintf(lib_string, sizeof(lib_string), "%slib_sim_npackets%02d_nsprings%02d_ncontrols%02d.so",
+        utils_rel_path, npackets, nsprings, ncontrols);
+
+    int n_realizations, nx, nu;
+    load_dimensions(&n_realizations, &nx, &nu, lib_string);
+    assert(nx == 2*npackets-2);
+    assert(nu == ncontrols);
+
+    // read code generated integrators for simulation
+    sim_data *sim = load_sim_data(n_realizations, lib_string);
 
     input_data *data;
     switch (controller)
     {
         case NOMINAL_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string), "%slib_nominal_npackets04_nsprings03_nu02_pfault1e-02.so", utils_rel_path);
+            snprintf(lib_string, sizeof(lib_string),
+                "%slib_nominal_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d.so",
+                utils_rel_path, npackets, nsprings, ncontrols, nhorizon);
             data = load_nominal_data(n_realizations, lib_string);
             break;
         case PRUNED_TREE_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string), "%slib_pruned_npackets04_nsprings03_nu02_pfault1e-02.so", utils_rel_path);
+            snprintf(lib_string, sizeof(lib_string),
+                "%slib_pruned_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_pcov%2.2f_nscenmax%06d.so",
+                utils_rel_path, npackets, nsprings, ncontrols, nhorizon, 100*pcov, nscenmax);
             data = load_tree_data(n_realizations, lib_string);
             break;
         case MULTI_STAGE_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string), "%slib_multistage_npackets04_nsprings03_nu02_pfault1e-02.so", utils_rel_path);
+            snprintf(lib_string, sizeof(lib_string),
+                "%slib_multistage_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_nrobust%02d_nreal_%02d.so",
+                utils_rel_path, npackets, nsprings, ncontrols, nhorizon, nrobust, nreal);
             data = load_tree_data(n_realizations, lib_string);
             break;
         default:

@@ -9,7 +9,6 @@ cpuTimes.txt
 n_masses.txt
 
 # code generated files from python
-load_data.c
 markov_sim.c
 markov_tree_*.c
 markov_ms_*.c
