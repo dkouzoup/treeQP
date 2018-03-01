@@ -35,7 +35,7 @@ OBJS += random_qp.o
 OBJS += fault_tolerance.o
 OBJS += fault_tolerance_utils/load_data.o
 
-LIBS = -ltreeqp -lblasfeo -lqpoases -lm
+LIBS = -ltreeqp -lblasfeo -lqpoases -lm -ldl
 
 examples: $(OBJS)
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
