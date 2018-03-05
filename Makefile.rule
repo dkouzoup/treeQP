@@ -34,7 +34,7 @@ BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
 HPMPC_TARGET = X64_AVX
 
 # Compiler flags
-CFLAGS =
+CFLAGS = -fPIC
 CFLAGS += -std=c99
 
 # Enable/disable openmp
