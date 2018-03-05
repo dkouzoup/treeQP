@@ -162,6 +162,15 @@ void malloc_double_ptr(double **ptr, int n)
     *ptr = malloc(n*sizeof(double));
 }
 
+
+// NOTE(dimitris): needed for python interface
+void malloc_int_ptr(int **ptr, int n)
+{
+    *ptr = malloc(n*sizeof(int));
+}
+
+
+// NOTE(dimitris): needed for python interface
 void free_ptr(double *ptr)
 {
     free(ptr);
@@ -244,7 +253,7 @@ input_data *load_nominal_data_from_lib(char *treeQP_abs_path, int nreal, params 
 
 
 
-int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, results *res)
+int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *markov_chain_realizations, results *res)
 {
     /************************************************
     * initialize controller
@@ -323,8 +332,10 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, result
     else if (controller_type == NOMINAL_CONTROLLER)
         data = load_nominal_data_from_lib(treeQP_abs_path, n_realizations, sim_params);
 
-    // TODO(dimitris): get realizations from python
-    double *transition_matrix = get_ptr_transition_matrix( );
+    // needed if realizations are not passed from python level
+    double *transition_matrix = NULL;
+    if (markov_chain_realizations == NULL)
+        transition_matrix = get_ptr_transition_matrix( );
 
     /************************************************
     * ........
@@ -572,7 +583,10 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, result
 
         printf("> current spring configuration: %d, current controller configuration %d \n", sim_config, mpc_config);
 
-        sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
+        if (markov_chain_realizations == NULL)
+            sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
+        else
+            sim_config = markov_chain_realizations[tt];
 
         if (controller_with_varying_spring_configuration)
         {
@@ -676,7 +690,7 @@ int main()
     * closed loop simulation
     ************************************************/
 
-    run_closed_loop_simulation(treeQP_abs_path, &sim_params, &res);
+    run_closed_loop_simulation(treeQP_abs_path, &sim_params, NULL, &res);
 
 
     /************************************************
