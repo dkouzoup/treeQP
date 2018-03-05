@@ -80,8 +80,8 @@ run_examples: examples
 	./examples/random_qp.out
 	./examples/spring_mass_tdunes.out
 	./examples/spring_mass_sdunes.out
-	./examples/fault_tolerance.out
 	./examples/spring_mass.out
+	#./examples/fault_tolerance.out
 
 run_fault_tolerance: examples
 	./examples/fault_tolerance.out

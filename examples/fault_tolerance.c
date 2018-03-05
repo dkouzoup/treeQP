@@ -48,6 +48,41 @@
 
 #include "examples/fault_tolerance_utils/load_data.h"
 
+typedef struct
+{
+    int nrobust;
+    int nreal;
+} multi_stage_params;
+
+
+typedef struct
+{
+    double pcov;
+    int nscenmax;
+} pruned_params;
+
+
+typedef struct
+{
+    int MPCsteps;
+    int npackets;
+    int nsprings;
+    int ncontrols;
+    int nhorizon;
+    char *solver_name;
+    char *sim_type;
+    bool varying_config;
+    multi_stage_params ms_controller;
+    pruned_params pruned_controller;
+} params;
+
+
+typedef struct
+{
+    double *cpu_times;
+    double *input_trajectory;
+    double *state_trajectory;
+} results;
 
 typedef enum
 {
@@ -121,105 +156,179 @@ double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, 
 
 
 
-// TODO(dimitris): make it possible to run executable from _any_ directory
-void get_utils_rel_path(int max_str_length, char *path)
+// NOTE(dimitris): needed for python interface
+void malloc_double_ptr(double **ptr, int n)
 {
-    char cwd[1024];
-    getcwd(cwd, sizeof(cwd));
+    *ptr = malloc(n*sizeof(double));
+}
 
-    if(strstr(cwd, "examples") != NULL)
-    {
-        snprintf(path, max_str_length, "fault_tolerance_utils/");
-    }
-    else
-    {
-        snprintf(path, max_str_length, "examples/fault_tolerance_utils/");
-    }
+void free_ptr(double *ptr)
+{
+    free(ptr);
 }
 
 
-int main()
+
+sim_data *load_sim_data_from_lib(char *treeQP_abs_path, params *sim_params, int *n_realizations_ptr)
 {
     char lib_string[256];
-    char utils_rel_path[1024];
 
+    snprintf(lib_string, sizeof(lib_string),
+        "%s/examples/fault_tolerance_utils/lib_sim_npackets%02d_nsprings%02d_ncontrols%02d.so",
+        treeQP_abs_path, sim_params->npackets, sim_params->nsprings, sim_params->ncontrols);
+
+    printf("\n...loading simulation model from:\n\n%s\n\n",lib_string);
+
+    int nx, nu;  // for sanity checks
+
+    load_dimensions(n_realizations_ptr, &nx, &nu, lib_string);
+    assert(nx == 2*sim_params->npackets-2);
+    assert(nu == sim_params->ncontrols);
+
+    // read code generated integrators for simulation
+    sim_data *sim = load_sim_data(*n_realizations_ptr, lib_string);
+
+    printf("...done.\n\n");
+    return sim;
+}
+
+
+
+input_data *load_multi_stage_data_from_lib(char *treeQP_abs_path, int nreal, params *sim_params)
+{
+    char lib_string[256];
+
+    snprintf(lib_string, sizeof(lib_string),
+        "%s/examples/fault_tolerance_utils/lib_multistage_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_nrobust%02d_nreal_%02d.so",
+        treeQP_abs_path, sim_params->npackets, sim_params->nsprings, sim_params->ncontrols, sim_params->nhorizon,
+        sim_params->ms_controller.nrobust, sim_params->ms_controller.nreal);
+
+    // read code generated multi-stage controller
+    input_data *data = load_tree_data(nreal, lib_string);
+
+    return data;
+}
+
+
+
+input_data *load_pruned_data_from_lib(char *treeQP_abs_path, int nreal, params *sim_params)
+{
+    char lib_string[256];
+
+    snprintf(lib_string, sizeof(lib_string),
+        "%s/examples/fault_tolerance_utils/lib_pruned_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_pcov%2.2f_nscenmax%06d.so",
+        treeQP_abs_path, sim_params->npackets, sim_params->nsprings, sim_params->ncontrols, sim_params->nhorizon,
+        100*sim_params->pruned_controller.pcov, sim_params->pruned_controller.nscenmax);
+
+    // read code generated pruned controller
+    input_data *data = load_tree_data(nreal, lib_string);
+
+    return data;
+}
+
+
+
+input_data *load_nominal_data_from_lib(char *treeQP_abs_path, int nreal, params *sim_params)
+{
+    char lib_string[256];
+
+    snprintf(lib_string, sizeof(lib_string),
+        "%s/examples/fault_tolerance_utils/lib_nominal_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d.so",
+        treeQP_abs_path, sim_params->npackets, sim_params->nsprings, sim_params->ncontrols, sim_params->nhorizon);
+
+    // read code generated nominal controller
+    input_data *data = load_nominal_data(nreal, lib_string);
+
+    return data;
+}
+
+
+
+int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, results *res)
+{
     /************************************************
-    * problem specification
+    * initialize controller
     ************************************************/
 
-    solver_t solver = TREEQP_HPMPC;
-    controller_t controller = PRUNED_TREE_CONTROLLER;
+    // define controller type
+    controller_t controller_type;
 
-    bool controller_with_varying_spring_configuration = true;
+    if (strstr(sim_params->sim_type, "nominal") != NULL)
+        controller_type = NOMINAL_CONTROLLER;
+    else if (strstr(sim_params->sim_type, "pruned") != NULL)
+       controller_type = PRUNED_TREE_CONTROLLER;
+    else if (strstr(sim_params->sim_type, "multi-stage") != NULL)
+        controller_type = MULTI_STAGE_CONTROLLER;
+    else
+    {
+        printf("\nUNKNOWN CONTROLLER TYPE: EXITING ...\n\n");
+        exit(-1);
+    }
 
-    int MPCsteps = 100;
+    // define solver
+    solver_t solver;
 
-    // common model data
-    int ncontrols = 2;
-    int npackets = 4;
-    int nsprings = 3;
+    if (strstr(sim_params->solver_name, "HPMPC") != NULL)
+        solver = TREEQP_HPMPC;
+    else if (strstr(sim_params->solver_name, "DUNES") != NULL)
+        solver = TREEQP_TDUNES;
+    else
+    {
+        printf("\nUNKNOWN SOLVER: EXITING ...\n\n");
+        exit(-1);
+    }
 
-    // common controller data
-    int nhorizon = 10;
+    bool controller_with_varying_spring_configuration = sim_params->varying_config;
 
-    // // common tree controller data
-    // TODO(dimitris): decide whether to put this in filename or not and under what format
-    // double pfault = 0.001;
 
-    // multi-stage controller data
-    int nreal = 3;
-    int nrobust = 4;
+    /************************************************
+    * print info
+    ************************************************/
 
-    // pruned controller data
-    double pcov = 0.99;
-    int nscenmax = 40;
-    // int adaptive = 0;
+    if (controller_type == MULTI_STAGE_CONTROLLER)
+    {
+        printf("\n*** SIMULATION WITH MULTI-STAGE CONTROLLER ***\n\n");
+    }
+    else if (controller_type == PRUNED_TREE_CONTROLLER)
+    {
+        printf("\n***** SIMULATION WITH PRUNED CONTROLLER ******\n\n");
+    } else if (controller_type == NOMINAL_CONTROLLER)
+    {
+        printf("\n***** SIMULATION WITH NOMINAL CONTROLLER *****\n\n");
+    }
+    printf("number of MPC steps = %d\n", sim_params->MPCsteps);
+    printf("prediction horizon = %d\n", sim_params->nhorizon);
+    printf("number of packets = %d\n", sim_params->npackets);
+    printf("number of springs per packet = %d\n", sim_params->nsprings);
+    printf("number of controlled packets = %d\n", sim_params->ncontrols);
+    printf("\n**********************************************\n");
+
+    int MPCsteps = sim_params->MPCsteps;
+    int nx = 2*sim_params->npackets-2;
+    int nu = sim_params->ncontrols;
+    int n_realizations = -1;  // TODO(dimitris): calculate it from params
+    int n_masses = nx/2;
 
     /************************************************
     * load data from dynamic libraries
     ************************************************/
 
-    get_utils_rel_path(sizeof(utils_rel_path), utils_rel_path);
-
-    snprintf(lib_string, sizeof(lib_string), "%slib_sim_npackets%02d_nsprings%02d_ncontrols%02d.so",
-        utils_rel_path, npackets, nsprings, ncontrols);
-
-    int n_realizations, nx, nu;
-    load_dimensions(&n_realizations, &nx, &nu, lib_string);
-    assert(nx == 2*npackets-2);
-    assert(nu == ncontrols);
-
-    // read code generated integrators for simulation
-    sim_data *sim = load_sim_data(n_realizations, lib_string);
+    sim_data *sim = load_sim_data_from_lib(treeQP_abs_path, sim_params, &n_realizations);
 
     input_data *data;
-    switch (controller)
-    {
-        case NOMINAL_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string),
-                "%slib_nominal_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d.so",
-                utils_rel_path, npackets, nsprings, ncontrols, nhorizon);
-            data = load_nominal_data(n_realizations, lib_string);
-            break;
-        case PRUNED_TREE_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string),
-                "%slib_pruned_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_pcov%2.2f_nscenmax%06d.so",
-                utils_rel_path, npackets, nsprings, ncontrols, nhorizon, 100*pcov, nscenmax);
-            data = load_tree_data(n_realizations, lib_string);
-            break;
-        case MULTI_STAGE_CONTROLLER:
-            snprintf(lib_string, sizeof(lib_string),
-                "%slib_multistage_npackets%02d_nsprings%02d_ncontrols%02d_nhorizon%03d_pfault1e-02_nrobust%02d_nreal_%02d.so",
-                utils_rel_path, npackets, nsprings, ncontrols, nhorizon, nrobust, nreal);
-            data = load_tree_data(n_realizations, lib_string);
-            break;
-        default:
-            printf("Unknown specified controller, exiting . . .\n");
-            exit(1);
-    }
+    if (controller_type == MULTI_STAGE_CONTROLLER)
+        data = load_multi_stage_data_from_lib(treeQP_abs_path, n_realizations, sim_params);
+    else if (controller_type == PRUNED_TREE_CONTROLLER)
+        data = load_pruned_data_from_lib(treeQP_abs_path, n_realizations, sim_params);
+    else if (controller_type == NOMINAL_CONTROLLER)
+        data = load_nominal_data_from_lib(treeQP_abs_path, n_realizations, sim_params);
 
-    int n_masses = nx/2;
+    // TODO(dimitris): get realizations from python
     double *transition_matrix = get_ptr_transition_matrix( );
+
+    /************************************************
+    * ........
+    ************************************************/
 
     // set up bounds and initial condition for closed loop simulation
     double *x0 = calloc(nx, sizeof(double));
@@ -263,14 +372,12 @@ int main()
 
     treeqp_timer timer;
 
-    double *stateTrajectory = malloc(nx*(MPCsteps+1)*sizeof(double));
-    double *inputTrajectory = malloc(nu*MPCsteps*sizeof(double));
-    double *cpuTimes = malloc(MPCsteps*sizeof(double));
+    // TODO(dimitris): TEMP!
     double *spring_configs = malloc((MPCsteps+1)*sizeof(double));
 
     for (int jj = 0; jj < nx; jj++)
     {
-        stateTrajectory[jj] = x0[jj];
+        res->state_trajectory[jj] = x0[jj];
     }
 
     // set up QP solver options
@@ -372,10 +479,16 @@ int main()
     int mpc_config = n_realizations-1;
     int sim_config = n_realizations-1;
 
+    // TODO(dimitris): generate in python instead
     // NOTE(dimitris): get rid of first random number which gives too low probability
     random_real( );
 
     spring_configs[0] = sim_config;
+
+
+    /************************************************
+    * run closed loop simulation
+    ************************************************/
 
     // MPC loop
     for (int tt = 0; tt < MPCsteps; tt++)
@@ -391,7 +504,7 @@ int main()
                 treeqp_hpmpc_solve(&qp_ins[mpc_config], &qp_outs[mpc_config], &hpmpc_opts, &works_hpmpc[mpc_config]);
                 break;
         }
-        cpuTimes[tt] = treeqp_toc(&timer);
+        res->cpu_times[tt] = treeqp_toc(&timer);
         // print_tree_ocp_qp_out(qp_ins[mpc_config].N, &qp_outs[mpc_config]);
 
         // run some sanity checks
@@ -429,7 +542,7 @@ int main()
         // print iteration results
         printf("-------------------------------------------------------------------------------\n");
         printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_outs[mpc_config].info.iter);
-        printf("\tproblem solved in %f ms\n\n", cpuTimes[tt]*1e3);
+        printf("\tproblem solved in %f ms\n\n", res->cpu_times[tt]*1e3);
         printf("\tmax. violation of KKT conditions: %2.2e\n\n", kkt_err);
         printf("\tcurrent spring configuration index: %d\n\n", sim_config);
         printf("\tx = ");
@@ -441,11 +554,11 @@ int main()
         // save state and input trajectories
         for (int jj = 0; jj < nx; jj++)
         {
-            stateTrajectory[jj + (tt+1)*nx] = x0[jj];
+            res->state_trajectory[jj + (tt+1)*nx] = x0[jj];
         }
         for (int jj = 0; jj < nu; jj++)
         {
-            inputTrajectory[jj + tt*nu] = DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
+            res->input_trajectory[jj + tt*nu] = DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
         }
 
         // update bound on x0
@@ -472,28 +585,21 @@ int main()
         spring_configs[tt+1] = sim_config;
     }
 
+
     // print some results
     double *Q = data[mpc_config].Qd;
     double *q = data[mpc_config].q;
     double *R = data[mpc_config].Rd;
     double *r = data[mpc_config].r;
     double obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
-        stateTrajectory, inputTrajectory);
+        res->state_trajectory, res->input_trajectory);
 
     printf("\nClosed loop objective: %f\n\n", obj);
 
-    // store results in txt files
-    char var_string[1024];
-    snprintf(var_string, sizeof(var_string), "%sxMPC.txt", utils_rel_path);
-    write_double_vector_to_txt(stateTrajectory, nx*(MPCsteps+1), var_string);
-    snprintf(var_string, sizeof(var_string), "%suMPC.txt", utils_rel_path);
-    write_double_vector_to_txt(inputTrajectory, nu*MPCsteps, var_string);
-    snprintf(var_string, sizeof(var_string), "%scpuTimes.txt", utils_rel_path);
-    write_double_vector_to_txt(cpuTimes, MPCsteps, var_string);
-    snprintf(var_string, sizeof(var_string), "%sn_masses.txt", utils_rel_path);
-    write_int_vector_to_txt(&n_masses, 1, var_string);
+    /************************************************
+    * free memory
+    ************************************************/
 
-    // free allocated memory
     for (int ii = 0; ii < n_realizations; ii++)
     {
         if (data[ii].Nn != -1)
@@ -514,9 +620,6 @@ int main()
     free(qp_out_memories);
     free(qp_outs);
 
-    free(stateTrajectory);
-    free(inputTrajectory);
-    free(cpuTimes);
     free(spring_configs);
 
     free(x0);
@@ -524,8 +627,65 @@ int main()
     free(xmax);
     free(umin);
     free(umax);
-    free(data);
+
     free(sim);
+    free(data);
+    return 1;
+}
+
+
+
+int main()
+{
+    /************************************************
+    * problem specification
+    ************************************************/
+
+    params sim_params;
+
+    sim_params.MPCsteps = 100;
+
+    sim_params.npackets = 4;
+    sim_params.nsprings = 3;
+    sim_params.ncontrols = 2;
+    sim_params.nhorizon = 10;
+
+    sim_params.solver_name =  "HPMPC";  // "HPMPC", "DUNES"
+    sim_params.sim_type = "pruned";
+    sim_params.varying_config = false;
+
+    sim_params.ms_controller.nrobust = 4;
+    sim_params.ms_controller.nreal = 3;
+
+    sim_params.pruned_controller.pcov = 0.99;
+    sim_params.pruned_controller.nscenmax = 40;
+
+    results res;
+    int nx = 2*(sim_params.npackets-1);
+    int nu = sim_params.ncontrols;
+
+    res.cpu_times = malloc(sim_params.MPCsteps*sizeof(double));
+    res.input_trajectory = malloc(sim_params.MPCsteps*nu*sizeof(double));
+    res.state_trajectory = malloc((sim_params.MPCsteps+1)*nx*sizeof(double));
+
+    // TODO(dimitris): currently only works if executed from treeQP root dir
+    char treeQP_abs_path[1024];
+    getcwd(treeQP_abs_path, sizeof(treeQP_abs_path));
+
+    /************************************************
+    * closed loop simulation
+    ************************************************/
+
+    run_closed_loop_simulation(treeQP_abs_path, &sim_params, &res);
+
+
+    /************************************************
+    * free memory
+    ************************************************/
+
+    free(res.cpu_times);
+    free(res.input_trajectory);
+    free(res.state_trajectory);
 
     return 0;
 }
