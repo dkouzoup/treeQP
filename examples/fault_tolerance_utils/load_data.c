@@ -222,7 +222,7 @@ input_data *load_tree_data(int n_config, char *lib_string)
         if (Nn_ptr != NULL)  // tree configuration exists
         {
             data[ii].Nn = *Nn_ptr;
-            printf("\nNn[%d] = %d\n", ii, data[ii].Nn);
+            // printf("\nNn[%d] = %d\n", ii, data[ii].Nn);
 
             snprintf(data_string, sizeof(data_string), "nc_%d", ii);
             load_ptr(lib, data_string, (void **)&data[ii].nc);

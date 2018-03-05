@@ -64,6 +64,7 @@ typedef struct
 
 typedef struct
 {
+    int print_level;
     int MPCsteps;
     int npackets;
     int nsprings;
@@ -186,7 +187,8 @@ sim_data *load_sim_data_from_lib(char *treeQP_abs_path, params *sim_params, int 
         "%s/examples/fault_tolerance_utils/lib_sim_npackets%02d_nsprings%02d_ncontrols%02d.so",
         treeQP_abs_path, sim_params->npackets, sim_params->nsprings, sim_params->ncontrols);
 
-    printf("\n...loading simulation model from:\n\n%s\n\n",lib_string);
+    if (sim_params->print_level > 0)
+        printf("\n...loading simulation model from:\n\n%s\n\n",lib_string);
 
     int nx, nu;  // for sanity checks
 
@@ -197,7 +199,9 @@ sim_data *load_sim_data_from_lib(char *treeQP_abs_path, params *sim_params, int 
     // read code generated integrators for simulation
     sim_data *sim = load_sim_data(*n_realizations_ptr, lib_string);
 
-    printf("...done.\n\n");
+    if (sim_params->print_level > 0)
+        printf("...done.\n\n");
+
     return sim;
 }
 
@@ -294,23 +298,26 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     * print info
     ************************************************/
 
-    if (controller_type == MULTI_STAGE_CONTROLLER)
+    if (sim_params->print_level > 0)
     {
-        printf("\n*** SIMULATION WITH MULTI-STAGE CONTROLLER ***\n\n");
+        if (controller_type == MULTI_STAGE_CONTROLLER)
+        {
+            printf("\n*** SIMULATION WITH MULTI-STAGE CONTROLLER ***\n\n");
+        }
+        else if (controller_type == PRUNED_TREE_CONTROLLER)
+        {
+            printf("\n***** SIMULATION WITH PRUNED CONTROLLER ******\n\n");
+        } else if (controller_type == NOMINAL_CONTROLLER)
+        {
+            printf("\n***** SIMULATION WITH NOMINAL CONTROLLER *****\n\n");
+        }
+        printf("number of MPC steps = %d\n", sim_params->MPCsteps);
+        printf("prediction horizon = %d\n", sim_params->nhorizon);
+        printf("number of packets = %d\n", sim_params->npackets);
+        printf("number of springs per packet = %d\n", sim_params->nsprings);
+        printf("number of controlled packets = %d\n", sim_params->ncontrols);
+        printf("\n**********************************************\n");
     }
-    else if (controller_type == PRUNED_TREE_CONTROLLER)
-    {
-        printf("\n***** SIMULATION WITH PRUNED CONTROLLER ******\n\n");
-    } else if (controller_type == NOMINAL_CONTROLLER)
-    {
-        printf("\n***** SIMULATION WITH NOMINAL CONTROLLER *****\n\n");
-    }
-    printf("number of MPC steps = %d\n", sim_params->MPCsteps);
-    printf("prediction horizon = %d\n", sim_params->nhorizon);
-    printf("number of packets = %d\n", sim_params->npackets);
-    printf("number of springs per packet = %d\n", sim_params->nsprings);
-    printf("number of controlled packets = %d\n", sim_params->ncontrols);
-    printf("\n**********************************************\n");
 
     int MPCsteps = sim_params->MPCsteps;
     int nx = 2*sim_params->npackets-2;
@@ -551,16 +558,18 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         }
 
         // print iteration results
-        printf("-------------------------------------------------------------------------------\n");
-        printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_outs[mpc_config].info.iter);
-        printf("\tproblem solved in %f ms\n\n", res->cpu_times[tt]*1e3);
-        printf("\tmax. violation of KKT conditions: %2.2e\n\n", kkt_err);
-        printf("\tcurrent spring configuration index: %d\n\n", sim_config);
-        printf("\tx = ");
-        blasfeo_print_exp_tran_dvec(nx, &qp_outs[mpc_config].x[0], 0);
-        printf("\tu = ");
-        blasfeo_print_exp_tran_dvec(nu, &qp_outs[mpc_config].u[0], 0);
-
+        if (sim_params->print_level > 1)
+        {
+            printf("-------------------------------------------------------------------------------\n");
+            printf("\n > MPC iteration #%d converged in %d iterations\n\n", tt+1, qp_outs[mpc_config].info.iter);
+            printf("\tproblem solved in %f ms\n\n", res->cpu_times[tt]*1e3);
+            printf("\tmax. violation of KKT conditions: %2.2e\n\n", kkt_err);
+            printf("\tcurrent spring configuration index: %d\n\n", sim_config);
+            printf("\tx = ");
+            blasfeo_print_exp_tran_dvec(nx, &qp_outs[mpc_config].x[0], 0);
+            printf("\tu = ");
+            blasfeo_print_exp_tran_dvec(nu, &qp_outs[mpc_config].u[0], 0);
+        }
 
         // save state and input trajectories
         for (int jj = 0; jj < nx; jj++)
@@ -581,7 +590,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             }
         }
 
-        printf("> current spring configuration: %d, current controller configuration %d \n", sim_config, mpc_config);
+        if (sim_params->print_level > 1)
+            printf("> current spring configuration: %d, current controller configuration %d \n", sim_config, mpc_config);
 
         if (markov_chain_realizations == NULL)
             sim_config = sample_from_markov_chain(transition_matrix, sim_config, n_realizations);
@@ -608,7 +618,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     double obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
         res->state_trajectory, res->input_trajectory);
 
-    printf("\nClosed loop objective: %f\n\n", obj);
+    if (sim_params->print_level > 0)
+        printf("\nClosed loop objective: %f\n\n", obj);
 
     /************************************************
     * free memory
@@ -656,6 +667,8 @@ int main()
     ************************************************/
 
     params sim_params;
+
+    sim_params.print_level = 2;
 
     sim_params.MPCsteps = 100;
 
