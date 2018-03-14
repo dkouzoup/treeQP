@@ -51,5 +51,5 @@ fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 
 clean:
 	rm -f fault_tolerance_utils/*.o fault_tolerance_utils/*.exe fault_tolerance_utils/*.out
-	rm -f *.o *.exe *.out
+	rm -f *.o *.exe *.out *.so
 	rm -rf *.dSYM
