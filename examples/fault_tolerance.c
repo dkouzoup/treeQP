@@ -422,9 +422,6 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
 
     treeqp_timer timer;
 
-    // TODO(dimitris): TEMP!
-    double *spring_configs = malloc((MPCsteps+1)*sizeof(double));
-
     for (int jj = 0; jj < nx; jj++)
     {
         res->state_trajectory[jj] = x0[jj];
@@ -461,7 +458,6 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             break;
         case TREEQP_HPMPC:
             hpmpc_opts = treeqp_hpmpc_default_options(max_Nn);
-            // TODO(dimitris): change maxIter and tol
             break;
         default:
             printf("Unknown specified solver. Exiting . . .\n");
@@ -529,12 +525,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     int mpc_config = n_realizations-1;
     int sim_config = n_realizations-1;
 
-    // TODO(dimitris): generate in python instead
     // NOTE(dimitris): get rid of first random number which gives too low probability
     random_real( );
-
-    spring_configs[0] = sim_config;
-
 
     /************************************************
     * run closed loop simulation
@@ -640,8 +632,6 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
                 mpc_config = sim_config;
             }
         }
-
-        spring_configs[tt+1] = sim_config;
     }
 
 
@@ -681,8 +671,6 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     free(works_hpmpc);
     free(qp_out_memories);
     free(qp_outs);
-
-    free(spring_configs);
 
     free(x0);
     free(xmin);
@@ -744,7 +732,7 @@ int main()
     res.input_trajectory = malloc(sim_params.MPCsteps*nu*sizeof(double));
     res.state_trajectory = malloc((sim_params.MPCsteps+1)*nx*sizeof(double));
 
-    // TODO(dimitris): currently only works if executed from treeQP root dir
+    // NOTE(dimitris): currently only works if executed from treeQP root dir
     char treeQP_abs_path[1024];
     getcwd(treeQP_abs_path, sizeof(treeQP_abs_path));
 

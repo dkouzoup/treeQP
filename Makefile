@@ -86,7 +86,7 @@ fault_tolerance_example: treeqp_static
 	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
 
 # code-generate data first
-run_fault_tolerance: fault_tolerance_example
+run_fault_tolerance_example: fault_tolerance_example
 	./examples/fault_tolerance.out
 
 clean:
