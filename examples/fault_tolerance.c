@@ -65,6 +65,7 @@ typedef struct
 typedef struct
 {
     int print_level;
+    int model_version;
     int MPCsteps;
     int npackets;
     int nsprings;
@@ -141,6 +142,7 @@ double calculate_closed_loop_objective(int MPCsteps, int nx, int nu, double *Q, 
     // NOTE(dimitris): Q, R are assumed constant and diagonal. x0 does not contribute to cost.
     for (int ii = 0; ii < MPCsteps; ii++)
     {
+        // printf("obj[ii]=%f\n", obj);
         for (int jj = 0; jj < nx; jj++)
         {
             xj = states[(ii+1)*nx + jj];
@@ -193,8 +195,16 @@ sim_data *load_sim_data_from_lib(char *treeQP_abs_path, params *sim_params, int 
     int nx, nu;  // for sanity checks
 
     load_dimensions(n_realizations_ptr, &nx, &nu, lib_string);
-    assert(nx == 2*sim_params->npackets-2);
-    assert(nu == sim_params->ncontrols);
+    if (sim_params->model_version == 1)
+    {
+        assert(nx == 2*sim_params->npackets-2);
+        assert(nu == sim_params->ncontrols);
+    }
+    if (sim_params->model_version == 2)
+    {
+        assert(nx == 2*sim_params->npackets);
+        assert(nu == 2);
+    }
 
     // read code generated integrators for simulation
     sim_data *sim = load_sim_data(*n_realizations_ptr, lib_string);
@@ -319,11 +329,24 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         printf("\n**********************************************\n");
     }
 
-    int MPCsteps = sim_params->MPCsteps;
-    int nx = 2*sim_params->npackets-2;
-    int nu = sim_params->ncontrols;
     int n_realizations = -1;  // TODO(dimitris): calculate it from params
-    int n_masses = nx/2;
+    int MPCsteps = sim_params->MPCsteps;
+
+    int nx, nu, n_masses;
+
+    if (sim_params->model_version == 1)
+    {
+        nx = 2*sim_params->npackets-2;
+        nu = sim_params->ncontrols;
+        n_masses = nx/2;
+    }
+    else if (sim_params->model_version == 2)
+    {
+        nx = 2*sim_params->npackets;
+        nu = 2;
+        n_masses = (nx-2)/2;
+    }
+    printf("MODEL VERSION = %d\n\n", sim_params->model_version);
 
     /************************************************
     * load data from dynamic libraries
@@ -364,15 +387,21 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
 
     for (int ii = 0; ii < nx; ii++)
     {
-        if (ii < nx/2)
+        if (ii < n_masses)
         {
             xmin[ii] = Pmin;
             xmax[ii] = Pmax;
         }
-        else
+        else if (ii < 2*n_masses)
         {
             xmin[ii] = Vmin;
             xmax[ii] = Vmax;
+        } else
+        {
+            // osclillator states
+            xmin[ii] = -1e8;
+            xmax[ii] = 1e8;
+            assert(sim_params->model_version == 2);
         }
     }
 
@@ -381,6 +410,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         x0[ii] = 0.0;
         x0[n_masses+ii] = 0.0;
     }
+    if (sim_params->model_version == 2)
+        x0[2*n_masses+1] = 1;  // amplitude of oscillator
 
     for (int ii = 0; ii < nu; ii++)
     {
@@ -537,8 +568,11 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         assert(kkt_err <= tol && "violation of KKT conditions too high");
 
         // apply disturbance
-        if (tt % 10 == 0)
-            blasfeo_dvecse(nu, Fmax, &qp_outs[mpc_config].u[0], 0);
+        if (sim_params->model_version == 1)
+        {
+            if (tt % 10 == 0)
+                blasfeo_dvecse(nu, Fmax, &qp_outs[mpc_config].u[0], 0);
+        }
 
         // simulate system
         A = sim[sim_config].A;
@@ -669,6 +703,7 @@ int main()
     params sim_params;
 
     sim_params.print_level = 2;
+    sim_params.model_version = 2;
 
     sim_params.MPCsteps = 100;
 
@@ -688,8 +723,19 @@ int main()
     sim_params.pruned_controller.nscenmax = 40;
 
     results res;
-    int nx = 2*(sim_params.npackets-1);
-    int nu = sim_params.ncontrols;
+
+    int nx, nu;
+    if (sim_params.model_version == 1)
+    {
+        nx = 2*(sim_params.npackets-1);
+        nu = sim_params.ncontrols;
+    }
+    else if (sim_params.model_version == 2)
+    {
+        nx = 2*sim_params.npackets;
+        nu = 2;
+    }
+
 
     res.cpu_times = malloc(sim_params.MPCsteps*sizeof(double));
     res.input_trajectory = malloc(sim_params.MPCsteps*nu*sizeof(double));
