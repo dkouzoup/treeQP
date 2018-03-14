@@ -82,6 +82,7 @@ typedef struct
 typedef struct
 {
     double *cpu_times;
+    double obj_value;
     double *input_trajectory;
     double *state_trajectory;
 } results;
@@ -651,6 +652,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     double *r = data[mpc_config].r;
     double obj = calculate_closed_loop_objective(MPCsteps, nx, nu, Q, q, R, r,
         res->state_trajectory, res->input_trajectory);
+
+    res->obj_value = obj;
 
     if (sim_params->print_level > 0)
         printf("\nClosed loop objective: %f\n\n", obj);
