@@ -81,9 +81,12 @@ run_examples: examples
 	./examples/spring_mass_tdunes.out
 	./examples/spring_mass_sdunes.out
 	./examples/spring_mass.out
-	#./examples/fault_tolerance.out
 
-run_fault_tolerance: examples
+fault_tolerance_example: treeqp_static
+	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
+
+# code-generate data first
+run_fault_tolerance: fault_tolerance_example
 	./examples/fault_tolerance.out
 
 clean:
