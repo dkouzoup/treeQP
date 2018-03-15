@@ -35,6 +35,7 @@
 
 // TODO(dimitris): Check if merging all loops wrt scenarios improves openmp siginficantly
 
+#include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 
@@ -573,37 +574,6 @@ static void calculate_last_residual(int Ns, int Nh, treeqp_sdunes_workspace *wor
 }
 
 
-static void factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
-    struct blasfeo_dvec *regMat, treeqp_sdunes_options_t *opts) {
-
-    int jj;
-
-    if (opts->regType == TREEQP_NO_REGULARIZATION) {
-        // perform Cholesky  factorization
-        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
-    } else if (opts->regType == TREEQP_ALWAYS_LEVENBERG_MARQUARDT) {
-        // add regularization
-        blasfeo_ddiaad(M->m, 1.0, regMat, 0, M, 0, 0);
-        // perform Cholesky  factorization
-        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
-    } else if (opts->regType == TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT) {
-        // try Cholesky  factorization
-        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
-        // check diagonal elements
-        for (jj = 0; jj < M->m; jj++) {
-            if (DMATEL_LIBSTR(CholM, jj, jj) <= opts->regTol) {
-                // if too small, regularize
-                blasfeo_ddiaad(M->m, 1.0, regMat, 0, M, 0, 0);
-                // re-factorize
-                blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
-                // printf("regularized Lambda[%d][%d]\n", ii, kk);
-                // exit(1);
-                break;
-            }
-        }
-    }
-}
-
 #ifdef _CHECK_LAST_ACTIVE_SET_
 
 static void find_starting_point_of_factorization(int Ns, int Nh, int *idxStart,
@@ -661,7 +631,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
 
             // Cholesky factorization (possibly regularized)
             factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                regMat, opts);
+                regMat, opts->regType, opts->regTol);
 
             // Substitution
             // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
@@ -694,7 +664,8 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         if (0 <= idxStart[ii]) {
         #endif
         factorize_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
-            regMat, opts);
+            regMat, opts->regType, opts->regTol);
+
         #ifdef REV_CHOL
         }
         #endif
@@ -708,7 +679,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         for (kk = 0; kk < Nh-1 ; kk++) {
             // Cholesky factorization (possibly regularized)
             factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                regMat, opts);
+                regMat, opts->regType, opts->regTol);
 
             // Substitution
             blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
@@ -726,7 +697,8 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
                 &work->sLambdaD[ii][kk+1], 0, 0);
         }
         factorize_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
-            regMat, opts);
+                regMat, opts->regType, opts->regTol);
+
         #if DEBUG == 1
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
         indD += nx*nx;
@@ -855,8 +827,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
 
         // Cholesky factorization (possibly regularized)
         // TODO(dimitris): remove regMat and add opts->regValue to diagonal
-        factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts);
-
+        factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts->regType, opts->regTol);
 
         #if DEBUG == 1
         if (ii > 0) {  // undo update

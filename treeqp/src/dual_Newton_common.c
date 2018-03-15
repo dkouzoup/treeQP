@@ -24,57 +24,49 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "treeqp/src/dual_newton_common.h"
 
-#ifndef TREEQP_UTILS_TYPES_H_
-#define TREEQP_UTILS_TYPES_H_
+#include "treeqp/utils/types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
+#include "blasfeo/include/blasfeo_d_aux.h"
+#include "blasfeo/include/blasfeo_d_blas.h"
 
-typedef unsigned int uint;
+// Cholesky factorization with regularization options
+reg_result_t factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    struct blasfeo_dvec *regMat, regType_t reg_type, double reg_tol)
+{
+    if (reg_type == TREEQP_NO_REGULARIZATION)
+    {
+        // factorize
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+    }
+    else if (reg_type == TREEQP_ALWAYS_LEVENBERG_MARQUARDT)
+    {
+        // add regularization to diagonal elements and the factorize
+        blasfeo_ddiaad(M->m, 1.0, regMat, 0, M, 0, 0);
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+    }
+    else if (reg_type == TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    {
+        // factorize
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
 
+        // check diagonal elements
+        for (int jj = 0; jj < M->m; jj++)
+        {
+            if (DMATEL_LIBSTR(CholM, jj, jj) <= reg_tol)
+            {
+                // if small diagonal element is detected, regularize
+                blasfeo_ddiaad(M->m, 1.0, regMat, 0, M, 0, 0);
 
-// Boolean answer
-typedef enum {
-    YES,
-    NO
-} answer_t;
-
-
-// Stopping criteria
-typedef enum {
-    TREEQP_SUMSQUAREDERRORS = 0,  // sum of squares
-    TREEQP_TWONORM,               // 2-norm (square root of previous option)
-    TREEQP_INFNORM,               // infinity norm
-} termination_t;
-
-
-// Exit codes
-typedef enum {
-    TREEQP_OK = 0,
-
-    // exit status of QP solver
-    TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND,
-    TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED,
-
-    // reading/writing to txt files
-    TREEQP_ERR_ERROR_OPENING_FILE,
-
-    TREEQP_ERR_UNKNOWN_ERROR,
-} return_t;
-
-
-// Stage QP solvers
-typedef enum {
-    TREEQP_CLIPPING_SOLVER = 0,
-    TREEQP_QPOASES_SOLVER,  // TODO(dimitris): qpOASES - WIP, HPIPM/QORE - NIY
-    // TREEQP_HPIPM_SOLVER,
-    // TREEQP_QORE_SOLVER,
-} stage_qp_t;
-
-#ifdef __cplusplus
-}  /* extern "C" */
-#endif
-
-#endif  /* TREEQP_UTILS_TYPES_H_ */
+                // re-factorize
+                blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+                // printf("regularized Lambda[%d][%d]\n", ii, kk);
+                // exit(1);
+                break;
+            }
+        }
+    }
+}

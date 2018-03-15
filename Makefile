@@ -28,6 +28,7 @@ include ./Makefile.rule
 
 OBJS =
 OBJS += treeqp/src/tree_ocp_qp_common.o
+OBJS += treeqp/src/dual_Newton_common.o
 OBJS += treeqp/src/dual_Newton_scenarios.o
 OBJS += treeqp/src/dual_Newton_tree.o
 OBJS += treeqp/src/dual_Newton_tree_clipping.o

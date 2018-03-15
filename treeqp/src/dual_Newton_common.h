@@ -25,56 +25,37 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_TYPES_H_
-#define TREEQP_UTILS_TYPES_H_
+#ifndef DUAL_NEWTON_COMMON_H_
+#define DUAL_NEWTON_COMMON_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef unsigned int uint;
+#include "treeqp/utils/types.h"
 
+#include "blasfeo/include/blasfeo_target.h"
+#include "blasfeo/include/blasfeo_common.h"
 
-// Boolean answer
+// regularization options
 typedef enum {
-    YES,
-    NO
-} answer_t;
+    TREEQP_NO_REGULARIZATION = 0,  // never regularize (solver may fail)
+    TREEQP_ALWAYS_LEVENBERG_MARQUARDT,  // always use LM regularization (regValue in tree_options)
+    TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT,  // regularize when diag. elements too small
+} regType_t;
 
 
-// Stopping criteria
 typedef enum {
-    TREEQP_SUMSQUAREDERRORS = 0,  // sum of squares
-    TREEQP_TWONORM,               // 2-norm (square root of previous option)
-    TREEQP_INFNORM,               // infinity norm
-} termination_t;
+    TREEQP_NO_REGULARIZATION_ADDED = 0,
+    TREEQP_REGULARIZATION_ADDED,
+} reg_result_t;
 
 
-// Exit codes
-typedef enum {
-    TREEQP_OK = 0,
-
-    // exit status of QP solver
-    TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND,
-    TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED,
-
-    // reading/writing to txt files
-    TREEQP_ERR_ERROR_OPENING_FILE,
-
-    TREEQP_ERR_UNKNOWN_ERROR,
-} return_t;
-
-
-// Stage QP solvers
-typedef enum {
-    TREEQP_CLIPPING_SOLVER = 0,
-    TREEQP_QPOASES_SOLVER,  // TODO(dimitris): qpOASES - WIP, HPIPM/QORE - NIY
-    // TREEQP_HPIPM_SOLVER,
-    // TREEQP_QORE_SOLVER,
-} stage_qp_t;
+reg_result_t factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    struct blasfeo_dvec *regMat, regType_t reg_type, double reg_tol);
 
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
 
-#endif  /* TREEQP_UTILS_TYPES_H_ */
+#endif  /* DUAL_NEWTON_COMMON_H_ */

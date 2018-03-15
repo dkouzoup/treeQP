@@ -34,6 +34,7 @@ extern "C" {
 
 #include "treeqp/flags.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/dual_newton_common.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 
