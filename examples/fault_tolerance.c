@@ -85,6 +85,7 @@ typedef struct
     double obj_value;
     double *input_trajectory;
     double *state_trajectory;
+    double *kkt_tol;
 } results;
 
 typedef enum
@@ -372,6 +373,11 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     * ........
     ************************************************/
 
+    // store u_prev to use it if problems are infeasible
+    struct blasfeo_dvec u_prev;
+    blasfeo_allocate_dvec(nu, &u_prev);
+    blasfeo_dvecse(nu, 0.0, &u_prev, 0);
+
     // set up bounds and initial condition for closed loop simulation
     double *x0 = calloc(nx, sizeof(double));
     double *xmin = malloc(nx*sizeof(double));
@@ -549,16 +555,20 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         res->cpu_times[tt] = treeqp_toc(&timer);
         // print_tree_ocp_qp_out(qp_ins[mpc_config].N, &qp_outs[mpc_config]);
 
-        // run some sanity checks
-        for (int jj = 0; jj < nx; jj++)
-        {
-            assert(ABS(DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj) - x0[jj]) < 1e-10);
-        }
-        assert(qp_outs[mpc_config].info.iter < maxIter && "maximum number of iterations reached");
+        if (qp_outs[mpc_config].info.iter == maxIter && sim_params->print_level > 1)
+            printf("maximum number of iterations reached\n");
 
-        kkt_err = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
-        // printf("KKT = %f\n", kkt_err);
-        assert(kkt_err <= tol && "violation of KKT conditions too high");
+        // check KKT conditions
+        res->kkt_tol[tt] = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
+        // printf("KKT = %f\n", res->kkt_tol[tt]);
+        // assert(res->kkt_tol[tt] <= tol && "violation of KKT conditions too high");
+        if (res->kkt_tol[tt] > tol)
+        {
+            if (sim_params->print_level > 1)
+                printf("KKT tolerance violated\n");
+
+            blasfeo_dveccp(nu, &u_prev, 0, &qp_outs[mpc_config].u[0], 0);
+        }
 
         // apply disturbance
         if (sim_params->model_version == 1)
@@ -632,6 +642,8 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
                 mpc_config = sim_config;
             }
         }
+        // store u_prev
+        blasfeo_dveccp(nu, &qp_outs[mpc_config].u[0], 0, &u_prev, 0);
     }
 
 
@@ -680,6 +692,9 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
 
     free(sim);
     free(data);
+
+    blasfeo_free_dvec(&u_prev);
+
     return 1;
 }
 
@@ -731,6 +746,7 @@ int main()
     res.cpu_times = malloc(sim_params.MPCsteps*sizeof(double));
     res.input_trajectory = malloc(sim_params.MPCsteps*nu*sizeof(double));
     res.state_trajectory = malloc((sim_params.MPCsteps+1)*nx*sizeof(double));
+    res.kkt_tol = malloc(sim_params.MPCsteps*sizeof(double));
 
     // NOTE(dimitris): currently only works if executed from treeQP root dir
     char treeQP_abs_path[1024];
@@ -750,6 +766,7 @@ int main()
     free(res.cpu_times);
     free(res.input_trajectory);
     free(res.state_trajectory);
+    free(res.kkt_tol);
 
     return 0;
 }
