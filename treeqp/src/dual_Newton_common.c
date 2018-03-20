@@ -24,7 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "treeqp/src/dual_newton_common.h"
+#include "treeqp/src/dual_Newton_common.h"
 
 #include "treeqp/utils/types.h"
 

@@ -41,7 +41,7 @@
 // TODO(dimitris): why saving so many Chol factorizations does not imporove cpu time?
 // TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
 
-#include "treeqp/src/dual_newton_common.h"
+#include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/dual_Newton_tree_clipping.h"
 #include "treeqp/src/dual_Newton_tree_qpoases.h"
