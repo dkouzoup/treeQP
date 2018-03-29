@@ -305,7 +305,7 @@ int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct b
     int changed = 0;
 
     for (ii = 0; ii < n; ii++) {
-        if (DVECEL_LIBSTR(asNow, ii) != DVECEL_LIBSTR(asBefore, ii)) {
+        if (BLASFEO_DVECEL(asNow, ii) != BLASFEO_DVECEL(asBefore, ii)) {
             changed = 1;
             break;
         }
@@ -1473,12 +1473,12 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
         for (ii = 0; ii < Ns; ii++) {
             for (kk = 0; kk < Nh; kk++) {
                 for (jj = 0; jj < work->sresk[ii][kk].m; jj++) {
-                    error = MAX(error, ABS(DVECEL_LIBSTR(&work->sresk[ii][kk], jj)));
+                    error = MAX(error, ABS(BLASFEO_DVECEL(&work->sresk[ii][kk], jj)));
                 }
             }
             if (ii < Ns-1) {
                 for (jj = 0; jj < sResNonAnticip[ii].m; jj++) {
-                    error = MAX(error, ABS(DVECEL_LIBSTR(&sResNonAnticip[ii], jj)));
+                    error = MAX(error, ABS(BLASFEO_DVECEL(&sResNonAnticip[ii], jj)));
                 }
             }
         }
@@ -1849,9 +1849,9 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         blasfeo_dveccpsc(qp_in->nx[jj], scalingFactor, &sqnonScaled[jj], 0, &work->sq[jj], 0);
         blasfeo_dveccpsc(qp_in->nu[jj], scalingFactor, &srnonScaled[jj], 0, &work->sr[jj], 0);
         for (int nn = 0; nn < qp_in->nx[jj]; nn++)
-            DVECEL_LIBSTR(&work->sQinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sQ[jj], nn);
+            BLASFEO_DVECEL(&work->sQinv[jj], nn) = 1.0/BLASFEO_DVECEL(&work->sQ[jj], nn);
         for (int nn = 0; nn < qp_in->nu[jj]; nn++)
-            DVECEL_LIBSTR(&work->sRinv[jj], nn) = 1.0/DVECEL_LIBSTR(&work->sR[jj], nn);
+            BLASFEO_DVECEL(&work->sRinv[jj], nn) = 1.0/BLASFEO_DVECEL(&work->sR[jj], nn);
     }
 
     int idx, idxm1, idxp1;

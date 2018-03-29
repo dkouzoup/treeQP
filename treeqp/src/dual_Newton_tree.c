@@ -240,7 +240,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         // qmod[k] = - q[k] + lambda[k]
         if (kk == 0)
         {   // lambda[0] = 0
-            for (int jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
+            for (int jj = 0; jj < nx[kk]; jj++) BLASFEO_DVECEL(&sqmod[kk], jj) = 0.0;
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         }
         else
@@ -313,7 +313,7 @@ static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes
 
     xasChanged[indx] = 0;
     for (int ii = 0; ii < sxas->m; ii++) {
-        if (DVECEL_LIBSTR(sxas, ii) != DVECEL_LIBSTR(sxasPrev, ii)) {
+        if (BLASFEO_DVECEL(sxas, ii) != BLASFEO_DVECEL(sxasPrev, ii)) {
             xasChanged[indx] = 1;
             break;
         }
@@ -323,7 +323,7 @@ static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes
     if (!isLeaf) {
         uasChanged[indx] = 0;
         for (int ii = 0; ii < suas->m; ii++) {
-            if (DVECEL_LIBSTR(suas, ii) != DVECEL_LIBSTR(suasPrev, ii)) {
+            if (BLASFEO_DVECEL(suas, ii) != BLASFEO_DVECEL(suasPrev, ii)) {
                 uasChanged[indx] = 1;
                 break;
             }
@@ -381,7 +381,7 @@ static double calculate_error_in_residuals(termination_t condition, treeqp_tdune
     } else if (condition == TREEQP_INFNORM) {
         for (int kk = 0; kk < Np; kk++) {
             for (int ii = 0; ii < sres[kk].m; ii++) {
-                error = MAX(error, ABS(DVECEL_LIBSTR(&sres[kk], ii)));
+                error = MAX(error, ABS(BLASFEO_DVECEL(&sres[kk], ii)));
             }
         }
     } else {
@@ -820,7 +820,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         // qmod[k] = - q[k] + lambda[k]
         if (kk == 0) {
             // lambda[0] = 0
-            for (int jj = 0; jj < nx[kk]; jj++) DVECEL_LIBSTR(&sqmod[kk], jj) = 0.0;
+            for (int jj = 0; jj < nx[kk]; jj++) BLASFEO_DVECEL(&sqmod[kk], jj) = 0.0;
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &sqmod[kk], 0, &sqmod[kk], 0);
         } else {
             blasfeo_daxpy(nx[kk], -1.0, &sq[kk], 0, &slambda[idxdad], idxpos, &sqmod[kk], 0);

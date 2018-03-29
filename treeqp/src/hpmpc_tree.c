@@ -69,7 +69,7 @@ int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec 
 
     for (int ii = 0; ii < n; ii++)
     {
-        if (DVECEL_LIBSTR(vmin, ii) > -INF || DVECEL_LIBSTR(vmax, ii) < INF)
+        if (BLASFEO_DVECEL(vmin, ii) > -INF || BLASFEO_DVECEL(vmax, ii) < INF)
         {
             nb += 1;
         }
@@ -125,7 +125,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
         kk = 0;
         for (int jj = 0; jj < qp_in->nu[ii]; jj++)
         {
-            if (DVECEL_LIBSTR(&sumin[ii], jj) > -INF || DVECEL_LIBSTR(&sumax[ii], jj) < INF)
+            if (BLASFEO_DVECEL(&sumin[ii], jj) > -INF || BLASFEO_DVECEL(&sumax[ii], jj) < INF)
             {
                 nb[ii] += 1;
                 idxb[ii][kk++] = jj;
@@ -133,7 +133,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
         }
         for (int jj = 0; jj < qp_in->nx[ii]; jj++)
         {
-            if (DVECEL_LIBSTR(&sxmin[ii], jj) > -INF || DVECEL_LIBSTR(&sxmax[ii], jj) < INF)
+            if (BLASFEO_DVECEL(&sxmin[ii], jj) > -INF || BLASFEO_DVECEL(&sxmax[ii], jj) < INF)
             {
                 nb[ii] += 1;
                 idxb[ii][kk++] = jj + qp_in->nu[ii];
@@ -350,13 +350,13 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
             idxb = work->idxb[ii][jj];
             if (idxb < nu[ii])
             {
-                DVECEL_LIBSTR(&work->sd[ii], jj) = DVECEL_LIBSTR(&qp_in->umin[ii], idxb);
-                DVECEL_LIBSTR(&work->sd[ii], jj + work->nb[ii]) = DVECEL_LIBSTR(&qp_in->umax[ii], idxb);
+                BLASFEO_DVECEL(&work->sd[ii], jj) = BLASFEO_DVECEL(&qp_in->umin[ii], idxb);
+                BLASFEO_DVECEL(&work->sd[ii], jj + work->nb[ii]) = BLASFEO_DVECEL(&qp_in->umax[ii], idxb);
             }
             else
             {
-                DVECEL_LIBSTR(&work->sd[ii], jj) = DVECEL_LIBSTR(&qp_in->xmin[ii], idxb - nu[ii]);
-                DVECEL_LIBSTR(&work->sd[ii], jj + work->nb[ii]) = DVECEL_LIBSTR(&qp_in->xmax[ii], idxb - nu[ii]);
+                BLASFEO_DVECEL(&work->sd[ii], jj) = BLASFEO_DVECEL(&qp_in->xmin[ii], idxb - nu[ii]);
+                BLASFEO_DVECEL(&work->sd[ii], jj + work->nb[ii]) = BLASFEO_DVECEL(&qp_in->xmax[ii], idxb - nu[ii]);
             }
         }
     }
@@ -385,15 +385,15 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
         for (int jj = 0; jj < work->nb[ii]; jj++)
         {
             idxb = work->idxb[ii][jj];
-            mu_lb = DVECEL_LIBSTR(&work->slam[ii], jj);
-            mu_ub = DVECEL_LIBSTR(&work->slam[ii], jj+work->nb[ii]);
+            mu_lb = BLASFEO_DVECEL(&work->slam[ii], jj);
+            mu_ub = BLASFEO_DVECEL(&work->slam[ii], jj+work->nb[ii]);
             if (idxb < nu[ii])
             {
-                DVECEL_LIBSTR(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
+                BLASFEO_DVECEL(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
             }
             else //if (idxb < nu[ii]+nx[ii])
             {
-                DVECEL_LIBSTR(&qp_out->mu_x[ii], idxb-nu[ii]) +=  mu_ub -mu_lb;
+                BLASFEO_DVECEL(&qp_out->mu_x[ii], idxb-nu[ii]) +=  mu_ub -mu_lb;
             }
         }
     }

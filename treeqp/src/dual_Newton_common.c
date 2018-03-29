@@ -56,7 +56,7 @@ reg_result_t factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat
         // check diagonal elements
         for (int jj = 0; jj < M->m; jj++)
         {
-            if (DMATEL_LIBSTR(CholM, jj, jj) <= reg_tol)
+            if (BLASFEO_DMATEL(CholM, jj, jj) <= reg_tol)
             {
                 // if small diagonal element is detected, regularize
                 blasfeo_ddiaad(M->m, 1.0, regMat, 0, M, 0, 0);

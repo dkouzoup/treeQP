@@ -154,11 +154,11 @@ void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_da
     // build inverse of weight matrices
     for (int nn = 0; nn < nx; nn++)
     {
-        DVECEL_LIBSTR(clipping_data->sQinv, nn) = 1.0/DVECEL_LIBSTR(clipping_data->sQ, nn);
+        BLASFEO_DVECEL(clipping_data->sQinv, nn) = 1.0/BLASFEO_DVECEL(clipping_data->sQ, nn);
     }
     for (int nn = 0; nn < nu; nn++)
     {
-        DVECEL_LIBSTR(clipping_data->sRinv, nn) = 1.0/DVECEL_LIBSTR(clipping_data->sR, nn);
+        BLASFEO_DVECEL(clipping_data->sRinv, nn) = 1.0/BLASFEO_DVECEL(clipping_data->sR, nn);
     }
 
     // NOTE(dimitris): AB matrices needed if we mix clipping and qpoases for the stage QPs

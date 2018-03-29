@@ -586,11 +586,11 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             x0[ii] = b[ii];
             for (int jj = 0; jj < nx; jj++)
             {
-                x0[ii] += A[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].x[0], jj);
+                x0[ii] += A[ii + jj * nx] * BLASFEO_DVECEL(&qp_outs[mpc_config].x[0], jj);
             }
             for (int jj = 0; jj < nu; jj++)
             {
-                x0[ii] += B[ii + jj * nx] * DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
+                x0[ii] += B[ii + jj * nx] * BLASFEO_DVECEL(&qp_outs[mpc_config].u[0], jj);
             }
         }
 
@@ -615,7 +615,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         }
         for (int jj = 0; jj < nu; jj++)
         {
-            res->input_trajectory[jj + tt*nu] = DVECEL_LIBSTR(&qp_outs[mpc_config].u[0], jj);
+            res->input_trajectory[jj + tt*nu] = BLASFEO_DVECEL(&qp_outs[mpc_config].u[0], jj);
         }
 
         // update bound on x0

@@ -322,27 +322,27 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
 
         for (int jj = 0; jj < nx[ii]; jj++)
         {
-            mu = DVECEL_LIBSTR(&qp_out->mu_x[ii], jj);
+            mu = BLASFEO_DVECEL(&qp_out->mu_x[ii], jj);
             if ( mu > 0)
             {
-                res[pos+jj] = mu*(DVECEL_LIBSTR(&qp_out->x[ii], jj) - DVECEL_LIBSTR(&qp_in->xmax[ii], jj));
+                res[pos+jj] = mu*(BLASFEO_DVECEL(&qp_out->x[ii], jj) - BLASFEO_DVECEL(&qp_in->xmax[ii], jj));
             }
             else
             {
-                res[pos+jj] = mu*(-DVECEL_LIBSTR(&qp_out->x[ii], jj) + DVECEL_LIBSTR(&qp_in->xmin[ii], jj));
+                res[pos+jj] = mu*(-BLASFEO_DVECEL(&qp_out->x[ii], jj) + BLASFEO_DVECEL(&qp_in->xmin[ii], jj));
             }
         }
 
         for (int jj = 0; jj < nu[ii]; jj++)
         {
-            mu = DVECEL_LIBSTR(&qp_out->mu_u[ii], jj);
+            mu = BLASFEO_DVECEL(&qp_out->mu_u[ii], jj);
             if ( mu > 0)
             {
-                res[pos+jj] = mu*(DVECEL_LIBSTR(&qp_out->u[ii], jj) - DVECEL_LIBSTR(&qp_in->umax[ii], jj));
+                res[pos+jj] = mu*(BLASFEO_DVECEL(&qp_out->u[ii], jj) - BLASFEO_DVECEL(&qp_in->umax[ii], jj));
             }
             else
             {
-                res[pos+jj] = mu*(-DVECEL_LIBSTR(&qp_out->u[ii], jj) + DVECEL_LIBSTR(&qp_in->umin[ii], jj));
+                res[pos+jj] = mu*(-BLASFEO_DVECEL(&qp_out->u[ii], jj) + BLASFEO_DVECEL(&qp_in->umin[ii], jj));
             }
         }
 
@@ -456,7 +456,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
         // print bounds on x
         for (int jj = 0; jj < qp_in->nx[ii]; jj++)
         {
-            min = DVECEL_LIBSTR(&qp_in->xmin[ii], jj);
+            min = BLASFEO_DVECEL(&qp_in->xmin[ii], jj);
             if (min > -1e10)
             {  // TODO(dimitris): check opts->inf instead
                 printf("%5.2f  ", min);
@@ -466,7 +466,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
                 printf("-INF   ");
             }
             printf("<=  x_%d  <=  ", jj);
-            max = DVECEL_LIBSTR(&qp_in->xmax[ii], jj);
+            max = BLASFEO_DVECEL(&qp_in->xmax[ii], jj);
             if (max < 1e10)
             {
                 printf("%5.2f\n", max);
@@ -480,7 +480,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
         // print bounds on u
         for (int jj = 0; jj < qp_in->nu[ii]; jj++)
         {
-            min = DVECEL_LIBSTR(&qp_in->umin[ii], jj);
+            min = BLASFEO_DVECEL(&qp_in->umin[ii], jj);
             if (min > -1e10)
             {
                 printf("%5.2f  ", min);
@@ -490,7 +490,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
                 printf("-INF   ");
             }
             printf("<=  u_%d  <=  ", jj);
-            max = DVECEL_LIBSTR(&qp_in->umax[ii], jj);
+            max = BLASFEO_DVECEL(&qp_in->umax[ii], jj);
             if (max < 1e10)
             {
                 printf("%5.2f\n", max);

@@ -86,7 +86,7 @@ double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
     {
         for (int jj = 0; jj < M1->n; jj++)
         {
-            err = MAX(ABS(DMATEL_LIBSTR(M1, ii, jj) - DMATEL_LIBSTR(M2, ii, jj)), err);
+            err = MAX(ABS(BLASFEO_DMATEL(M1, ii, jj) - BLASFEO_DMATEL(M2, ii, jj)), err);
         }
     }
     if (err > 0)
@@ -111,7 +111,7 @@ double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
     }
     for (int ii = 0; ii < V1->m; ii++)
     {
-        err = MAX(ABS(DVECEL_LIBSTR(V1, ii) - DVECEL_LIBSTR(V2, ii)), err);
+        err = MAX(ABS(BLASFEO_DVECEL(V1, ii) - BLASFEO_DVECEL(V2, ii)), err);
     }
     if (err > 0)
     {
@@ -136,7 +136,7 @@ answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
         {
             if (ii != jj)
             {
-                if (DMATEL_LIBSTR(M, ii, jj) != 0)
+                if (BLASFEO_DMATEL(M, ii, jj) != 0)
                 {
                     ans = NO;
                 }
@@ -155,7 +155,7 @@ answer_t is_strmat_zero(struct blasfeo_dmat *M)
     {
         for (int jj = 0; jj < M->n; jj++)
         {
-            if (DMATEL_LIBSTR(M, ii, jj) != 0)
+            if (BLASFEO_DMATEL(M, ii, jj) != 0)
             {
                 ans = NO;
             }

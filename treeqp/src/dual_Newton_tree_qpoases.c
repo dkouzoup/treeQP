@@ -172,7 +172,7 @@ static void QProblemB_build_elimination_matrix(QProblemB *QPB, int idx,
     for (int ii = 0; ii < nzd; ii++)
     {
         pos = QPB->bounds->freee->number[ii];
-        DMATEL_LIBSTR(qpoases_data->sZ, pos, ii) = 1.0;
+        BLASFEO_DMATEL(qpoases_data->sZ, pos, ii) = 1.0;
     }
 
     // calculate P (matrix substitution + symmetric matrix matrix multiplication)
@@ -443,10 +443,10 @@ void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_)
     // TODO(dimitris): have same convention as qpOASES instead of flipping sign here
     for (int ii = 0; ii < nx; ii++)
     {
-        DVECEL_LIBSTR(&qp_out->mu_x[idx], ii) = - DVECEL_LIBSTR(&qp_out->mu_x[idx], ii);
+        BLASFEO_DVECEL(&qp_out->mu_x[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_x[idx], ii);
     }
     for (int ii = 0; ii < nu; ii++)
     {
-        DVECEL_LIBSTR(&qp_out->mu_u[idx], ii) = - DVECEL_LIBSTR(&qp_out->mu_u[idx], ii);
+        BLASFEO_DVECEL(&qp_out->mu_u[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_u[idx], ii);
     }
 }
