@@ -6,7 +6,7 @@
 #define DEBUG 0
 
 // Run algorithm NRUNS times and take minimum CPU time
-#define NRUNS 3
+#define NRUNS 10
 
 // PRINT_LEVEL = 0: supress all printing
 // PRINT_LEVEL = 1: print profiling information at the end
@@ -19,9 +19,5 @@
 // PROFILE = 2: additionally save (min) time per iteration (and LS iterations)
 // PROFILE = 3: additionally save (min) time per key operation per iteration
 #define PROFILE 3
-
-// Check active set changes from last iteration, to reduce time to build dual
-// Hessian and number of Cholesky factorizations
-#define _CHECK_LAST_ACTIVE_SET_
 
 #endif  // TREEQP_FLAGS_H_

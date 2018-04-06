@@ -51,10 +51,9 @@ typedef struct treeqp_sdunes_workspace_
 
     int **nodeIdx;  // tree index of scenario nodes [Ns*(Nh+1)]
     int **boundsRemoved;  // flag to check if bounds of subsystem are removed
-    #ifdef _CHECK_LAST_ACTIVE_SET_
+
     int **xasChanged;  // binary variables to denote an AS change since last iteration
     int **uasChanged;
-    #endif
 
     int *commonNodes;  // common between neighboring scenarios [Ns-1]
     double *fvals;  // dual function value for each subsystem [Ns]
@@ -104,11 +103,9 @@ typedef struct treeqp_sdunes_workspace_
     struct blasfeo_dvec **smu;
     struct blasfeo_dvec **sDeltamu;
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
     struct blasfeo_dvec **sxasPrev;
     struct blasfeo_dvec **suasPrev;
     struct blasfeo_dmat **sTmpLambdaD;
-    #endif
 } treeqp_sdunes_workspace;
 
 
@@ -119,6 +116,9 @@ typedef struct
     // iterations
     int maxIter;
     int lineSearchMaxIter;
+
+    // algorithmic details
+    int checkLastActiveSet;
 
     // numerical tolerances
     double stationarityTolerance;
@@ -140,7 +140,7 @@ typedef struct
 
 treeqp_sdunes_options_t treeqp_sdunes_default_options();
 
-int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in);
+int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts);
 
 void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts,
     treeqp_sdunes_workspace *work, void *ptr);

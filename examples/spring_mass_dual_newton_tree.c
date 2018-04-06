@@ -57,6 +57,7 @@ int main( ) {
     int Np = Nn - ipow(md, Nr);
 
     treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
+    opts.checkLastActiveSet = 1;
 
     // read initial point from txt file
     int nl = Nn*NX;
@@ -128,7 +129,8 @@ int main( ) {
     initialize_timers( );
     #endif
 
-    for (int jj = 0; jj < NRUNS; jj++) {
+    for (int jj = 0; jj < NRUNS; jj++)
+    {
         treeqp_tdunes_set_dual_initialization(lambda, &work);
 
         #if PROFILE > 0

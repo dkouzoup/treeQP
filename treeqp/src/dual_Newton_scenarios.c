@@ -56,9 +56,7 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#ifdef _CHECK_LAST_ACTIVE_SET_
 #define REV_CHOL
-#endif
 
 #define NEW_FVAL
 #define SPLIT_NODES
@@ -73,6 +71,8 @@ treeqp_sdunes_options_t treeqp_sdunes_default_options()
     opts.maxIter = 100;
     opts.termCondition = cond;
     opts.stationarityTolerance = 1.0e-12;
+
+    opts.checkLastActiveSet = 1;
 
     opts.lineSearchMaxIter = 50;
     opts.lineSearchGamma = 0.1;
@@ -298,7 +298,6 @@ void build_vector_of_common_nodes(int Nn, int Ns, int Nh, struct node *tree,
     }
 }
 
-#ifdef _CHECK_LAST_ACTIVE_SET_
 
 int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct blasfeo_dvec *asBefore) {
     int ii;
@@ -314,12 +313,11 @@ int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct b
     return changed;
 }
 
-#endif
 
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
 static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in *qp_in,
-    treeqp_sdunes_workspace *work) {
+    treeqp_sdunes_workspace *work, treeqp_sdunes_options_t *opts) {
 
     int ii, kk, idx, idxp1, idxm1;
     int nu = work->su[0][0].m;
@@ -375,18 +373,18 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
                 blasfeo_dveccl_mask(nx, &sxmin[idx], 0, &work->sx[ii][kk], 0,
                     &sxmax[idx], 0, &work->sx[ii][kk], 0, &work->sxas[ii][kk], 0);
 
-                #ifdef _CHECK_LAST_ACTIVE_SET_
                 // NOTE(dimitris): compares with previous AS and updates previous with current
-                work->xasChanged[ii][kk+1] = compare_with_previous_active_set(nx,
-                    &work->sxas[ii][kk], &work->sxasPrev[ii][kk]);
-                if (work->xasChanged[ii][kk+1]) {
-                #endif
-                // QinvCal[kk+1] = Qinv[kk+1] .* (1 - abs(xas[kk+1]))
-                blasfeo_dvecze(nx, &work->sxas[ii][kk], 0, &sQinv[idx], 0,
-                    &work->sQinvCal[ii][kk], 0);
-                #ifdef _CHECK_LAST_ACTIVE_SET_
+                if (opts->checkLastActiveSet == 1)
+                {
+                    work->xasChanged[ii][kk+1] = compare_with_previous_active_set(nx,
+                        &work->sxas[ii][kk], &work->sxasPrev[ii][kk]);
                 }
-                #endif
+                if ((opts->checkLastActiveSet == 0 ) || (work->xasChanged[ii][kk+1]))
+                {
+                    // QinvCal[kk+1] = Qinv[kk+1] .* (1 - abs(xas[kk+1]))
+                    blasfeo_dvecze(nx, &work->sxas[ii][kk], 0, &sQinv[idx], 0,
+                        &work->sQinvCal[ii][kk], 0);
+                }
             }
 
             // --- calculate u_opt
@@ -412,88 +410,85 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
             if (work->boundsRemoved[ii][kk] != 1) {
                 blasfeo_dveccl_mask(nu, &sumin[idxm1], 0, &work->su[ii][kk], 0,
                     &sumax[idxm1], 0, &work->su[ii][kk], 0, &work->suas[ii][kk], 0);
-                #ifdef _CHECK_LAST_ACTIVE_SET_
-                work->uasChanged[ii][kk] = compare_with_previous_active_set(nu,
-                    &work->suas[ii][kk], &work->suasPrev[ii][kk]);
-                if (work->uasChanged[ii][kk]) {
-                #endif
-                blasfeo_dvecze(nu, &work->suas[ii][kk], 0, &sRinv[idxm1], 0,
-                    &work->sRinvCal[ii][kk], 0);
-                #ifdef _CHECK_LAST_ACTIVE_SET_
+                if (opts->checkLastActiveSet)
+                {
+                    work->uasChanged[ii][kk] = compare_with_previous_active_set(nu,
+                        &work->suas[ii][kk], &work->suasPrev[ii][kk]);
                 }
-                #endif
+                if ((opts->checkLastActiveSet == 0 ) || (work->uasChanged[ii][kk]))
+                {
+                    blasfeo_dvecze(nu, &work->suas[ii][kk], 0, &sRinv[idxm1], 0,
+                        &work->sRinvCal[ii][kk], 0);
+                }
             }
 
             // --- calculate Zbar
 
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            if (work->uasChanged[ii][kk] || NewtonIter == 0) {
-            #endif
-            // Zbar[k] = B[k] * RinvCal[k]
-            blasfeo_dgemm_nd(nx, nu, 1.0, &sB[idx-1], 0, 0, &work->sRinvCal[ii][kk],
-                0, 0.0, &work->sZbar[ii][kk], 0, 0, &work->sZbar[ii][kk], 0, 0);
-            #ifdef _CHECK_LAST_ACTIVE_SET_
+            if ((opts->checkLastActiveSet == 0 ) || (work->uasChanged[ii][kk] || NewtonIter == 0))
+            {
+                // Zbar[k] = B[k] * RinvCal[k]
+                blasfeo_dgemm_nd(nx, nu, 1.0, &sB[idx-1], 0, 0, &work->sRinvCal[ii][kk],
+                    0, 0.0, &work->sZbar[ii][kk], 0, 0, &work->sZbar[ii][kk], 0, 0);
             }
-            #endif
 
             // --- calculate Lambda blocks
 
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            if ((kk == 0 && (work->uasChanged[ii][kk] || work->xasChanged[ii][kk+1])) ||
+            if ((opts->checkLastActiveSet == 0 ) ||
+                ((kk == 0 && (work->uasChanged[ii][kk] || work->xasChanged[ii][kk+1])) ||
                 (kk > 0 && (work->uasChanged[ii][kk] || work->xasChanged[ii][kk+1] ||
                 work->xasChanged[ii][kk])) ||
-                (NewtonIter == 0)) {
-            #endif
+                (NewtonIter == 0)))
+            {
+                // LambdaD[k] = Zbar[k] * B[k]'
+                blasfeo_dgemm_nt(nx, nx, nu, 1.0, &work->sZbar[ii][kk], 0, 0, &sB[idx-1],
+                    0, 0, 0.0, &work->sLambdaD[ii][kk], 0, 0, &work->sLambdaD[ii][kk], 0, 0);
 
-            // LambdaD[k] = Zbar[k] * B[k]'
-            blasfeo_dgemm_nt(nx, nx, nu, 1.0, &work->sZbar[ii][kk], 0, 0, &sB[idx-1],
-                0, 0, 0.0, &work->sLambdaD[ii][kk], 0, 0, &work->sLambdaD[ii][kk], 0, 0);
+                // LambdaD[k] = LambdaD[k] + QinvCal[k+1]
+                blasfeo_ddiaad(nx, 1.0, &work->sQinvCal[ii][kk], 0, &work->sLambdaD[ii][kk], 0, 0);
 
-            // LambdaD[k] = LambdaD[k] + QinvCal[k+1]
-            blasfeo_ddiaad(nx, 1.0, &work->sQinvCal[ii][kk], 0, &work->sLambdaD[ii][kk], 0, 0);
+                if (kk > 0) {
+                    #ifdef REV_CHOL
+                    // NOTE(dimitris): calculate LambdaL[k]' instead (aka upper triangular block)
 
-            if (kk > 0) {
-                #ifdef REV_CHOL
-                // NOTE(dimitris): calculate LambdaL[k]' instead (aka upper triangular block)
+                    // LambdaL[k]' = A[k]'
+                    blasfeo_dgetr(nx, nx, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
 
-                // LambdaL[k]' = A[k]'
-                blasfeo_dgetr(nx, nx, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
+                    // LambdaL[k]' = -QinvCal[k]*A[k]'
+                    blasfeo_dgemm_dn(nx, nx, -1.0, &work->sQinvCal[ii][kk-1], 0,
+                        &work->sLambdaL[ii][kk-1], 0, 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                        &work->sLambdaL[ii][kk-1], 0, 0);
 
-                // LambdaL[k]' = -QinvCal[k]*A[k]'
-                blasfeo_dgemm_dn(nx, nx, -1.0, &work->sQinvCal[ii][kk-1], 0,
-                    &work->sLambdaL[ii][kk-1], 0, 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                    &work->sLambdaL[ii][kk-1], 0, 0);
+                    // LambdaD[k] = LambdaD[k] - A[k]*LambdaL[k]' = LambdaD[k] + A[k]*QinvCal[k]*A[k]'
+                    blasfeo_dgemm_nn(nx, nx, nx, -1.0, &sA[idx-1], 0, 0,
+                        &work->sLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
+                        &work->sLambdaD[ii][kk], 0, 0);
 
-                // LambdaD[k] = LambdaD[k] - A[k]*LambdaL[k]' = LambdaD[k] + A[k]*QinvCal[k]*A[k]'
-                blasfeo_dgemm_nn(nx, nx, nx, -1.0, &sA[idx-1], 0, 0,
-                    &work->sLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
-                    &work->sLambdaD[ii][kk], 0, 0);
+                    #else
+                    // LambdaL[k] = -A[k] * QinvCal[k]
+                    blasfeo_dgemm_nd(nx, nx, -1.0, &sA[idx-1], 0, 0,
+                        &work->sQinvCal[ii][kk-1], 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                        &work->sLambdaL[ii][kk-1], 0, 0);
 
-                #else
-                // LambdaL[k] = -A[k] * QinvCal[k]
-                blasfeo_dgemm_nd(nx, nx, -1.0, &sA[idx-1], 0, 0,
-                    &work->sQinvCal[ii][kk-1], 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                    &work->sLambdaL[ii][kk-1], 0, 0);
-
-                // LambdaD[k] = LambdaD[k] - LambdaL[k] * A[k]'
-                blasfeo_dgemm_nt(nx, nx, nx, -1.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                    &sA[idx-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
-                    &work->sLambdaD[ii][kk], 0, 0);
-                #endif
+                    // LambdaD[k] = LambdaD[k] - LambdaL[k] * A[k]'
+                    blasfeo_dgemm_nt(nx, nx, nx, -1.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                        &sA[idx-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
+                        &work->sLambdaD[ii][kk], 0, 0);
+                    #endif
+                }
+                if (opts->checkLastActiveSet)
+                {
+                    // save diagonal block that will be overwritten in factorization
+                    blasfeo_dgecp(nx, nx, &work->sLambdaD[ii][kk], 0, 0, &work->sTmpLambdaD[ii][kk], 0, 0);
+                }
             }
-
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            // save diagonal block that will be overwritten in factorization
-            blasfeo_dgecp(nx, nx, &work->sLambdaD[ii][kk], 0, 0, &work->sTmpLambdaD[ii][kk], 0, 0);
-            } else {
+            else
+            {
                 blasfeo_dgecp(nx, nx, &work->sTmpLambdaD[ii][kk], 0, 0,
                     &work->sLambdaD[ii][kk], 0, 0);
             }
-            #endif
         }
         acc += commonNodes[ii];
     }
-    // exit(1);
 }
 
 
@@ -574,7 +569,6 @@ static void calculate_last_residual(int Ns, int Nh, treeqp_sdunes_workspace *wor
 }
 
 
-#ifdef _CHECK_LAST_ACTIVE_SET_
 
 static void find_starting_point_of_factorization(int Ns, int Nh, int *idxStart,
     treeqp_sdunes_workspace *work) {
@@ -597,7 +591,7 @@ static void find_starting_point_of_factorization(int Ns, int Nh, int *idxStart,
     }
 }
 
-#endif
+
 
 static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work) {
     int ii, kk;
@@ -611,12 +605,14 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
     indD = 0; indL = 0;
     #endif
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
     int idxStart[Ns];
-    find_starting_point_of_factorization(Ns, Nh, idxStart, work);
-    // for (ii = 0; ii < Ns; ii++)
-    //     printf("restarting factorization of scenario %d at block %d\n", ii, idxStart[ii]);
-    #endif
+
+    if (opts->checkLastActiveSet)
+    {
+        find_starting_point_of_factorization(Ns, Nh, idxStart, work);
+        // for (ii = 0; ii < Ns; ii++)
+        //     printf("restarting factorization of scenario %d at block %d\n", ii, idxStart[ii]);
+    }
 
     // Banded Cholesky factorizations to calculate CholLambdaD[i], CholLambdaL[i]
     #ifdef PARALLEL
@@ -625,22 +621,17 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
     for (ii = 0; ii < Ns; ii++) {
         #ifdef REV_CHOL
         for (kk = Nh-1; kk > 0; kk--) {
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            if (kk <= idxStart[ii]) {
-            #endif
+            if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]))
+            {
+                // Cholesky factorization (possibly regularized)
+                factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+                    regMat, opts->regType, opts->regTol);
 
-            // Cholesky factorization (possibly regularized)
-            factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                regMat, opts->regType, opts->regTol);
-
-            // Substitution
-            // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
-            blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
-                &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
-
-            #ifdef _CHECK_LAST_ACTIVE_SET_
+                // Substitution
+                // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
+                blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                    &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
             }
-            #endif
 
             #if DEBUG == 1
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
@@ -649,16 +640,13 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
             indD += nx*nx; indL += nx*nx;
             #endif
 
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            if (kk <= idxStart[ii]+1) {
-            #endif
-            // Update (LambdaD[i][k+-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
-            blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-1], 0, 0,
-                &work->sCholLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk-1], 0, 0,
-                &work->sLambdaD[ii][kk-1], 0, 0);
-            #ifdef _CHECK_LAST_ACTIVE_SET_
+            if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]+1))
+            {
+                // Update (LambdaD[i][k+-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
+                blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-1], 0, 0,
+                    &work->sCholLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk-1], 0, 0,
+                    &work->sLambdaD[ii][kk-1], 0, 0);
             }
-            #endif
         }
         #ifdef REV_CHOL
         if (0 <= idxStart[ii]) {
@@ -1490,7 +1478,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
 }
 
 
-int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
+int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts)
 {
     struct node *tree = (struct node *) qp_in->tree;
     int nx = qp_in->nx[1];
@@ -1509,10 +1497,11 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
 
     bytes += 2*Ns*sizeof(int*);  // **nodeIdx, **boundsRemoved
     bytes += 2*Ns*(Nh+1)*sizeof(int);
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += 2*Ns*sizeof(int*);  // **xasChanged, **uasChanged
-    bytes += 2*Ns*(Nh+1)*sizeof(int);
-    #endif
+    if (opts->checkLastActiveSet)
+    {
+        bytes += 2*Ns*sizeof(int*);  // **xasChanged, **uasChanged
+        bytes += 2*Ns*(Nh+1)*sizeof(int);
+    }
 
     bytes += (Ns-1)*sizeof(int);  // *commonNodes
     bytes += Ns*sizeof(double);  // *fvals
@@ -1530,12 +1519,14 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
     bytes += 2*Ns*Nh*sizeof(struct blasfeo_dmat);
     bytes += 2*Ns*sizeof(struct blasfeo_dmat*);  // LambdaL, CholLambdaL
     bytes += 2*Ns*(Nh-1)*sizeof(struct blasfeo_dmat);
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += Ns*sizeof(struct blasfeo_dmat*);  // TmpLambdaD
-    bytes += Ns*Nh*sizeof(struct blasfeo_dmat);
-    bytes += 2*Ns*sizeof(struct blasfeo_dvec*);  // xasPrev, uasPrev
-    bytes += 2*Ns*Nh*sizeof(struct blasfeo_dvec);
-    #endif
+
+    if (opts->checkLastActiveSet)
+    {
+        bytes += Ns*sizeof(struct blasfeo_dmat*);  // TmpLambdaD
+        bytes += Ns*Nh*sizeof(struct blasfeo_dmat);
+        bytes += 2*Ns*sizeof(struct blasfeo_dvec*);  // xasPrev, uasPrev
+        bytes += 2*Ns*Nh*sizeof(struct blasfeo_dvec);
+    }
 
     bytes += 3*Ns*Nh*blasfeo_memsize_dvec(nx);  // x, xUnc, xas
     bytes += 3*Ns*Nh*blasfeo_memsize_dvec(nu);  // u, uUnc, uas
@@ -1545,11 +1536,12 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in)
     bytes += Ns*Nh*blasfeo_memsize_dmat(nx, nu);  // Zbar
     bytes += 2*Ns*Nh*blasfeo_memsize_dmat(nx, nx);  // LambdaD, CholLambdaD
     bytes += 2*Ns*(Nh-1)*blasfeo_memsize_dmat(nx, nx);  // LambdaL, CholLambdaL
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    bytes += Ns*Nh*blasfeo_memsize_dmat(nx, nx);  // TmpLambdaD
-    bytes += Ns*Nh*blasfeo_memsize_dvec(nx);  // xasPrev
-    bytes += Ns*Nh*blasfeo_memsize_dvec(nu);  // uasPrev
-    #endif
+    if (opts->checkLastActiveSet)
+    {
+        bytes += Ns*Nh*blasfeo_memsize_dmat(nx, nx);  // TmpLambdaD
+        bytes += Ns*Nh*blasfeo_memsize_dvec(nx);  // xasPrev
+        bytes += Ns*Nh*blasfeo_memsize_dvec(nu);  // uasPrev
+    }
 
     // struct pointers
     bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // Q, R, q, r, Qinv, Rinv
@@ -1713,10 +1705,11 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
     c_ptr += Ns*sizeof(struct blasfeo_dvec);
 
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    create_double_ptr_int(&work->xasChanged, Ns, Nh+1, &c_ptr);
-    create_double_ptr_int(&work->uasChanged, Ns, Nh+1, &c_ptr);
-    #endif
+    if (opts->checkLastActiveSet)
+    {
+        create_double_ptr_int(&work->xasChanged, Ns, Nh+1, &c_ptr);
+        create_double_ptr_int(&work->uasChanged, Ns, Nh+1, &c_ptr);
+    }
 
     create_double_ptr_strvec(&work->sx, Ns, Nh, &c_ptr);
     create_double_ptr_strvec(&work->su, Ns, Nh, &c_ptr);
@@ -1735,11 +1728,12 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
     create_double_ptr_strmat(&work->sCholLambdaD, Ns, Nh, &c_ptr);
     create_double_ptr_strmat(&work->sLambdaL, Ns, Nh-1, &c_ptr);
     create_double_ptr_strmat(&work->sCholLambdaL, Ns, Nh-1, &c_ptr);
-    #ifdef _CHECK_LAST_ACTIVE_SET_
-    create_double_ptr_strmat(&work->sTmpLambdaD, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sxasPrev, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->suasPrev, Ns, Nh, &c_ptr);
-    #endif
+    if (opts->checkLastActiveSet)
+    {
+        create_double_ptr_strmat(&work->sTmpLambdaD, Ns, Nh, &c_ptr);
+        create_double_ptr_strvec(&work->sxasPrev, Ns, Nh, &c_ptr);
+        create_double_ptr_strvec(&work->suasPrev, Ns, Nh, &c_ptr);
+    }
 
     // move pointer for proper alignment of blasfeo matrices and vectors
     align_char_to(64, &c_ptr);
@@ -1796,19 +1790,27 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
             init_strmat(nx, nx, &work->sCholLambdaD[ii][kk], &c_ptr);
             if (kk < Nh-1) init_strmat(nx, nx, &work->sLambdaL[ii][kk], &c_ptr);
             if (kk < Nh-1) init_strmat(nx, nx, &work->sCholLambdaL[ii][kk], &c_ptr);
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            init_strmat(nx, nx, &work->sTmpLambdaD[ii][kk], &c_ptr);
-            init_strvec(nx, &work->sxasPrev[ii][kk], &c_ptr);
-            init_strvec(nu, &work->suasPrev[ii][kk], &c_ptr);
-            #endif
+            if (opts->checkLastActiveSet)
+            {
+                init_strmat(nx, nx, &work->sTmpLambdaD[ii][kk], &c_ptr);
+                init_strvec(nx, &work->sxasPrev[ii][kk], &c_ptr);
+                init_strvec(nu, &work->suasPrev[ii][kk], &c_ptr);
+            }
         }
     }
     free(processedNodes);
 
-    assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) >= c_ptr);
+    assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in, opts) - c_ptr);
     // exit(1);
+
+    #ifndef REV_CHOL
+    if (opts->checkLastActiveSet == 1)
+    {
+        printf("Error! check_last_active_set option only supported in combination with reverse Cholesky!\n");
+    }
+    #endif
 }
 
 
@@ -1864,18 +1866,19 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             blasfeo_dveccp(nx, &work->sQinv[idxp1], 0, &work->sQinvCal[ii][kk], 0);
             blasfeo_dveccp(nu, &work->sRinv[idx], 0, &work->sRinvCal[ii][kk], 0);
 
-            #ifdef _CHECK_LAST_ACTIVE_SET_
-            // NOTE(dimitris): setting value outside {-1,0,1} to force full factorization at 1st it.
-            blasfeo_dvecse(nx, 0.0/0.0, &work->sxasPrev[ii][kk], 0);
-            blasfeo_dvecse(nu, 0.0/0.0, &work->suasPrev[ii][kk], 0);
-            #endif
+            if (opts->checkLastActiveSet)
+            {
+                // NOTE(dimitris): setting value outside {-1,0,1} to force full factorization at 1st it.
+                blasfeo_dvecse(nx, 0.0/0.0, &work->sxasPrev[ii][kk], 0);
+                blasfeo_dvecse(nu, 0.0/0.0, &work->suasPrev[ii][kk], 0);
+            }
         }
     }
     double init_time = treeqp_toc(&timer);
     // printf("init. time = %f ms\n", 1e3*init_time);
 
     // ------ dual Newton iterations
-    // NOTE(dimitris): at first iteration some matrices are initialized for _CHECK_LAST_ACTIVE_SET_
+    // NOTE(dimitris): at first iteration some matrices are initialized for opts->checkLastActiveSet
     for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
@@ -1889,7 +1892,7 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work);
+        solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work, opts);
         #if PROFILE > 2
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif

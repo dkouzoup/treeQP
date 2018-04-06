@@ -69,11 +69,9 @@ typedef struct treeqp_tdunes_workspace_
     int *npar;  // 1 x Nh: number of parallel factorizations per stage
     int *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
 
-    #ifdef _CHECK_LAST_ACTIVE_SET_
     int *xasChanged;  // 1 x Nn
     int *uasChanged;  // 1 x Nn
     int *blockChanged;  // 1 x Np
-    #endif
 
     double *fval;  // 1 x Nn
     double *cmod;  // 1 x Nn
@@ -111,11 +109,10 @@ typedef struct treeqp_tdunes_workspace_
     struct blasfeo_dvec *suas;  // 1 x Nn
     struct blasfeo_dvec *sxUnc;  // 1 x Nn
     struct blasfeo_dvec *suUnc;  // 1 x Nn
-    #ifdef _CHECK_LAST_ACTIVE_SET_
+
     struct blasfeo_dvec *sxasPrev;  // 1 x Nn
     struct blasfeo_dvec *suasPrev;  // 1 x Nn
     struct blasfeo_dmat *sWdiag;  // 1 x Nn
-    #endif
 } treeqp_tdunes_workspace;
 
 
@@ -128,6 +125,9 @@ typedef struct
 
     // solution of stage QPs (1 x Nn)
     stage_qp_t *qp_solver;
+
+    // algorithmic details
+    int checkLastActiveSet;
 
     // numerical tolerances
     double stationarityTolerance;

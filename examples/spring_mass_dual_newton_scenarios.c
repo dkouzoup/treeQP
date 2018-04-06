@@ -62,6 +62,7 @@ int main() {
     int Ns = ipow(md, Nr);
 
     treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
+    opts.checkLastActiveSet = 1;
 
     check_compiler_flags();
 
@@ -117,7 +118,7 @@ int main() {
     // setup QP solver
     treeqp_sdunes_workspace work;
 
-    int treeqp_size = treeqp_dune_scenarios_calculate_size(&qp_in);
+    int treeqp_size = treeqp_dune_scenarios_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
     create_treeqp_dune_scenarios(&qp_in, &opts, &work, qp_solver_memory);
 
