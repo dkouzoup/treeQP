@@ -121,8 +121,8 @@ void update_min_timers(int iter)
 
 void print_timers(int newtonIter)
 {
-    #if DEBUG == 1
-    printf("\n!!! WARNING: detailed DEBUG is on, timings are inaccurate !!!\n\n");
+    #ifdef SAVE_INTERMEDIATE_RESULTS
+    printf("\n!!! WARNING: detailed logging is on, timings are inaccurate !!!\n\n");
     #endif
     #if NRUNS < 10
     printf("\n!!! WARNING: algorithm run less than 10 times, timings may be inaccurate !!!\n\n");

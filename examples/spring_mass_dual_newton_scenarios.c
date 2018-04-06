@@ -64,8 +64,6 @@ int main() {
     treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
     opts.checkLastActiveSet = 1;
 
-    check_compiler_flags();
-
     // read initial point from txt file
     double *mu = malloc(Ns*Nh*NX*sizeof(double));
     double *lambda = malloc(nl*sizeof(double));

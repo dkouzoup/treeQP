@@ -1,12 +1,8 @@
 #ifndef TREEQP_FLAGS_H_
 #define TREEQP_FLAGS_H_
 
-// DEBUG = 0: do not save debugging info
-// DEBUG = 1: store intermediate results in txt files to be loaded and checked in matlab
-#define DEBUG 0
-
 // Run algorithm NRUNS times and take minimum CPU time
-#define NRUNS 10
+#define NRUNS 100
 
 // PRINT_LEVEL = 0: supress all printing
 // PRINT_LEVEL = 1: print profiling information at the end

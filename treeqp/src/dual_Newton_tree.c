@@ -217,7 +217,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indh = 0;
     int indx = 0;
     int indu = 0;
@@ -280,7 +280,7 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
     }
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (int kk = 0; kk < Nn; kk++)
     {
         blasfeo_unpack_dvec(sqmod[kk].m, &sqmod[kk], 0, &hmod[indh]);
@@ -437,7 +437,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
     *idxFactorStart = -1;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indres = 0;
     int dimres = number_of_states(qp_in) - qp_in->nx[0];
     double res[dimres];
@@ -572,7 +572,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
         }
     }
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (int kk = 0; kk < Np; kk++)
     {
         blasfeo_unpack_dvec(sres[kk].m, &sres[kk], 0, &res[indres]);
@@ -615,7 +615,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
     struct blasfeo_dvec *sresMod = work->sresMod;
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int dimlam = number_of_states(qp_in) - qp_in->nx[0];
     double deltalambda[dimlam];
     int indlam = 0;
@@ -746,7 +746,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
     }
     #endif
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (int kk = 0; kk < Np; kk++) {
         blasfeo_unpack_dvec(sDeltalambda[kk].m, &sDeltalambda[kk], 0, &deltalambda[indlam]);
         indlam += sDeltalambda[kk].m;
@@ -867,7 +867,7 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     struct node *tree = (struct node *)qp_in->tree;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int dimlam = number_of_states(qp_in) - qp_in->nx[0];
     double *lambda = malloc(dimlam*sizeof(double));
     int indlam = 0;
@@ -910,7 +910,7 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             tau = opts->lineSearchBeta*tauPrev;
         }
     }
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (int kk = 0; kk < Np; kk++) {
         blasfeo_unpack_dvec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
         indlam += slambda[kk].m;

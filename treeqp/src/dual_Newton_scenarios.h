@@ -152,8 +152,6 @@ int calculate_dimension_of_lambda(int Nr, int md, int nu);
 
 void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdunes_workspace *work);
 
-void check_compiler_flags();
-
 void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int nu,
     int NewtonIter, treeqp_sdunes_workspace *work);
 

@@ -42,15 +42,20 @@ CFLAGS += -std=c99
 # export OMP_NUM_THREADS=4
 
 OPENMP = 0
+SAVE_DETAILED_RESULTS = 0 # TODO(dimtiris): revive or better remove completely
 
 ifeq ($(OPENMP),1)
 CFLAGS+=-DPARALLEL
 CFLAGS+=-fopenmp
 endif
 
+ifeq ($(SAVE_DETAILED_RESULTS),1)
+CFLAGS+=-DSAVE_INTERMEDIATE_RESULTS
+endif
+
 # Optimization flags
-#CFLAGS += -O2
-CFLAGS += -g -O0
+CFLAGS += -O2
+#CFLAGS += -g -O0
 
 # Include dirs
 CFLAGS += -I$(TOP)

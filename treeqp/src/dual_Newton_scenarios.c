@@ -87,22 +87,6 @@ treeqp_sdunes_options_t treeqp_sdunes_default_options()
 
 
 
-void check_compiler_flags()
-{
-    #ifdef PARALLEL
-    #if DEBUG == 1
-    // TODO(dimitris): is this for sure not possible?
-    printf("\nError! Can't do detailed debugging in parallel mode\n");
-    exit(66);
-    #endif
-    #endif
-    #if PRINT_LEVEL == 2 && PROFILE > 0
-    printf("\nWarning! Printing hinders timings\n");
-    #endif
-    // TODO(dimitris): no DEBUG if CHECK_ACTIVE_SET (not implemented yet)
-}
-
-
 int calculate_dimension_of_lambda(int Nr, int md, int nu) {
     int Ns = ipow(md, Nr);
 
@@ -125,7 +109,7 @@ int get_maximum_vector_dimension(int Ns, int nx, int nu, int *commonNodes) {
 }
 
 
-#if DEBUG == 1
+#ifdef SAVE_INTERMEDIATE_RESULTS
 
 int get_size_of_JayD(int Ns, int nu, int *commonNodes) {
     int ii;
@@ -599,7 +583,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
 
     struct blasfeo_dvec *regMat = work->regMat;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indD, indL;
     double CholLambdaD[Ns*Nh*nx*nx], CholLambdaL[Ns*(Nh-1)*nx*nx];
     indD = 0; indL = 0;
@@ -633,7 +617,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
                     &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
             }
 
-            #if DEBUG == 1
+            #ifdef SAVE_INTERMEDIATE_RESULTS
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
             // TODO(dimitris): fix debugging in matlab for reverse Cholesky
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk-1], 0, 0, &CholLambdaL[indL], nx);
@@ -658,7 +642,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         }
         #endif
 
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][0], 0, 0, &CholLambdaD[indD], nx);
         indD += nx*nx;
         #endif
@@ -673,7 +657,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
             blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
                 &work->sLambdaL[ii][kk], 0, 0, &work->sCholLambdaL[ii][kk], 0, 0);
 
-            #if DEBUG == 1
+            #ifdef SAVE_INTERMEDIATE_RESULTS
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk], 0, 0, &CholLambdaL[indL], nx);
             indD += nx*nx; indL += nx*nx;
@@ -687,14 +671,14 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         factorize_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
                 regMat, opts->regType, opts->regTol);
 
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
         indD += nx*nx;
         #endif
 
         #endif  /* REV_CHOL */
     }
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     write_double_vector_to_txt(CholLambdaD, Ns*Nh*nx*nx, "examples/data_spring_mass/CholLambdaD.txt");
     write_double_vector_to_txt(CholLambdaL, Ns*(Nh-1)*nx*nx, "examples/data_spring_mass/CholLambdaL.txt");
     #endif
@@ -711,7 +695,7 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
     struct blasfeo_dmat *sK = work->sK;
     struct blasfeo_dmat *sTmpMats = work->sTmpMats;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indK = 0;
     double K[Ns*Nr*nu*Nr*nu];
     #endif
@@ -772,13 +756,13 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
             blasfeo_ddiaad(nu, 1.0, &work->sRinvCal[ii][kk], 0, &sK[ii], kk*nu, kk*nu);
         }
 
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         blasfeo_unpack_dmat(Nr*nu, Nr*nu, &sK[ii], 0, 0, &K[indK], Nr*nu);
         indK += Nr*nu*Nr*nu;
         #endif
     }
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     write_double_vector_to_txt(K, Ns*Nr*nu*Nr*nu, "examples/data_spring_mass/K.txt");
     #endif
 }
@@ -797,7 +781,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
 
 
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indJayD, indJayL;
     int nJayD = get_size_of_JayD(Ns, nu, commonNodes);
     int nJayL = get_size_of_JayL(Ns, nu, commonNodes);
@@ -817,7 +801,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
         // TODO(dimitris): remove regMat and add opts->regValue to diagonal
         factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts->regType, opts->regTol);
 
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         if (ii > 0) {  // undo update
             blasfeo_dsyrk_ln(dim, sCholJayL[ii-1].n, 1.0, &sCholJayL[ii-1], 0, 0,
                 &sCholJayL[ii-1], 0, 0, 1.0, &sJayD[ii], 0, 0, &sJayD[ii], 0, 0);
@@ -840,7 +824,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
             blasfeo_dtrsm_rltn(dimNxt, dim, 1.0, &sCholJayD[ii], 0, 0, &sJayL[ii], 0, 0,
                 &sCholJayL[ii], 0, 0);
 
-            #if DEBUG == 1
+            #ifdef SAVE_INTERMEDIATE_RESULTS
             blasfeo_unpack_dmat(dimNxt, dim, &sJayL[ii], 0, 0, &JayL[indJayL], dimNxt);
             blasfeo_unpack_dmat(dimNxt, dim, &sCholJayL[ii], 0, 0, &CholJayL[indJayL], dimNxt);
             indJayL += dimNxt*dim;
@@ -852,7 +836,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
         }
     }
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     write_double_vector_to_txt(JayD, nJayD, "examples/data_spring_mass/JayD.txt");
     write_double_vector_to_txt(JayL, nJayL, "examples/data_spring_mass/JayL.txt");
     write_double_vector_to_txt(CholJayD, nJayD, "examples/data_spring_mass/CholJayD.txt");
@@ -873,7 +857,7 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
     struct blasfeo_dvec *sResNonAnticip = work->sResNonAnticip;
     struct blasfeo_dvec *sRhsNonAnticip = work->sRhsNonAnticip;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int ind = 0;
     int nl = calculate_dimension_of_lambda(Nr, md, nu);
     double *rhsNonAnticip = malloc(nl*sizeof(double));
@@ -976,7 +960,7 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
         &sRhsNonAnticip[Ns-2], kk*nu);
     }
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (ii = 0; ii < Ns-1; ii++) {
         blasfeo_unpack_dvec(sRhsNonAnticip[ii].m, &sRhsNonAnticip[ii], 0, &rhsNonAnticip[ind]);
         ind += nu*commonNodes[ii];
@@ -1001,7 +985,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
     struct blasfeo_dvec *sRhsNonAnticip = work->sRhsNonAnticip;
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int ind = 0;
     int nl = calculate_dimension_of_lambda(Nr, md, nu);
     double Deltalambda[nl];
@@ -1054,7 +1038,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
     // printf("Delta lambdas:\n");
     // for (ii = 0; ii < Ns-1;ii++)
     //     blasfeo_print_dvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0);
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (ii = 0; ii < Ns-1; ii++) {
         blasfeo_unpack_dvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0, &Deltalambda[ind]);
         ind += nu*commonNodes[ii];
@@ -1073,7 +1057,7 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
     struct blasfeo_dvec *sTmpVecs = work->sTmpVecs;
 
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     int indRes, indMu;
     double Deltamu[Ns*Nh*nx], rhsDynamics[Ns*Nh*nx];
     indRes = 0; indMu = 0;
@@ -1107,7 +1091,7 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
                     &work->sreskMod[ii][kk], 0);
             }
         }
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         for (kk = 0; kk < Nh; kk++) {
             blasfeo_unpack_dvec(nx, &work->sreskMod[ii][kk], 0, &rhsDynamics[indRes]);
             indRes += nx;
@@ -1179,7 +1163,7 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
         //     blasfeo_print_dvec(nx, &work->sDeltamu[ii][kk], 0);
         // }
     }
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     for (ii = 0; ii < Ns; ii++) {
         for (kk = 0; kk < Nh; kk++) {
             blasfeo_unpack_dvec(nx, &work->sDeltamu[ii][kk], 0, &Deltamu[indMu]);
@@ -1426,7 +1410,7 @@ int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *
             tau = opts->lineSearchBeta*tauPrev;
         }
     }
-    #if DEBUG == 1
+    #ifdef SAVE_INTERMEDIATE_RESULTS
     write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
     write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
     #endif
@@ -1907,7 +1891,7 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         // NOTE(dimitris): cannot parallelize last residual so better to keep the two loops separate
 
         // TODO(dimitris): move call inside function
-        #if DEBUG == 1
+        #ifdef SAVE_INTERMEDIATE_RESULTS
         save_stage_problems(Ns, Nh, Nr, md, work);
         #endif
 
