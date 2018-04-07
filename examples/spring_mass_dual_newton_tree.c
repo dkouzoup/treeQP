@@ -129,7 +129,7 @@ int main( ) {
     initialize_timers( );
     #endif
 
-    for (int jj = 0; jj < NRUNS; jj++)
+    for (int jj = 0; jj < NREP; jj++)
     {
         treeqp_tdunes_set_dual_initialization(lambda, &work);
 

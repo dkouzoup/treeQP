@@ -121,10 +121,10 @@ void update_min_timers(int iter)
 
 void print_timers(int newtonIter)
 {
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     printf("\n!!! WARNING: detailed logging is on, timings are inaccurate !!!\n\n");
     #endif
-    #if NRUNS < 10
+    #if NREP < 10
     printf("\n!!! WARNING: algorithm run less than 10 times, timings may be inaccurate !!!\n\n");
     #endif
     #if PRINT_LEVEL > 1
@@ -184,7 +184,7 @@ void print_timers(int newtonIter)
 void write_timers_to_txt(void)
 {
     char fname[256];
-    char prefix[] = "examples/data_spring_mass";
+    char prefix[] = "examples/spring_mass_utils";
 
     #if PROFILE > 1
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");

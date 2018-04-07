@@ -114,14 +114,17 @@ int main() {
     create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
 
     // solve QP
+#if PROFILE > 0
     initialize_timers( );
+#endif
 #ifndef USE_HPMPC
     treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 #else
     treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 #endif
+#if PROFILE > 0
     update_min_timers(0);
-
+#endif
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);

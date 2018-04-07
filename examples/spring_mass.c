@@ -126,7 +126,7 @@ int main( ) {
     // solve with tree-sparse dual Newton strategy
     double overhead;
     double max_overhead = 0;
-    for (int jj = 0; jj < NRUNS; jj++) {
+    for (int jj = 0; jj < NREP; jj++) {
         treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
         treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
         printf("tdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
@@ -149,7 +149,7 @@ int main( ) {
 
     // solve with tree-sparse HPMPC
     max_overhead = 0;
-    for (int jj = 0; jj < NRUNS; jj++) {
+    for (int jj = 0; jj < NREP; jj++) {
         treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
         printf("hpmpc run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);

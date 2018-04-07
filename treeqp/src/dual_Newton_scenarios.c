@@ -109,7 +109,7 @@ int get_maximum_vector_dimension(int Ns, int nx, int nu, int *commonNodes) {
 }
 
 
-#ifdef SAVE_INTERMEDIATE_RESULTS
+#ifdef SAVE_DATA
 
 int get_size_of_JayD(int Ns, int nu, int *commonNodes) {
     int ii;
@@ -180,14 +180,14 @@ void save_stage_problems(int Ns, int Nh, int Nr, int md,
         }
     }
 
-    write_double_vector_to_txt(residuals_k, Ns*Nh*nx, "examples/data_spring_mass/resk.txt");
-    write_double_vector_to_txt(residual, nl, "examples/data_spring_mass/res.txt");
-    write_double_vector_to_txt(xit, Ns*Nh*nx, "examples/data_spring_mass/xit.txt");
-    write_double_vector_to_txt(uit, Ns*Nh*nu, "examples/data_spring_mass/uit.txt");
-    write_double_vector_to_txt(QinvCal_k, Ns*Nh*nx, "examples/data_spring_mass/Qit.txt");
-    write_double_vector_to_txt(RinvCal_k, Ns*Nh*nu, "examples/data_spring_mass/Rit.txt");
-    write_double_vector_to_txt(LambdaD, Ns*Nh*nx*nx, "examples/data_spring_mass/LambdaD.txt");
-    write_double_vector_to_txt(LambdaL, Ns*(Nh-1)*nx*nx, "examples/data_spring_mass/LambdaL.txt");
+    write_double_vector_to_txt(residuals_k, Ns*Nh*nx, "examples/spring_mass_utils/resk.txt");
+    write_double_vector_to_txt(residual, nl, "examples/spring_mass_utils/res.txt");
+    write_double_vector_to_txt(xit, Ns*Nh*nx, "examples/spring_mass_utils/xit.txt");
+    write_double_vector_to_txt(uit, Ns*Nh*nu, "examples/spring_mass_utils/uit.txt");
+    write_double_vector_to_txt(QinvCal_k, Ns*Nh*nx, "examples/spring_mass_utils/Qit.txt");
+    write_double_vector_to_txt(RinvCal_k, Ns*Nh*nu, "examples/spring_mass_utils/Rit.txt");
+    write_double_vector_to_txt(LambdaD, Ns*Nh*nx*nx, "examples/spring_mass_utils/LambdaD.txt");
+    write_double_vector_to_txt(LambdaL, Ns*(Nh-1)*nx*nx, "examples/spring_mass_utils/LambdaL.txt");
 }
 
 #endif
@@ -224,11 +224,11 @@ void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int
             indLambda += slambda[ii].m;
         }
     }
-    write_double_vector_to_txt(lambdaIter, nl, "examples/data_spring_mass/lambdaIter.txt");
-    write_double_vector_to_txt(muIter, Ns*Nh*nx, "examples/data_spring_mass/muIter.txt");
-    write_double_vector_to_txt(xIter, Ns*Nh*nx, "examples/data_spring_mass/xIter.txt");
-    write_double_vector_to_txt(uIter, Ns*Nh*nu, "examples/data_spring_mass/uIter.txt");
-    write_int_vector_to_txt(&NewtonIter, 1, "examples/data_spring_mass/iter.txt");
+    write_double_vector_to_txt(lambdaIter, nl, "examples/spring_mass_utils/lambdaIter.txt");
+    write_double_vector_to_txt(muIter, Ns*Nh*nx, "examples/spring_mass_utils/muIter.txt");
+    write_double_vector_to_txt(xIter, Ns*Nh*nx, "examples/spring_mass_utils/xIter.txt");
+    write_double_vector_to_txt(uIter, Ns*Nh*nu, "examples/spring_mass_utils/uIter.txt");
+    write_int_vector_to_txt(&NewtonIter, 1, "examples/spring_mass_utils/iter.txt");
 
     #if PROFILE > 0
     write_timers_to_txt();
@@ -583,7 +583,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
 
     struct blasfeo_dvec *regMat = work->regMat;
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int indD, indL;
     double CholLambdaD[Ns*Nh*nx*nx], CholLambdaL[Ns*(Nh-1)*nx*nx];
     indD = 0; indL = 0;
@@ -617,7 +617,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
                     &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
             }
 
-            #ifdef SAVE_INTERMEDIATE_RESULTS
+            #ifdef SAVE_DATA
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
             // TODO(dimitris): fix debugging in matlab for reverse Cholesky
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk-1], 0, 0, &CholLambdaL[indL], nx);
@@ -642,7 +642,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         }
         #endif
 
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][0], 0, 0, &CholLambdaD[indD], nx);
         indD += nx*nx;
         #endif
@@ -657,7 +657,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
             blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
                 &work->sLambdaL[ii][kk], 0, 0, &work->sCholLambdaL[ii][kk], 0, 0);
 
-            #ifdef SAVE_INTERMEDIATE_RESULTS
+            #ifdef SAVE_DATA
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
             blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk], 0, 0, &CholLambdaL[indL], nx);
             indD += nx*nx; indL += nx*nx;
@@ -671,16 +671,16 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         factorize_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
                 regMat, opts->regType, opts->regTol);
 
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
         indD += nx*nx;
         #endif
 
         #endif  /* REV_CHOL */
     }
-    #ifdef SAVE_INTERMEDIATE_RESULTS
-    write_double_vector_to_txt(CholLambdaD, Ns*Nh*nx*nx, "examples/data_spring_mass/CholLambdaD.txt");
-    write_double_vector_to_txt(CholLambdaL, Ns*(Nh-1)*nx*nx, "examples/data_spring_mass/CholLambdaL.txt");
+    #ifdef SAVE_DATA
+    write_double_vector_to_txt(CholLambdaD, Ns*Nh*nx*nx, "examples/spring_mass_utils/CholLambdaD.txt");
+    write_double_vector_to_txt(CholLambdaL, Ns*(Nh-1)*nx*nx, "examples/spring_mass_utils/CholLambdaL.txt");
     #endif
 }
 
@@ -695,7 +695,7 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
     struct blasfeo_dmat *sK = work->sK;
     struct blasfeo_dmat *sTmpMats = work->sTmpMats;
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int indK = 0;
     double K[Ns*Nr*nu*Nr*nu];
     #endif
@@ -756,14 +756,14 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
             blasfeo_ddiaad(nu, 1.0, &work->sRinvCal[ii][kk], 0, &sK[ii], kk*nu, kk*nu);
         }
 
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         blasfeo_unpack_dmat(Nr*nu, Nr*nu, &sK[ii], 0, 0, &K[indK], Nr*nu);
         indK += Nr*nu*Nr*nu;
         #endif
     }
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
-    write_double_vector_to_txt(K, Ns*Nr*nu*Nr*nu, "examples/data_spring_mass/K.txt");
+    #ifdef SAVE_DATA
+    write_double_vector_to_txt(K, Ns*Nr*nu*Nr*nu, "examples/spring_mass_utils/K.txt");
     #endif
 }
 
@@ -781,7 +781,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
 
 
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int indJayD, indJayL;
     int nJayD = get_size_of_JayD(Ns, nu, commonNodes);
     int nJayL = get_size_of_JayL(Ns, nu, commonNodes);
@@ -801,7 +801,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
         // TODO(dimitris): remove regMat and add opts->regValue to diagonal
         factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts->regType, opts->regTol);
 
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         if (ii > 0) {  // undo update
             blasfeo_dsyrk_ln(dim, sCholJayL[ii-1].n, 1.0, &sCholJayL[ii-1], 0, 0,
                 &sCholJayL[ii-1], 0, 0, 1.0, &sJayD[ii], 0, 0, &sJayD[ii], 0, 0);
@@ -824,7 +824,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
             blasfeo_dtrsm_rltn(dimNxt, dim, 1.0, &sCholJayD[ii], 0, 0, &sJayL[ii], 0, 0,
                 &sCholJayL[ii], 0, 0);
 
-            #ifdef SAVE_INTERMEDIATE_RESULTS
+            #ifdef SAVE_DATA
             blasfeo_unpack_dmat(dimNxt, dim, &sJayL[ii], 0, 0, &JayL[indJayL], dimNxt);
             blasfeo_unpack_dmat(dimNxt, dim, &sCholJayL[ii], 0, 0, &CholJayL[indJayL], dimNxt);
             indJayL += dimNxt*dim;
@@ -836,11 +836,11 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
         }
     }
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
-    write_double_vector_to_txt(JayD, nJayD, "examples/data_spring_mass/JayD.txt");
-    write_double_vector_to_txt(JayL, nJayL, "examples/data_spring_mass/JayL.txt");
-    write_double_vector_to_txt(CholJayD, nJayD, "examples/data_spring_mass/CholJayD.txt");
-    write_double_vector_to_txt(CholJayL, nJayL, "examples/data_spring_mass/CholJayL.txt");
+    #ifdef SAVE_DATA
+    write_double_vector_to_txt(JayD, nJayD, "examples/spring_mass_utils/JayD.txt");
+    write_double_vector_to_txt(JayL, nJayL, "examples/spring_mass_utils/JayL.txt");
+    write_double_vector_to_txt(CholJayD, nJayD, "examples/spring_mass_utils/CholJayD.txt");
+    write_double_vector_to_txt(CholJayL, nJayL, "examples/spring_mass_utils/CholJayL.txt");
     #endif
 }
 
@@ -857,7 +857,7 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
     struct blasfeo_dvec *sResNonAnticip = work->sResNonAnticip;
     struct blasfeo_dvec *sRhsNonAnticip = work->sRhsNonAnticip;
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int ind = 0;
     int nl = calculate_dimension_of_lambda(Nr, md, nu);
     double *rhsNonAnticip = malloc(nl*sizeof(double));
@@ -960,12 +960,12 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
         &sRhsNonAnticip[Ns-2], kk*nu);
     }
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     for (ii = 0; ii < Ns-1; ii++) {
         blasfeo_unpack_dvec(sRhsNonAnticip[ii].m, &sRhsNonAnticip[ii], 0, &rhsNonAnticip[ind]);
         ind += nu*commonNodes[ii];
     }
-    write_double_vector_to_txt(rhsNonAnticip, nl, "examples/data_spring_mass/rhsNonAnticip.txt");
+    write_double_vector_to_txt(rhsNonAnticip, nl, "examples/spring_mass_utils/rhsNonAnticip.txt");
     free(rhsNonAnticip);
     #endif
     // printf("RHS:\n");
@@ -985,7 +985,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
     struct blasfeo_dvec *sRhsNonAnticip = work->sRhsNonAnticip;
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int ind = 0;
     int nl = calculate_dimension_of_lambda(Nr, md, nu);
     double Deltalambda[nl];
@@ -1038,12 +1038,12 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
     // printf("Delta lambdas:\n");
     // for (ii = 0; ii < Ns-1;ii++)
     //     blasfeo_print_dvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0);
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     for (ii = 0; ii < Ns-1; ii++) {
         blasfeo_unpack_dvec(sDeltalambda[ii].m, &sDeltalambda[ii], 0, &Deltalambda[ind]);
         ind += nu*commonNodes[ii];
     }
-    write_double_vector_to_txt(Deltalambda, nl, "examples/data_spring_mass/Deltalambda.txt");
+    write_double_vector_to_txt(Deltalambda, nl, "examples/spring_mass_utils/Deltalambda.txt");
     #endif
 }
 
@@ -1057,7 +1057,7 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
     struct blasfeo_dvec *sTmpVecs = work->sTmpVecs;
 
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     int indRes, indMu;
     double Deltamu[Ns*Nh*nx], rhsDynamics[Ns*Nh*nx];
     indRes = 0; indMu = 0;
@@ -1091,7 +1091,7 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
                     &work->sreskMod[ii][kk], 0);
             }
         }
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         for (kk = 0; kk < Nh; kk++) {
             blasfeo_unpack_dvec(nx, &work->sreskMod[ii][kk], 0, &rhsDynamics[indRes]);
             indRes += nx;
@@ -1163,15 +1163,15 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
         //     blasfeo_print_dvec(nx, &work->sDeltamu[ii][kk], 0);
         // }
     }
-    #ifdef SAVE_INTERMEDIATE_RESULTS
+    #ifdef SAVE_DATA
     for (ii = 0; ii < Ns; ii++) {
         for (kk = 0; kk < Nh; kk++) {
             blasfeo_unpack_dvec(nx, &work->sDeltamu[ii][kk], 0, &Deltamu[indMu]);
             indMu += nx;
         }
     }
-    write_double_vector_to_txt(rhsDynamics, Ns*Nh*nx, "examples/data_spring_mass/rhsDynamics.txt");
-    write_double_vector_to_txt(Deltamu, Ns*Nh*nx, "examples/data_spring_mass/Deltamu.txt");
+    write_double_vector_to_txt(rhsDynamics, Ns*Nh*nx, "examples/spring_mass_utils/rhsDynamics.txt");
+    write_double_vector_to_txt(Deltamu, Ns*Nh*nx, "examples/spring_mass_utils/Deltamu.txt");
     #endif
 }
 
@@ -1410,9 +1410,9 @@ int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *
             tau = opts->lineSearchBeta*tauPrev;
         }
     }
-    #ifdef SAVE_INTERMEDIATE_RESULTS
-    write_double_vector_to_txt(&dotProduct, 1, "examples/data_spring_mass/dotProduct.txt");
-    write_double_vector_to_txt(&fval0, 1, "examples/data_spring_mass/fval0.txt");
+    #ifdef SAVE_DATA
+    write_double_vector_to_txt(&dotProduct, 1, "examples/spring_mass_utils/dotProduct.txt");
+    write_double_vector_to_txt(&fval0, 1, "examples/spring_mass_utils/fval0.txt");
     #endif
 
     return jj;
@@ -1891,7 +1891,7 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         // NOTE(dimitris): cannot parallelize last residual so better to keep the two loops separate
 
         // TODO(dimitris): move call inside function
-        #ifdef SAVE_INTERMEDIATE_RESULTS
+        #ifdef SAVE_DATA
         save_stage_problems(Ns, Nh, Nr, md, work);
         #endif
 

@@ -1,5 +1,5 @@
 
-# Operating system
+# Detect operating system
 OS = WINDOWS
 UNAME_S = $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -9,7 +9,7 @@ ifeq ($(UNAME_S),Darwin)
     OS = MAC
 endif
 
-# Compiler
+# Set default compiler
 ifeq ($(OS), MAC)
 CC="/usr/local/bin/gcc-7"
 #CC=clang
@@ -33,29 +33,72 @@ BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
 # HPMPC target
 HPMPC_TARGET = X64_AVX
 
-# Compiler flags
-CFLAGS = -fPIC
-CFLAGS += -std=c99
+# Parallelize computations with openmp (ON/OFF)
+# NOTE: slow on mac
+# NOTE: to define maximum number of threads type e.g. "export OMP_NUM_THREADS=4" in terminal
+OPENMP = OFF
 
-# Enable/disable openmp
-# NOTE(dimitris): to define maximum number of threads type in terminal:
-# export OMP_NUM_THREADS=4
+# Enable to save intermediate iterations results to txt for debugging (ON/OFF)
+# TODO: revive or remove completely
+SAVE_DETAILED_RESULTS = OFF
 
-OPENMP = 0
-SAVE_DETAILED_RESULTS = 0 # TODO(dimtiris): revive or better remove completely
+# Add debugging symbols (ON/OFF)
+DEBUG = OFF
 
-ifeq ($(OPENMP),1)
+# Choose profiling level (0-3)
+# 0: no profiling
+# 1: save only (min) total time
+# 2: save also (min) time per iteration (and LS iterations)
+# 3: save also (min) time per operation per iteration
+PROFILING_LEVEL = 3
+
+# Define number of runs in examples (to take min. execution time)
+NREP = 20
+
+# Define print level (0-3)
+# 0: supress all printing
+# 1: print profiling information at the end
+# 2: print also some iteration stats
+# 3: print also debugging info (nothing for scenarios atm)
+# TODO: check that all levels work and see which ones are necessary, use more consistently in examples
+PRINT_LEVEL = 0
+
+################################################################################
+
+# Set compiler flags
+CFLAGS=
+CFLAGS+= -fPIC
+CFLAGS+= -std=c99
+
+ifeq ($(OPENMP), ON)
 CFLAGS+=-DPARALLEL
 CFLAGS+=-fopenmp
 endif
 
-ifeq ($(SAVE_DETAILED_RESULTS),1)
-CFLAGS+=-DSAVE_INTERMEDIATE_RESULTS
+ifeq ($(SAVE_DETAILED_RESULTS), ON)
+CFLAGS+=-DSAVE_DATA
 endif
 
-# Optimization flags
+ifeq ($(DEBUG), ON)
+CFLAGS += -g -O0
+# TODO: disable timings if debugging is enabled
+CFLAGS +=-DDEBUGGING_ENABLED
+else
 CFLAGS += -O2
-#CFLAGS += -g -O0
+endif
+
+ifeq ($(PROFILING_LEVEL), 3)
+CFLAGS+=-DPROFILE=3
+else ifeq ($(PROFILING_LEVEL), 2)
+CFLAGS+=-DPROFILE=2
+else ifeq ($(PROFILING_LEVEL), 1)
+CFLAGS+=-DPROFILE=1
+else
+CFLAGS+=-DPROFILE=0
+endif
+
+CFLAGS+=-DNREP=$(NREP)
+CFLAGS+=-DPRINT_LEVEL=$(PRINT_LEVEL)
 
 # Include dirs
 CFLAGS += -I$(TOP)
