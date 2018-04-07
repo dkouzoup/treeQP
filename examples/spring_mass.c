@@ -32,9 +32,6 @@
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 
-// TODO(dimitris): remove flags.h
-#include "treeqp/flags.h"
-
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/profiling.h"

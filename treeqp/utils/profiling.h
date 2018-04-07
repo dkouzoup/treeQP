@@ -32,7 +32,6 @@
 extern "C" {
 #endif
 
-#include "treeqp/flags.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/timing.h"
 

@@ -39,8 +39,6 @@
 #include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 
-#include "treeqp/flags.h"
-
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
