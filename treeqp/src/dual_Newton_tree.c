@@ -1388,6 +1388,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     align_char_to(64, &c_ptr);
 
     // first assign blasfeo-based solvers, then the rest, and then align again
+    // TODO(dimitris): the distinction should actually be blasfeo_dmats and the rest (currently works because there are either only strvecs or only strmats in modules)
     for (int ii = 0; ii < Nn; ii++)
     {
         work->stage_qp_ptrs[ii].assign_blasfeo_data(qp_in->nx[ii], qp_in->nu[ii],
@@ -1401,6 +1402,47 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     align_char_to(64, &c_ptr);
 
+    // strmats
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        if (opts->checkLastActiveSet)
+        {
+            init_strmat(qp_in->nx[ii], qp_in->nx[ii], &work->sWdiag[ii], &c_ptr);
+        }
+
+        if (ii > 0)
+        {
+            ncolAB = qp_in->nx[tree[ii].dad] + qp_in->nu[tree[ii].dad];
+            init_strmat(qp_in->nx[ii], ncolAB, &work->sAB[ii-1], &c_ptr);
+        }
+
+        update_M_dimensions(ii, qp_in, &rowsM, &colsM);
+        init_strmat(rowsM, colsM, &work->sM[ii], &c_ptr);
+
+        if (ii < Np)
+        {
+            dim = 0;
+            for (int jj = 0; jj < tree[ii].nkids; jj++)
+            {
+                idxkid = tree[ii].kids[jj];
+                dim += qp_in->nx[idxkid];
+            }
+            #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+            init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
+            init_strmat(dim+1, dim, &work->sCholW[ii], &c_ptr);
+            #else
+            init_strmat(dim, dim, &work->sW[ii], &c_ptr);
+            init_strmat(dim, dim, &work->sCholW[ii], &c_ptr);
+            #endif
+            if (ii > 0)
+            {
+                init_strmat(qp_in->nx[ii], dim, &work->sUt[ii-1], &c_ptr);
+                init_strmat(qp_in->nx[ii], dim, &work->sCholUt[ii-1], &c_ptr);
+            }
+        }
+    }
+
+    // strvecs
     init_strvec(regDim, work->regMat, &c_ptr);
     blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
 
@@ -1415,17 +1457,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         if (opts->checkLastActiveSet)
         {
             init_strvec(qp_in->nx[ii], &work->sxasPrev[ii], &c_ptr);
-            init_strmat(qp_in->nx[ii], qp_in->nx[ii], &work->sWdiag[ii], &c_ptr);
         }
-
-        if (ii > 0)
-        {
-            ncolAB = qp_in->nx[tree[ii].dad] + qp_in->nu[tree[ii].dad];
-            init_strmat(qp_in->nx[ii], ncolAB, &work->sAB[ii-1], &c_ptr);
-        }
-
-        update_M_dimensions(ii, qp_in, &rowsM, &colsM);
-        init_strmat(rowsM, colsM, &work->sM[ii], &c_ptr);
 
         init_strvec(qp_in->nu[ii], &work->su[ii], &c_ptr);
         init_strvec(qp_in->nu[ii], &work->suUnc[ii], &c_ptr);
@@ -1435,31 +1467,22 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
             init_strvec(qp_in->nu[ii], &work->suasPrev[ii], &c_ptr);
         }
 
-        if (ii < Np) {
+        if (ii < Np)
+        {
             dim = 0;
-            for (int jj = 0; jj < tree[ii].nkids; jj++) {
+            for (int jj = 0; jj < tree[ii].nkids; jj++)
+            {
                 idxkid = tree[ii].kids[jj];
                 dim += qp_in->nx[idxkid];
             }
-
-            #ifdef _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
-            init_strmat(dim+1, dim, &work->sW[ii], &c_ptr);
-            init_strmat(dim+1, dim, &work->sCholW[ii], &c_ptr);
-            #else
-            init_strmat(dim, dim, &work->sW[ii], &c_ptr);
-            init_strmat(dim, dim, &work->sCholW[ii], &c_ptr);
-            #endif
             init_strvec(dim, &work->sres[ii], &c_ptr);
             init_strvec(dim, &work->sresMod[ii], &c_ptr);
             init_strvec(dim, &work->slambda[ii], &c_ptr);
             init_strvec(dim, &work->sDeltalambda[ii], &c_ptr);
-            if (ii > 0) {
-                init_strmat(qp_in->nx[ii], dim, &work->sUt[ii-1], &c_ptr);
-                init_strmat(qp_in->nx[ii], dim, &work->sCholUt[ii-1], &c_ptr);
-            }
         }
     }
 
+    // doubles
     work->fval = (double *) c_ptr;
     c_ptr += Nn*sizeof(double);
 
