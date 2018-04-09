@@ -1720,40 +1720,58 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
     // move pointer for proper alignment of blasfeo matrices and vectors
     align_char_to(64, &c_ptr);
 
-    init_strvec(maxTmpDim, work->regMat, &c_ptr);
-    blasfeo_dvecse(maxTmpDim, opts->regValue, work->regMat, 0);
-
-    for (int jj = 0; jj < Nn; jj++) {
-        init_strvec(qp_in->nx[jj], &work->sQ[jj], &c_ptr);
-        init_strvec(qp_in->nu[jj], &work->sR[jj], &c_ptr);
-        init_strvec(qp_in->nx[jj], &work->sq[jj], &c_ptr);
-        init_strvec(qp_in->nu[jj], &work->sr[jj], &c_ptr);
-        init_strvec(qp_in->nx[jj], &work->sQinv[jj], &c_ptr);
-        init_strvec(qp_in->nu[jj], &work->sRinv[jj], &c_ptr);
-    }
-
-    for (int ii = 0; ii < Ns; ii++) {
+    // strmats
+    for (int ii = 0; ii < Ns; ii++)
+    {
         init_strmat(nu*Nr, Nh*nx, &work->sUt[ii], &c_ptr);
         init_strmat(nu*Nr, nu*Nr, &work->sK[ii], &c_ptr);
-        init_strvec(maxTmpDim, &work->sTmpVecs[ii], &c_ptr);
         init_strmat(nu, nx, &work->sTmpMats[ii], &c_ptr);
-        if (ii < Ns-1) {
+        if (ii < Ns-1)
+        {
             init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sJayD[ii], &c_ptr);
             init_strmat(nu*commonNodes[ii], nu*commonNodes[ii], &work->sCholJayD[ii], &c_ptr);
+        }
+        if (ii < Ns-2)
+        {
+            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sJayL[ii], &c_ptr);
+            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sCholJayL[ii], &c_ptr);
+        }
+    }
+
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        for (int kk = 0; kk < Nh; kk++)
+        {
+            init_strmat(nx, nu, &work->sZbar[ii][kk], &c_ptr);
+            init_strmat(nx, nx, &work->sLambdaD[ii][kk], &c_ptr);
+            init_strmat(nx, nx, &work->sCholLambdaD[ii][kk], &c_ptr);
+            if (kk < Nh-1) init_strmat(nx, nx, &work->sLambdaL[ii][kk], &c_ptr);
+            if (kk < Nh-1) init_strmat(nx, nx, &work->sCholLambdaL[ii][kk], &c_ptr);
+            if (opts->checkLastActiveSet)
+            {
+                init_strmat(nx, nx, &work->sTmpLambdaD[ii][kk], &c_ptr);
+            }
+        }
+    }
+
+    // strvecs
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        init_strvec(maxTmpDim, &work->sTmpVecs[ii], &c_ptr);
+        if (ii < Ns-1)
+        {
             init_strvec(nu*commonNodes[ii], &work->sResNonAnticip[ii], &c_ptr);
             init_strvec(nu*commonNodes[ii], &work->sRhsNonAnticip[ii], &c_ptr);
 
             init_strvec(nu*commonNodes[ii], &work->slambda[ii], &c_ptr);
             init_strvec(nu*commonNodes[ii], &work->sDeltalambda[ii], &c_ptr);
         }
-        if (ii < Ns-2) {
-            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sJayL[ii], &c_ptr);
-            init_strmat(nu*commonNodes[ii+1], nu*commonNodes[ii], &work->sCholJayL[ii], &c_ptr);
-        }
     }
 
-    for (int ii = 0; ii < Ns; ii++) {
-        for (int kk = 0; kk < Nh; kk++) {
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        for (int kk = 0; kk < Nh; kk++)
+        {
             // NOTE(dimitris): all states are shifted by one after eliminating x0
             init_strvec(nx, &work->sx[ii][kk], &c_ptr);
             init_strvec(nu, &work->su[ii][kk], &c_ptr);
@@ -1767,19 +1785,26 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
             init_strvec(nx, &work->sDeltamu[ii][kk], &c_ptr);
             init_strvec(nx, &work->sresk[ii][kk], &c_ptr);
             init_strvec(nx, &work->sreskMod[ii][kk], &c_ptr);
-            init_strmat(nx, nu, &work->sZbar[ii][kk], &c_ptr);
-            init_strmat(nx, nx, &work->sLambdaD[ii][kk], &c_ptr);
-            init_strmat(nx, nx, &work->sCholLambdaD[ii][kk], &c_ptr);
-            if (kk < Nh-1) init_strmat(nx, nx, &work->sLambdaL[ii][kk], &c_ptr);
-            if (kk < Nh-1) init_strmat(nx, nx, &work->sCholLambdaL[ii][kk], &c_ptr);
             if (opts->checkLastActiveSet)
             {
-                init_strmat(nx, nx, &work->sTmpLambdaD[ii][kk], &c_ptr);
                 init_strvec(nx, &work->sxasPrev[ii][kk], &c_ptr);
                 init_strvec(nu, &work->suasPrev[ii][kk], &c_ptr);
             }
         }
     }
+
+    init_strvec(maxTmpDim, work->regMat, &c_ptr);
+    blasfeo_dvecse(maxTmpDim, opts->regValue, work->regMat, 0);
+
+    for (int jj = 0; jj < Nn; jj++) {
+        init_strvec(qp_in->nx[jj], &work->sQ[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sR[jj], &c_ptr);
+        init_strvec(qp_in->nx[jj], &work->sq[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sr[jj], &c_ptr);
+        init_strvec(qp_in->nx[jj], &work->sQinv[jj], &c_ptr);
+        init_strvec(qp_in->nu[jj], &work->sRinv[jj], &c_ptr);
+    }
+
     free(processedNodes);
 
     assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in, opts) >= c_ptr);
@@ -2023,14 +2048,17 @@ void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdune
     int indx;
 
     indx = 0;
-    for (int ii = 0; ii < Ns-1; ii++) {
+    for (int ii = 0; ii < Ns-1; ii++)
+    {
         blasfeo_pack_dvec(work->slambda[ii].m, &lam[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }
 
     indx = 0;
-    for (int ii = 0; ii < Ns; ii++) {
-        for (int kk = 0; kk < Nh; kk++) {
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        for (int kk = 0; kk < Nh; kk++)
+        {
             blasfeo_pack_dvec(nx, &mu[indx], &work->smu[ii][kk], 0);
             indx += nx;
         }

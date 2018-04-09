@@ -137,6 +137,7 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
     align_char_to(64, &c_ptr);
 
     int idx, idxp;
+    // strmats
     for (int ii = 0; ii < Nn; ii++)
     {
         idx = ii;
@@ -145,13 +146,20 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
         {
             init_strmat(nx[idx], nx[idxp], &qp_in->A[idx-1], &c_ptr);
             init_strmat(nx[idx], nu[idxp], &qp_in->B[idx-1], &c_ptr);
-            init_strvec(nx[idx], &qp_in->b[idx-1], &c_ptr);
         }
-
         init_strmat(nx[idx], nx[idx], &qp_in->Q[idx], &c_ptr);
         init_strmat(nu[idx], nu[idx], &qp_in->R[idx], &c_ptr);
         init_strmat(nu[idx], nx[idx], &qp_in->S[idx], &c_ptr);
-
+    }
+    // strvecs
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        idx = ii;
+        idxp = tree[ii].dad;
+        if (ii > 0)
+        {
+            init_strvec(nx[idx], &qp_in->b[idx-1], &c_ptr);
+        }
         init_strvec(nx[idx], &qp_in->q[idx], &c_ptr);
         init_strvec(nu[idx], &qp_in->r[idx], &c_ptr);
 

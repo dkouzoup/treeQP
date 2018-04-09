@@ -136,7 +136,8 @@ int main() {
     initialize_timers();
     #endif
 
-    for (int jj = 0; jj < NREP; jj++) {
+    for (int jj = 0; jj < NREP; jj++)
+    {
         treeqp_sdunes_set_dual_initialization(lambda, mu, &work);
 
         #if PROFILE > 0
@@ -151,7 +152,7 @@ int main() {
         total_time = treeqp_toc(&tot_tmr);
         update_min_timers(jj);
         #endif
-    }  // end NREP
+    }
 
     write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
