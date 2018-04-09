@@ -135,8 +135,9 @@ typedef struct
     termination_t termCondition;
 
     // regularization options
-    // TODO(dimitris): implement on-the-gly regularization option!
     regType_t regType;
+    // TODO(dimitris): implement on-the-gly regularization option!
+    // TODO(dimitris): ONCE ADDED, ALSO ADD CORRESPONDING OPTION IN MATLAB CODE!!!!!!
     // double regTol;
     double regValue;
 

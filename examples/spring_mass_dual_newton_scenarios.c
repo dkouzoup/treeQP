@@ -61,7 +61,9 @@ int main() {
     int Ns = ipow(md, Nr);
 
     treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
-    opts.checkLastActiveSet = 1;
+    #ifdef READ_OPTIONS_FROM_C_FILE
+    treeqp_sdunes_matlab_options(&opts);
+    #endif
 
     // read initial point from txt file
     double *mu = malloc(Ns*Nh*NX*sizeof(double));
@@ -157,14 +159,18 @@ int main() {
     print_timers(qp_out.info.iter);
     #endif
 
+    #if PRINT_LEVEL > 0
     for (int ii = 0; ii < 5; ii++) {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
+    #endif
 
     double kkt_err = max_KKT_residual(&qp_in, &qp_out);
 
+    #if PRINT_LEVEL > 0
     printf("Maximum error in KKT residuals (sdunes):\t\t %2.2e\n\n", kkt_err);
-    assert(kkt_err < 1e-10 && "KKT tolerance in spring_mass_dual_newton_scenarios example too high!");
+    #endif
+    assert(kkt_err < 1e-8 && "KKT tolerance in spring_mass_dual_newton_scenarios example too high!");
 
     // Free allocated memory
     free(nx);
