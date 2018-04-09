@@ -74,6 +74,18 @@ qpoases_static:
 	#cp -r external/qpoases/include/* include/qpoases
 	cp external/qpoases/bin/libqpOASES_e.a lib/libqpoases.a
 
+spring_mass_tdunes_example: treeqp_static
+	( cd examples; $(MAKE) spring_mass_tdunes_example TOP=$(TOP) )
+
+spring_mass_sdunes_example: treeqp_static
+	( cd examples; $(MAKE) spring_mass_sdunes_example TOP=$(TOP) )
+
+fault_tolerance_example: treeqp_static # code-generate data in python first first
+	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
+
+run_fault_tolerance_example: fault_tolerance_example
+	./examples/fault_tolerance.out
+
 examples: treeqp_static
 	( cd examples; $(MAKE) examples TOP=$(TOP) )
 
@@ -82,13 +94,6 @@ run_examples: examples
 	./examples/spring_mass_tdunes.out
 	./examples/spring_mass_sdunes.out
 	./examples/spring_mass.out
-
-fault_tolerance_example: treeqp_static
-	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
-
-# code-generate data first
-run_fault_tolerance_example: fault_tolerance_example
-	./examples/fault_tolerance.out
 
 clean:
 	( cd treeqp/src; $(MAKE) clean )

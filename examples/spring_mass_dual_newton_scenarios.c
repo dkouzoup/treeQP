@@ -61,7 +61,7 @@ int main() {
     int Ns = ipow(md, Nr);
 
     treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
-    #ifdef READ_OPTIONS_FROM_C_FILE
+    #ifdef READ_SCENARIOS_OPTIONS_FROM_C_FILE
     treeqp_sdunes_matlab_options(&opts);
     #endif
 

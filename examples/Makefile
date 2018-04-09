@@ -39,15 +39,27 @@ FAULT_TOLERANCE_OBJS += fault_tolerance_utils/load_data.o
 
 LIBS = -ltreeqp -lblasfeo -lqpoases -lm -ldl
 
-examples: $(OBJS)
-	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
-	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
-	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
+random_qp_example: random_qp.o
 	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
+
+spring_mass_tdunes_example: spring_mass_dual_newton_tree.o
+	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+spring_mass_sdunes_example: spring_mass_dual_newton_scenarios.o
+	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+spring_mass_example: spring_mass.o
+	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
 
 fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
 	$(CC) -o fault_tolerance.so fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -shared -lhpmpc
+
+examples:
+	$(MAKE) random_qp_example
+	$(MAKE) spring_mass_tdunes_example
+	$(MAKE) spring_mass_sdunes_example
+	$(MAKE) spring_mass_example
 
 clean:
 	rm -f fault_tolerance_utils/*.o fault_tolerance_utils/*.exe fault_tolerance_utils/*.out

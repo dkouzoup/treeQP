@@ -56,7 +56,7 @@ int main( ) {
     int Np = Nn - ipow(md, Nr);
 
     treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
-    #ifdef READ_OPTIONS_FROM_C_FILE
+    #ifdef READ_TREE_OPTIONS_FROM_C_FILE
     treeqp_tdunes_matlab_options(Nn, &opts);
     #endif
 
