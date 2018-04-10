@@ -430,7 +430,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sUt = work->sUt;
     struct blasfeo_dvec *sres = work->sres;
     struct blasfeo_dvec *sresMod = work->sresMod;
-    // struct blasfeo_dvec *regMat = work->regMat;
 
     *idxFactorStart = -1;
 
@@ -521,9 +520,6 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
             // W[idxdad] + offset += E * P[k] * E', with E = [I 0]
             work->stage_qp_ptrs[kk].add_EPmE(qp_in, kk, idxdad, idxpos, work);
-
-            // // W[idxdad] + offset += regMat (regularization)
-            // blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
 
             if (opts->checkLastActiveSet)
             {
@@ -1002,7 +998,6 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int Nh = qp_in->tree[Nn-1].stage;
     int Np = work->Np;
     int *npar = work->npar;
-    // struct blasfeo_dvec *regMat = work->regMat;
 
     // ------ initialization
     treeqp_tic(&interface_tmr);
@@ -1186,7 +1181,6 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     {
         bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
     }
-    // bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
     bytes += (Nn-1)*sizeof(struct blasfeo_dmat);  // AB
     bytes += Nn*sizeof(struct blasfeo_dmat);  // M
     bytes += 2*Np*sizeof(struct blasfeo_dmat);  // W, CholW
@@ -1203,7 +1197,6 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     }
 
     // structs
-    // bytes += blasfeo_memsize_dvec(regDim);  // regMat
 
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -1323,9 +1316,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
     work->srmod = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
-
-    // work->regMat = (struct blasfeo_dvec *) c_ptr;
-    // c_ptr += 1*sizeof(struct blasfeo_dvec);
 
     work->sAB = (struct blasfeo_dmat *) c_ptr;
     c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
@@ -1449,8 +1439,6 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     }
 
     // strvecs
-    // init_strvec(regDim, work->regMat, &c_ptr);
-    // blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
 
     for (int ii = 0; ii < Nn; ii++)
     {

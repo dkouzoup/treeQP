@@ -88,7 +88,6 @@ typedef struct treeqp_tdunes_workspace_
     // - Dimension of block k is (nc[k]*nx) x (nc[k]*nx), where nc[k] = tree[k].nkids
     // - Dimension of parent block is (nc[k]*nx) x nx
 
-    // struct blasfeo_dvec *regMat;  // 1 x 1
     struct blasfeo_dmat *sAB;  // 1 x Nn-1: [A B]
     struct blasfeo_dmat *sM;  // 1 x Nn: matrices MAX(nx[k], nx[sib.]) x MAX(nx[dad], nu[dad]) for intermediate results
     struct blasfeo_dmat *sW;  // 1 x Np

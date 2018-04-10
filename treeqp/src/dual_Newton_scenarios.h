@@ -57,8 +57,6 @@ typedef struct treeqp_sdunes_workspace_
     int *commonNodes;  // common between neighboring scenarios [Ns-1]
     double *fvals;  // dual function value for each subsystem [Ns]
 
-    // struct blasfeo_dvec *regMat;
-
     struct blasfeo_dmat *sJayD;
     struct blasfeo_dmat *sJayL;
     struct blasfeo_dmat *sCholJayD;
