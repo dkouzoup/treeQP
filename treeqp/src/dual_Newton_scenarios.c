@@ -131,9 +131,8 @@ int get_size_of_JayL(int Ns, int nu, int *commonNodes) {
 }
 
 
-void save_stage_problems(int Ns, int Nh, int Nr, int md,
-    treeqp_sdunes_workspace *work) {
-
+void save_stage_problems(int Ns, int Nh, int Nr, int md, treeqp_sdunes_workspace *work)
+{
     int ii, kk;
     int nu = work->su[0][0].m;
     int nx = work->sx[0][0].m;
@@ -1886,7 +1885,8 @@ int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // ------ dual Newton iterations
     // NOTE(dimitris): at first iteration some matrices are initialized for opts->checkLastActiveSet
-    for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
+    for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++)
+    {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
         #endif

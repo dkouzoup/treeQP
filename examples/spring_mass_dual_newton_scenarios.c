@@ -170,8 +170,8 @@ int main() {
 
     #if PRINT_LEVEL > 0
     printf("Maximum error in KKT residuals (sdunes):\t\t %2.2e\n\n", kkt_err);
-    #endif
     assert(kkt_err < 1e-8 && "KKT tolerance in spring_mass_dual_newton_scenarios example too high!");
+    #endif
 
     // Free allocated memory
     free(nx);
