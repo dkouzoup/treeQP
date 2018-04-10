@@ -62,7 +62,7 @@
 #include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
+// #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
 treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
 {
