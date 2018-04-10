@@ -61,7 +61,7 @@ NREP = 20
 # 2: print also some iteration stats
 # 3: print also debugging info (nothing for scenarios atm)
 # TODO: check that all levels work and see which ones are necessary, use more consistently in examples
-PRINT_LEVEL = 0
+PRINT_LEVEL = 1
 
 ################################################################################
 

@@ -76,7 +76,7 @@ treeqp_sdunes_options_t treeqp_sdunes_default_options()
     opts.lineSearchGamma = 0.1;
     opts.lineSearchBeta = 0.6;
 
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+    opts.regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
     opts.regTol   = 1.0e-12;
     opts.regValue = 1.0e-8;
 
@@ -578,7 +578,7 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
     int ii, kk;
     int nx = work->sx[0][0].m;
 
-    struct blasfeo_dvec *regMat = work->regMat;
+    // struct blasfeo_dvec *regMat = work->regMat;
 
     #ifdef SAVE_DATA
     int indD, indL;
@@ -605,8 +605,10 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
             if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]))
             {
                 // Cholesky factorization (possibly regularized)
-                factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                    regMat, opts->regType, opts->regTol);
+                // factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+                //     regMat, opts->regType, opts->regTol);
+                treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+                opts->regType, opts->regTol, opts->regValue);
 
                 // Substitution
                 // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
@@ -632,9 +634,10 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         #ifdef REV_CHOL
         if (0 <= idxStart[ii]) {
         #endif
-        factorize_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
-            regMat, opts->regType, opts->regTol);
-
+        // factorize_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
+        //     regMat, opts->regType, opts->regTol);
+        treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
+            opts->regType, opts->regTol, opts->regValue);
         #ifdef REV_CHOL
         }
         #endif
@@ -647,8 +650,10 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
         #else  /* REV_CHOL */
         for (kk = 0; kk < Nh-1 ; kk++) {
             // Cholesky factorization (possibly regularized)
-            factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                regMat, opts->regType, opts->regTol);
+            // factorize_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+            //     regMat, opts->regType, opts->regTol);
+            treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+                opts->regType, opts->regTol, opts->regValue);
 
             // Substitution
             blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
@@ -665,8 +670,10 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, tree
                 &work->sCholLambdaL[ii][kk], 0, 0, 1.0, &work->sLambdaD[ii][kk+1], 0, 0,
                 &work->sLambdaD[ii][kk+1], 0, 0);
         }
-        factorize_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
-                regMat, opts->regType, opts->regTol);
+        // factorize_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
+        //         regMat, opts->regType, opts->regTol);
+        treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
+            opts->regType, opts->regTol, opts->regValue);
 
         #ifdef SAVE_DATA
         blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
@@ -769,7 +776,7 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
     int ii, dim, dimNxt;
     int *commonNodes = work->commonNodes;
 
-    struct blasfeo_dvec *regMat = work->regMat;
+    // struct blasfeo_dvec *regMat = work->regMat;
     struct blasfeo_dmat *sK = work->sK;
     struct blasfeo_dmat *sJayD = work->sJayD;
     struct blasfeo_dmat *sJayL = work->sJayL;
@@ -795,8 +802,9 @@ void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeq
         blasfeo_dgead(dim, dim, 1.0, &sK[ii+1], 0, 0, &sJayD[ii], 0, 0);
 
         // Cholesky factorization (possibly regularized)
-        // TODO(dimitris): remove regMat and add opts->regValue to diagonal
-        factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts->regType, opts->regTol);
+        // factorize_with_reg_opts(&sJayD[ii], &sCholJayD[ii], regMat, opts->regType, opts->regTol);
+        treeqp_dpotrf_l_with_reg_opts(&sJayD[ii], &sCholJayD[ii],
+            opts->regType, opts->regTol, opts->regValue);
 
         #ifdef SAVE_DATA
         if (ii > 0) {  // undo update
@@ -1531,7 +1539,7 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_op
     bytes += 2*Ns*sizeof(struct blasfeo_dmat);  // Ut, K
     bytes += 2*(Ns-1)*sizeof(struct blasfeo_dvec);  // resNonAnticip, rhsNonAnticip
     bytes += 2*(Ns-1)*sizeof(struct blasfeo_dvec);  // lambda, Deltalambda
-    bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
+    // bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
     bytes += Ns*sizeof(struct blasfeo_dvec);  // tmpVecs
     bytes += Ns*sizeof(struct blasfeo_dmat);  // tmpMats
 
@@ -1555,7 +1563,7 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_op
     // maximum dimension of tmp vector to store intermediate results
     maxTmpDim = MAX(nx, nu*commonNodesMax);
 
-    bytes += blasfeo_memsize_dvec(maxTmpDim);  // RegMat
+    // bytes += blasfeo_memsize_dvec(maxTmpDim);  // RegMat
     bytes += Ns*blasfeo_memsize_dvec(maxTmpDim);  // tmpVecs
     bytes += Ns*blasfeo_memsize_dmat(nu, nx);  // tmpMats
 
@@ -1646,8 +1654,8 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
     work->sRinv = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
     // diagonal matrix (stored in vector) with regularization value
-    work->regMat = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += 1*sizeof(struct blasfeo_dvec);
+    // work->regMat = (struct blasfeo_dvec *) c_ptr;
+    // c_ptr += 1*sizeof(struct blasfeo_dvec);
     // diagonal blocks of J (each symmetric of dimension nu*nc[k])
     work->sJayD = (struct blasfeo_dmat *) c_ptr;
     c_ptr += (Ns-1)*sizeof(struct blasfeo_dmat);
@@ -1792,8 +1800,8 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
         }
     }
 
-    init_strvec(maxTmpDim, work->regMat, &c_ptr);
-    blasfeo_dvecse(maxTmpDim, opts->regValue, work->regMat, 0);
+    // init_strvec(maxTmpDim, work->regMat, &c_ptr);
+    // blasfeo_dvecse(maxTmpDim, opts->regValue, work->regMat, 0);
 
     for (int jj = 0; jj < Nn; jj++) {
         init_strvec(qp_in->nx[jj], &work->sQ[jj], &c_ptr);

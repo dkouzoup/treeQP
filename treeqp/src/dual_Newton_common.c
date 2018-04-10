@@ -70,3 +70,94 @@ reg_result_t factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat
         }
     }
 }
+
+
+
+// Cholesky factorization with regularization options
+reg_result_t treeqp_dpotrf_l_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    regType_t reg_type, double reg_tol, double reg_val)
+{
+    reg_result_t res = TREEQP_NO_REGULARIZATION_ADDED;
+
+    if (reg_type == TREEQP_NO_REGULARIZATION)
+    {
+        // factorize
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+    }
+    else if (reg_type == TREEQP_ALWAYS_LEVENBERG_MARQUARDT)
+    {
+        // add regularization to diagonal elements and the factorize
+        blasfeo_ddiare(M->m, reg_val, M, 0, 0);
+
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+        res = TREEQP_REGULARIZATION_ADDED;
+    }
+    else if (reg_type == TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    {
+        // factorize
+        blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+
+        // check diagonal elements
+        for (int jj = 0; jj < M->m; jj++)
+        {
+            if (BLASFEO_DMATEL(CholM, jj, jj) <= reg_tol)
+            {
+                // if small diagonal element is detected, regularize
+                blasfeo_ddiare(M->m, reg_val, M, 0, 0);
+
+                // re-factorize
+                blasfeo_dpotrf_l(M->m, M, 0, 0, CholM, 0, 0);
+                // printf("regularized Lambda[%d][%d]\n", ii, kk);
+                // exit(1);
+                res = TREEQP_REGULARIZATION_ADDED;
+                break;
+            }
+        }
+    }
+    return res;
+}
+
+
+
+reg_result_t treeqp_dpotrf_l_mn_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    regType_t reg_type, double reg_tol, double reg_val)
+{
+    reg_result_t res = TREEQP_NO_REGULARIZATION_ADDED;
+
+    if (reg_type == TREEQP_NO_REGULARIZATION)
+    {
+        // factorize
+        blasfeo_dpotrf_l_mn(M->m, M->n, M, 0, 0, CholM, 0, 0);
+    }
+    else if (reg_type == TREEQP_ALWAYS_LEVENBERG_MARQUARDT)
+    {
+        // add regularization to diagonal elements and the factorize
+        blasfeo_ddiare(M->m, reg_val, M, 0, 0);
+
+        blasfeo_dpotrf_l_mn(M->m, M->n, M, 0, 0, CholM, 0, 0);
+        res = TREEQP_REGULARIZATION_ADDED;
+    }
+    else if (reg_type == TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    {
+        // factorize
+        blasfeo_dpotrf_l_mn(M->m, M->n, M, 0, 0, CholM, 0, 0);
+
+        // check diagonal elements
+        for (int jj = 0; jj < M->m; jj++)
+        {
+            if (BLASFEO_DMATEL(CholM, jj, jj) <= reg_tol)
+            {
+                // if small diagonal element is detected, regularize
+                blasfeo_ddiare(M->m, reg_val, M, 0, 0);
+
+                // re-factorize
+                blasfeo_dpotrf_l_mn(M->m, M->n, M, 0, 0, CholM, 0, 0);
+                // printf("regularized Lambda[%d][%d]\n", ii, kk);
+                // exit(1);
+                res = TREEQP_REGULARIZATION_ADDED;
+                break;
+            }
+        }
+    }
+    return res;
+}

@@ -91,9 +91,8 @@ treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
     opts.lineSearchGamma = 0.1;
     opts.lineSearchBeta = 0.6;
 
-    // TODO(dimitris): implement on the fly regularization
-    opts.regType  = TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
-    // opts.regTol   = 1.0e-12;
+    opts.regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
+    opts.regTol   = 1.0e-12;
     opts.regValue = 1.0e-8;
 
     return opts;
@@ -431,7 +430,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     struct blasfeo_dmat *sUt = work->sUt;
     struct blasfeo_dvec *sres = work->sres;
     struct blasfeo_dvec *sresMod = work->sresMod;
-    struct blasfeo_dvec *regMat = work->regMat;
+    // struct blasfeo_dvec *regMat = work->regMat;
 
     *idxFactorStart = -1;
 
@@ -523,8 +522,8 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
             // W[idxdad] + offset += E * P[k] * E', with E = [I 0]
             work->stage_qp_ptrs[kk].add_EPmE(qp_in, kk, idxdad, idxpos, work);
 
-            // W[idxdad] + offset += regMat (regularization)
-            blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
+            // // W[idxdad] + offset += regMat (regularization)
+            // blasfeo_ddiaad(nx[kk], 1.0, regMat, 0, &sW[idxdad], idxpos, idxpos);
 
             if (opts->checkLastActiveSet)
             {
@@ -639,7 +638,9 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
                 // add resMod in last row of matrix W
                 blasfeo_drowin(sresMod[ii].m, 1.0, &sresMod[ii], 0, &sW[ii], sW[ii].m-1, 0);
                 // perform Cholesky factorization and backward substitution together
-                blasfeo_dpotrf_l_mn(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+                // blasfeo_dpotrf_l_mn(sW[ii].m, sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+                treeqp_dpotrf_l_mn_with_reg_opts(&sW[ii], &sCholW[ii], opts->regType, opts->regTol, opts->regValue);
+
                 // extract result of substitution
                 blasfeo_drowex(sDeltalambda[ii].m, 1.0, &sCholW[ii], sCholW[ii].m-1, 0,
                     &sDeltalambda[ii], 0);
@@ -657,7 +658,9 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
             if ((opts->checkLastActiveSet == 0) || (ii < idxFactorStart))
             {
                 // Cholesky factorization to calculate factor of current diagonal block
-                blasfeo_dpotrf_l(sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+                // blasfeo_dpotrf_l(sW[ii].n, &sW[ii], 0, 0, &sCholW[ii], 0, 0);
+                treeqp_dpotrf_l_with_reg_opts(&sW[ii], &sCholW[ii], opts->regType, opts->regTol, opts->regValue);
+
             }  // TODO(dimitris): we can probably skip more calculations (see scenarios)
 
             // vector substitution
@@ -689,12 +692,15 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
     // add resMod in last row of matrix W
     blasfeo_drowin(sresMod[0].m, 1.0, &sresMod[0], 0, &sW[0], sW[0].m-1, 0);
     // perform Cholesky factorization and backward substitution together
-    blasfeo_dpotrf_l_mn(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    // blasfeo_dpotrf_l_mn(sW[0].m, sW[0].n, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    treeqp_dpotrf_l_mn_with_reg_opts(&sW[0], &sCholW[0], opts->regType, opts->regTol, opts->regValue);
+
     // extract result of substitution
     blasfeo_drowex(sDeltalambda[0].m, 1.0, &sCholW[0], sCholW[0].m-1, 0, &sDeltalambda[0], 0);
     #else
     // calculate Cholesky factor of root block
-    blasfeo_dpotrf_l(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    // blasfeo_dpotrf_l(sW[0].m, &sW[0], 0, 0, &sCholW[0], 0, 0);
+    treeqp_dpotrf_l_with_reg_opts(&sW[0], &sCholW[0], opts->regType, opts->regTol, opts->regValue);
 
     // calculate last elements of backward substitution
     blasfeo_dtrsv_lnn(sresMod[0].m, &sCholW[0], 0, 0, &sresMod[0], 0, &sDeltalambda[0], 0);
@@ -996,7 +1002,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int Nh = qp_in->tree[Nn-1].stage;
     int Np = work->Np;
     int *npar = work->npar;
-    struct blasfeo_dvec *regMat = work->regMat;
+    // struct blasfeo_dvec *regMat = work->regMat;
 
     // ------ initialization
     treeqp_tic(&interface_tmr);
@@ -1146,7 +1152,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     int Nn = qp_in->N;
     int Nh = tree[Nn-1].stage;
     int Np = get_number_of_parent_nodes(Nn, tree);
-    int regDim = maximum_hessian_block_dimension(qp_in);
+    // int regDim = maximum_hessian_block_dimension(qp_in);
     int dim, idxkid, ncolAB;
     int rowsM, colsM;
 
@@ -1180,7 +1186,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     {
         bytes += Nn*sizeof(struct blasfeo_dmat);  // Wdiag
     }
-    bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
+    // bytes += 1*sizeof(struct blasfeo_dvec);  // regMat
     bytes += (Nn-1)*sizeof(struct blasfeo_dmat);  // AB
     bytes += Nn*sizeof(struct blasfeo_dmat);  // M
     bytes += 2*Np*sizeof(struct blasfeo_dmat);  // W, CholW
@@ -1197,7 +1203,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     }
 
     // structs
-    bytes += blasfeo_memsize_dvec(regDim);  // regMat
+    // bytes += blasfeo_memsize_dvec(regDim);  // regMat
 
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -1318,8 +1324,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     work->srmod = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
-    work->regMat = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += 1*sizeof(struct blasfeo_dvec);
+    // work->regMat = (struct blasfeo_dvec *) c_ptr;
+    // c_ptr += 1*sizeof(struct blasfeo_dvec);
 
     work->sAB = (struct blasfeo_dmat *) c_ptr;
     c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
@@ -1443,8 +1449,8 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     }
 
     // strvecs
-    init_strvec(regDim, work->regMat, &c_ptr);
-    blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
+    // init_strvec(regDim, work->regMat, &c_ptr);
+    // blasfeo_dvecse(regDim, opts->regValue, work->regMat, 0);
 
     for (int ii = 0; ii < Nn; ii++)
     {

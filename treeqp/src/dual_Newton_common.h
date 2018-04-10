@@ -51,8 +51,15 @@ typedef enum {
 } reg_result_t;
 
 
+// TODO(dimitris): get rid of this in scenarios
 reg_result_t factorize_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
     struct blasfeo_dvec *regMat, regType_t reg_type, double reg_tol);
+
+reg_result_t treeqp_dpotrf_l_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    regType_t reg_type, double reg_tol, double reg_val);
+
+reg_result_t treeqp_dpotrf_l_mn_with_reg_opts(struct blasfeo_dmat *M, struct blasfeo_dmat *CholM,
+    regType_t reg_type, double reg_tol, double reg_val);
 
 #ifdef __cplusplus
 }  /* extern "C" */
