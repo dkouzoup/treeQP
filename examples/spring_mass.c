@@ -97,7 +97,7 @@ int main( ) {
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
-        xmin, xmax, umin, umax, x0, &qp_in);
+        xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, &qp_in);
 
     // set up tree-sparse dual Newton solver
     treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);

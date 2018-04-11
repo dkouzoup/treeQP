@@ -651,7 +651,8 @@ void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 // NOTE(dimitris): weights are scaled to minimize the average cost over all scenarios
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
-    double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in)
+    double *xmin, double *xmax, double *umin, double *umax, double *x0,
+    double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     struct node *tree = (struct node *) qp_in->tree;
@@ -666,8 +667,12 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     struct blasfeo_dvec *sxmax = qp_in->xmax;
     struct blasfeo_dvec *sumin = qp_in->umin;
     struct blasfeo_dvec *sumax = qp_in->umax;
+    struct blasfeo_dmat *sC = qp_in->C;
+    struct blasfeo_dmat *sD = qp_in->D;
+    struct blasfeo_dvec *sdmin = qp_in->dmin;
+    struct blasfeo_dvec *sdmax = qp_in->dmax;
 
-    int re, nx, nu, nxp, nup;
+    int re, nx, nu, nc, nxp, nup;
     double scalingFactor;
     int currentStage = 0;
     int nodesInStage = 0;
@@ -723,6 +728,8 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     {
         nx = qp_in->nx[ii];
         nu = qp_in->nu[ii];
+        nc = qp_in->nc[ii];
+
         if (ii > 0)
         {
             nxp = qp_in->nx[tree[ii].dad];
@@ -734,8 +741,7 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
             {
                 blasfeo_pack_dvec(nx, &b[re*nx], &sb[ii-1], 0);
                 blasfeo_pack_dmat(nx, nx, &A[re*nx*nx], nx, &sA0, 0, 0);
-                blasfeo_dgemv_n(sA0.m, sA0.n, 1.0, &sA0, 0, 0, &sx0, 0, 1.0, &sb[ii-1], 0,
-                    &sb[ii-1], 0);
+                blasfeo_dgemv_n(sA0.m, sA0.n, 1.0, &sA0, 0, 0, &sx0, 0, 1.0, &sb[ii-1], 0, &sb[ii-1], 0);
             }
             else
             {
@@ -790,6 +796,14 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
         }
         blasfeo_pack_dvec(sumin[ii].m, umin, &sumin[ii], 0);
         blasfeo_pack_dvec(sumax[ii].m, umax, &sumax[ii], 0);
+
+        if (C != NULL && D != NULL && dmin != NULL && dmax != NULL)
+        {
+            blasfeo_pack_dmat(nc, nx, C, nc, &sC[ii], 0, 0);
+            blasfeo_pack_dmat(nc, nu, D, nc, &sD[ii], 0, 0);
+            blasfeo_pack_dvec(sdmin[ii].m, dmin, &sdmin[ii], 0);
+            blasfeo_pack_dvec(sdmax[ii].m, dmax, &sdmax[ii], 0);
+        }
     }
 
     if (eliminatedX0 == YES)

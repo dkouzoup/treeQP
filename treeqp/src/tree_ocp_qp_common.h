@@ -149,9 +149,8 @@ void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
 // TODO(dimitris): split to small functions and clean up
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
-    double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in);
-
-
+    double *xmin, double *xmax, double *umin, double *umax, double *x0,
+    double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
 
 
 #ifdef __cplusplus
