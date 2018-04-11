@@ -309,10 +309,9 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     int ng = number_of_general_constraints(qp_in);
     int nKKT = 3*nz + ne + 2*ng;
 
-    // initialize to NaN
     for (int ii = 0; ii < nKKT; ii++)
     {
-        res[ii] = 0.0/0.0;
+        res[ii] = 1e12;
     }
 
     int *nx = (int *)qp_in->nx;
@@ -328,6 +327,9 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     struct blasfeo_dvec *sr = qp_in->r;
     struct blasfeo_dmat *sA = qp_in->A;
     struct blasfeo_dmat *sB = qp_in->B;
+    struct blasfeo_dmat *sC = qp_in->C;
+    struct blasfeo_dmat *sD = qp_in->D;
+
     struct node *tree = (struct node *) qp_in->tree;
 
     struct blasfeo_dvec tmp_x, tmp_u, tmp_g;
@@ -351,18 +353,22 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
 
         // tmp_x = Q[ii]*x[ii] + q[ii]
         blasfeo_dgemv_n(nx[ii], nx[ii], 1.0, &sQ[ii], 0, 0, &sx[ii], 0, 1.0, &sq[ii], 0, &tmp_x, 0);
-        // tmp_x += S[ii]*u[ii]
-        blasfeo_dgemv_t(nx[ii], nu[ii], 1.0, &sS[ii], 0, 0, &su[ii], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
+        // tmp_x += S[ii]'*u[ii]
+        blasfeo_dgemv_t(nu[ii], nx[ii], 1.0, &sS[ii], 0, 0, &su[ii], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += mu_x[ii]
         blasfeo_daxpy(nx[ii], 1.0, &qp_out->mu_x[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        // tmp_x += C[ii]'*mu_d[ii]
+        blasfeo_dgemv_t(nc[ii], nx[ii], 1.0, &sC[ii], 0, 0, &qp_out->mu_d[ii], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += lam[ii]
         blasfeo_daxpy(nx[ii], -1.0, &qp_out->lam[ii], 0, &tmp_x, 0, &tmp_x, 0);
         // tmp_u = R[ii]*u[ii] + r[ii]
         blasfeo_dgemv_n(nu[ii], nu[ii], 1.0, &sR[ii], 0, 0, &su[ii], 0, 1.0, &sr[ii], 0, &tmp_u, 0);
-        // tmp_u += S[ii]'*x[ii]
+        // tmp_u += S[ii]*x[ii]
         blasfeo_dgemv_n(nu[ii], nx[ii], 1.0, &sS[ii], 0, 0, &sx[ii], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
         // tmp_u += mu_u[ii]
         blasfeo_daxpy(nu[ii], 1.0, &qp_out->mu_u[ii], 0, &tmp_u, 0, &tmp_u, 0);
+        // tmp_u += D[ii]'*mu_d[ii]
+        blasfeo_dgemv_t(nc[ii], nu[ii], 1.0, &sD[ii], 0, 0, &qp_out->mu_d[ii], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
 
         for (int jj = 0; jj < tree[ii].nkids; jj++)
         {
@@ -378,7 +384,6 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
         blasfeo_unpack_dvec(nu[ii], &tmp_u, 0, &res[pos]);
         pos += nu[ii];
 
-
         // --- primal feasibility (dynamics, ne x 1)
 
         if (ii > 0)
@@ -389,11 +394,11 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
             blasfeo_dgemv_n(nx[ii], nx[idxdad], 1.0, &qp_in->A[ii-1], 0, 0,
                 &qp_out->x[idxdad], 0, 1.0, &qp_in->b[ii-1], 0, &tmp_x, 0);
 
-            // tmp_x = tmp_x + B[ii-1]*u[p(iii)]
+            // tmp_x += B[ii-1]*u[p(iii)]
             blasfeo_dgemv_n(nx[ii], nu[idxdad], 1.0, &qp_in->B[ii-1], 0, 0,
                 &qp_out->u[idxdad], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
 
-            // tmp_x = tmp_x - x[idx]
+            // tmp_x -= x[idx]
             blasfeo_daxpy(nx[ii], -1.0, &qp_out->x[ii], 0, &tmp_x, 0, &tmp_x, 0);
 
             blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[pos]);
@@ -474,7 +479,7 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
         // tmp_g = C[ii]*x[ii]
         blasfeo_dgemv_n(nc[ii], nx[ii], 1.0, &qp_in->C[ii], 0, 0, &qp_out->x[ii], 0, 0.0, &tmp_g, 0, &tmp_g, 0);
 
-        // tmp_g = tmp_g + D[ii]*u[ii]
+        // tmp_g += D[ii]*u[ii]
         blasfeo_dgemv_n(nc[ii], nu[ii], 1.0, &qp_in->D[ii], 0, 0, &qp_out->u[ii], 0, 1.0, &tmp_g, 0, &tmp_g, 0);
 
         for (int jj = 0; jj < nc[ii]; jj++)
