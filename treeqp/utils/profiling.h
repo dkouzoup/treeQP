@@ -35,8 +35,8 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/timing.h"
 
-// TODO(dimitris): this should be maxit
-#define kMax 100
+// NOTE(dimitris): this has to be >= maxit
+#define kMax 200
 
 // total cpu time and ls iterations
 #if PROFILE > 0

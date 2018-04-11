@@ -64,10 +64,9 @@
 treeqp_sdunes_options_t treeqp_sdunes_default_options()
 {
     treeqp_sdunes_options_t opts;
-    termination_t cond = TREEQP_INFNORM;
 
     opts.maxIter = 100;
-    opts.termCondition = cond;
+    opts.termCondition = TREEQP_INFNORM;
     opts.stationarityTolerance = 1.0e-12;
 
     opts.checkLastActiveSet = 1;
