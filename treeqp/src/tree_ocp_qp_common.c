@@ -307,7 +307,7 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     int Nn = qp_in->N;
     int nz = number_of_primal_variables(qp_in);
     int ne = number_of_dynamic_constraints(qp_in);
-    int nKKT = 2*nz + ne;
+    int nKKT = 3*nz + ne;
 
     // initialize to NaN
     for (int ii = 0; ii < nKKT; ii++)
@@ -396,6 +396,42 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
             blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[pos]);
             pos += nx[ii];
         }
+
+        // --- primal feasibility (bounds, nz x 1)
+
+        for (int jj = 0; jj < nx[ii]; jj++)
+        {
+            if (BLASFEO_DVECEL(&qp_out->x[ii], jj) > BLASFEO_DVECEL(&qp_in->xmax[ii], jj))
+            {
+                res[pos+jj] = BLASFEO_DVECEL(&qp_out->x[ii], jj) - BLASFEO_DVECEL(&qp_in->xmax[ii], jj);
+            }
+            else if (BLASFEO_DVECEL(&qp_out->x[ii], jj) < BLASFEO_DVECEL(&qp_in->xmin[ii], jj))
+            {
+                res[pos+jj] = BLASFEO_DVECEL(&qp_in->xmin[ii], jj) - BLASFEO_DVECEL(&qp_out->x[ii], jj);
+            }
+            else
+            {
+                res[pos+jj] = 0.0;
+            }
+        }
+        pos += nx[ii];
+
+        for (int jj = 0; jj < nu[ii]; jj++)
+        {
+            if (BLASFEO_DVECEL(&qp_out->u[ii], jj) > BLASFEO_DVECEL(&qp_in->umax[ii], jj))
+            {
+                res[pos+jj] = BLASFEO_DVECEL(&qp_out->u[ii], jj) - BLASFEO_DVECEL(&qp_in->umax[ii], jj);
+            }
+            else if (BLASFEO_DVECEL(&qp_out->u[ii], jj) < BLASFEO_DVECEL(&qp_in->umin[ii], jj))
+            {
+                res[pos+jj] = BLASFEO_DVECEL(&qp_in->umin[ii], jj) - BLASFEO_DVECEL(&qp_out->u[ii], jj);
+            }
+            else
+            {
+                res[pos+jj] = 0.0;
+            }
+        }
+        pos += nu[ii];
 
         // --- complementarity (nz x 1)
 
