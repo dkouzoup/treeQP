@@ -49,8 +49,6 @@
 
 #include "examples/spring_mass_utils/data.c"
 
-#define TEST_GENERAL_CONSTRAINTS
-
 int main( ) {
     return_t status;
 
@@ -58,21 +56,9 @@ int main( ) {
     int Np = Nn - ipow(md, Nr);
 
     treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        #ifdef TEST_GENERAL_CONSTRAINTS
-        opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
-        #else
-        opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
-        #endif
-    }
 
     #ifdef READ_TREE_OPTIONS_FROM_C_FILE
     treeqp_tdunes_matlab_options(Nn, &opts);
-    #ifdef TEST_GENERAL_CONSTRAINTS
-    printf("Remove general constraints before running the example!\n");
-    exit(1);
-    #endif
     #endif
 
     // read initial point from txt file
@@ -95,7 +81,6 @@ int main( ) {
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
-    int *nc = malloc(Nn*sizeof(int));
 
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -113,26 +98,15 @@ int main( ) {
         } else {
             nu[ii] = 0;
         }
-
-        #ifdef TEST_GENERAL_CONSTRAINTS
-        nc[ii] = nx[ii] + nu[ii];
-        #else
-        nc[ii] = 0;
-        #endif
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, nc, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    #ifdef TEST_GENERAL_CONSTRAINTS
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, &qp_in);
-    #else
-    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
-        xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, &qp_in);
-    #endif
 
     // qp_in.N = 10;
     // tree_ocp_qp_in_print(&qp_in);
@@ -148,9 +122,9 @@ int main( ) {
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
+    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
     #if PRINT_LEVEL > 0
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
@@ -197,7 +171,6 @@ int main( ) {
     // Free memory
     free(nx);
     free(nu);
-    free(nc);
 
     free(qp_in_memory);
     free(qp_solver_memory);
