@@ -41,24 +41,39 @@
 #include "blasfeo/include/blasfeo_d_blas.h"
 
 
-int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, struct node *tree)
+int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node *tree)
 {
     int bytes = 0;
 
-    bytes += 2*Nn*sizeof(int);  // nx, nu
+    bytes += 3*Nn*sizeof(int);  // nx, nu, nc
+
     bytes += 2*(Nn-1)*sizeof(struct blasfeo_dmat);  // A, B
     bytes += (Nn-1)*sizeof(struct blasfeo_dvec);  // b
 
     bytes += 3*Nn*sizeof(struct blasfeo_dmat);  // Q, R, S
-    bytes += 6*Nn*sizeof(struct blasfeo_dvec);  // q, r, xmin, xmax, umin, umax
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // q, r
 
-    int idx, idxp;
-    for (int ii = 0; ii < Nn; ii++)
+    bytes += 4*Nn*sizeof(struct blasfeo_dvec);  // xmin, xmax, umin, umax
+
+    bytes += 2*Nn*sizeof(struct blasfeo_dmat);  // C, D
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // dmin, dmax
+
+    int idx, idxp, nc_;
+
+    for (idx = 0; idx < Nn; idx++)
     {
-        idx = ii;
-        idxp = tree[ii].dad;
+        idxp = tree[idx].dad;
 
-        if (ii > 0)
+        if (nc == NULL)
+        {
+            nc_ = 0;
+        }
+        else
+        {
+            nc_ = nc[idx];
+        }
+
+        if (idx > 0)
         {
             bytes += blasfeo_memsize_dmat(nx[idx], nx[idxp]);  // A
             bytes += blasfeo_memsize_dmat(nx[idx], nu[idxp]);  // B
@@ -74,6 +89,10 @@ int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, struct node *tree)
 
         bytes += 2*blasfeo_memsize_dvec(nx[idx]);  // xmin, xmax
         bytes += 2*blasfeo_memsize_dvec(nu[idx]);  // umin, umax
+
+        bytes += blasfeo_memsize_dmat(nc_, nx[idx]);  // C
+        bytes += blasfeo_memsize_dmat(nc_, nu[idx]);  // D
+        bytes += 2*blasfeo_memsize_dvec(nc_);  // dmin, dmax
     }
 
     make_int_multiple_of(64, &bytes);
@@ -84,26 +103,34 @@ int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, struct node *tree)
 
 
 
-void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp_qp_in *qp_in,
-    void *ptr)
+void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree, tree_ocp_qp_in *qp_in, void *ptr)
 {
+    char *c_ptr = (char *) ptr;
+
     qp_in->N = Nn;
     qp_in->tree = tree;
 
-    // char pointer
-    char *c_ptr = (char *) ptr;
-
-    // copy dimensions to allocated memory
     qp_in->nx = (int *) c_ptr;
     c_ptr += Nn*sizeof(int);
     qp_in->nu = (int *) c_ptr;
     c_ptr += Nn*sizeof(int);
+    qp_in->nc = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
 
-    int *hnx = qp_in->nx;
-    int *hnu = qp_in->nu;
+    // copy dimensions to allocated memory
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        qp_in->nx[ii] = nx[ii];
+        qp_in->nu[ii] = nu[ii];
 
-    for (int ii = 0; ii < Nn; ii++) hnx[ii] = nx[ii];
-    for (int ii = 0; ii < Nn; ii++) hnu[ii] = nu[ii];
+        if (nc == NULL)
+        {
+            qp_in->nc[ii] = 0;
+        } else
+        {
+            qp_in->nc[ii] = nc[ii];
+        }
+    }
 
     qp_in->A = (struct blasfeo_dmat *) c_ptr;
     c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
@@ -133,30 +160,45 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
     qp_in->umax = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
+    qp_in->C = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->D = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->dmin = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->dmax = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+
     // align pointer
     align_char_to(64, &c_ptr);
 
     int idx, idxp;
+
     // strmats
-    for (int ii = 0; ii < Nn; ii++)
+    for (int idx = 0; idx < Nn; idx++)
     {
-        idx = ii;
-        idxp = tree[ii].dad;
-        if (ii > 0)
+        idxp = tree[idx].dad;
+
+        if (idx > 0)
         {
             init_strmat(nx[idx], nx[idxp], &qp_in->A[idx-1], &c_ptr);
             init_strmat(nx[idx], nu[idxp], &qp_in->B[idx-1], &c_ptr);
         }
+
         init_strmat(nx[idx], nx[idx], &qp_in->Q[idx], &c_ptr);
         init_strmat(nu[idx], nu[idx], &qp_in->R[idx], &c_ptr);
         init_strmat(nu[idx], nx[idx], &qp_in->S[idx], &c_ptr);
+
+        init_strmat(qp_in->nc[idx], nx[idx], &qp_in->C[idx], &c_ptr);
+        init_strmat(qp_in->nc[idx], nu[idx], &qp_in->D[idx], &c_ptr);
     }
+
     // strvecs
-    for (int ii = 0; ii < Nn; ii++)
+    for (idx = 0; idx < Nn; idx++)
     {
-        idx = ii;
-        idxp = tree[ii].dad;
-        if (ii > 0)
+        idxp = tree[idx].dad;
+
+        if (idx > 0)
         {
             init_strvec(nx[idx], &qp_in->b[idx-1], &c_ptr);
         }
@@ -167,9 +209,12 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
         init_strvec(nx[idx], &qp_in->xmax[idx], &c_ptr);
         init_strvec(nu[idx], &qp_in->umin[idx], &c_ptr);
         init_strvec(nu[idx], &qp_in->umax[idx], &c_ptr);
+
+        init_strvec(qp_in->nc[idx], &qp_in->dmin[idx], &c_ptr);
+        init_strvec(qp_in->nc[idx], &qp_in->dmax[idx], &c_ptr);
     }
 
-    assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree) >= c_ptr);
+    assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree) - c_ptr);
     // exit(1);
@@ -177,14 +222,26 @@ void create_tree_ocp_qp_in(int Nn, int *nx, int *nu, struct node *tree, tree_ocp
 
 
 
-int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu)
+int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc)
 {
-    int bytes = 5*Nn*sizeof(struct blasfeo_dvec);  // x, u, lam, mu_x, mu_u
+    int bytes = 6*Nn*sizeof(struct blasfeo_dvec);  // x, u, lam, mu_x, mu_u, mu_d
 
-    for (int kk = 0; kk < Nn; kk++)
+    int nc_;
+
+    for (int idx = 0; idx < Nn; idx++)
     {
-        bytes += 3*blasfeo_memsize_dvec(nx[kk]);  // x, lam, mu_x
-        bytes += 2*blasfeo_memsize_dvec(nu[kk]);  // u, mu_u
+        if (nc == NULL)
+        {
+            nc_ = 0;
+        }
+        else
+        {
+            nc_ = nc[idx];
+        }
+
+        bytes += 3*blasfeo_memsize_dvec(nx[idx]);  // x, lam, mu_x
+        bytes += 2*blasfeo_memsize_dvec(nu[idx]);  // u, mu_u
+        bytes += 1*blasfeo_memsize_dvec(nc_);  // mu_d
     }
 
     make_int_multiple_of(64, &bytes);
@@ -195,7 +252,7 @@ int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu)
 
 
 
-void create_tree_ocp_qp_out(int Nn, int *nx, int *nu, tree_ocp_qp_out *qp_out, void *ptr)
+void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *qp_out, void *ptr)
 {
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -210,19 +267,33 @@ void create_tree_ocp_qp_out(int Nn, int *nx, int *nu, tree_ocp_qp_out *qp_out, v
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
     qp_out->mu_u = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_out->mu_d = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
     align_char_to(64, &c_ptr);
 
+    int nc_;
+
     for (int kk = 0; kk < Nn; kk++)
     {
+        if (nc == NULL)
+        {
+            nc_ = 0;
+        }
+        else
+        {
+            nc_ = nc[kk];
+        }
+
         init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->u[kk], &c_ptr);
         init_strvec(nx[kk], &qp_out->lam[kk], &c_ptr);
         init_strvec(nx[kk], &qp_out->mu_x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->mu_u[kk], &c_ptr);
+        init_strvec(nc_, &qp_out->mu_d[kk], &c_ptr);
     }
 
-    assert((char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) >= c_ptr);
+    assert((char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) - c_ptr);
     // exit(1);

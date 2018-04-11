@@ -8,27 +8,27 @@ CLIPPING = false;
 
 %% define dimensions
 
-% nc = [2 2 1 0 0 0];  % number of children of each node
+% ns = [2 2 1 0 0 0];  % number of successors (children) of each node
 % nx = [2 3 2 1 1 1];  % number of states of each node
 % nu = [1 2 1 0 0 0];  % number of controls of each node
 
-nc = [2 1 1 0 0];  % number of children of each node
+ns = [2 1 1 0 0];  % number of children of each node
 nx = [2 2 2 1 4];  % number of states of each node
 nu = [2 2 2 0 0];  % number of controls of each node
 
-if sum(nc) ~= length(nc) - 1
-   error('wrong data in nc')
+if sum(ns) ~= length(ns) - 1
+   error('wrong data in ns')
 end
-if length(nc) ~= length(nx)
+if length(ns) ~= length(nx)
    error('wrong dimension of nx')
 end
-if length(nc) ~= length(nu)
+if length(ns) ~= length(nu)
    error('wrong dimension of nu')
 end
 
 %% generate random tree
 
-agents = generate_random_tree(nc, nx, nu, CLIPPING);
+agents = generate_random_tree(ns, nx, nu, CLIPPING);
 
 for ii = 1:length(agents)
     disp(['Node ' num2str(ii)])

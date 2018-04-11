@@ -57,15 +57,15 @@ int main() {
     // 0 - 2 - 5
 
     struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_tree(Nn, nc, tree);
+    setup_tree(Nn, ns, tree);
     // for (int ii = 0; ii < Nn; ii++) print_node(&tree[ii]);
 
     // set up QP data
     tree_ocp_qp_in qp_in;
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
     void *qp_in_memory = malloc(qp_in_size);
-    create_tree_ocp_qp_in(Nn, nx, nu, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_read_dynamics_colmajor(A, B, b, &qp_in);
     #ifdef CLIPPING
@@ -109,9 +109,9 @@ int main() {
     // set up QP solution
     tree_ocp_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
-    create_tree_ocp_qp_out(Nn, nx, nu, &qp_out, qp_out_memory);
+    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
     // solve QP
 #if PROFILE > 0

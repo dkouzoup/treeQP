@@ -43,8 +43,8 @@ fprintf(datafile, '\n/* Dimensions */\n\n');
 
 fprintf(datafile,'int Nn = %d;\n', Nnodes);
 
-% print nc
-fprintf(datafile,'int nc[%d] = { ', Nnodes);
+% print ns
+fprintf(datafile,'int ns[%d] = { ', Nnodes);
 for ii = 1:Nnodes
 	fprintf(datafile,'%d, ', agents(ii).nkids);
 end
@@ -64,7 +64,7 @@ for ii = 1:Nnodes
 end
 fprintf(datafile,'};\n');
 
-%% data 
+%% data
 
 fprintf(datafile, '\n/* Data */\n\n');
 
@@ -119,9 +119,9 @@ if CLIPPING
         end
     end
     fprintf(datafile,'};\n');
-    
+
 else
-    
+
     % print Q
     fprintf(datafile,'double Q[%d] = { ', dimQ);
     for kk = 1:Nnodes
