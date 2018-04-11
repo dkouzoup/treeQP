@@ -752,7 +752,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
 // TODO(dimitris): move prints to utils
 void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 {
-    int nx, nu;
+    int nx, nu, nc;
 
     printf("\nProblem solved in %d iterations (%f ms)\n\n",
         qp_out->info.iter, qp_out->info.solver_time+qp_out->info.interface_time);
@@ -761,6 +761,7 @@ void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
     {
         nx = qp_out->x[ii].m;
         nu = qp_out->u[ii].m;
+        nc = qp_out->mu_d[ii].m;
 
         printf("* Node %d/%d (nx = %d, nu = %d) ---------------------------------\n\n",
             ii, Nn-1, nx,  nu);
@@ -780,6 +781,9 @@ void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 
         printf("mu_u[%d] = \n", ii);
         blasfeo_print_tran_dvec(nu, &qp_out->mu_u[ii], 0);
+
+        printf("mu_d[%d] = \n", ii);
+        blasfeo_print_tran_dvec(nc, &qp_out->mu_d[ii], 0);
     }
 }
 
