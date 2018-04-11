@@ -530,7 +530,8 @@ double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
 {
     int nz = number_of_primal_variables(qp_in);
     int ne = number_of_dynamic_constraints(qp_in);
-    int nKKT = 2*nz + ne;
+    int ng = number_of_general_constraints(qp_in);
+    int nKKT = 3*nz + ne + 2*ng;
 
     double *res = malloc(nKKT*sizeof(double));
     calculate_KKT_residuals(qp_in, qp_out, res);
