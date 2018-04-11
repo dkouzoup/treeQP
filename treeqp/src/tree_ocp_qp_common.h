@@ -94,6 +94,7 @@ typedef struct
 
 // TODO(dimitris): follow same order in .c file
 
+// TODO(dimitris): rename to total_
 int number_of_states(tree_ocp_qp_in *qp_in);
 
 int max_number_of_states(tree_ocp_qp_in *qp_in);
@@ -106,7 +107,9 @@ int number_of_primal_variables(tree_ocp_qp_in *qp_in);
 
 int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in);
 
+int number_of_general_constraints(tree_ocp_qp_in *qp_in);
 
+int max_number_of_general_constraints(tree_ocp_qp_in *qp_in);
 
 int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node *tree);
 
