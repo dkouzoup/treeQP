@@ -111,7 +111,7 @@ int main() {
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, &qp_in);
 
-    // print_tree_ocp_qp_in(&qp_in);
+    // tree_ocp_qp_in_print(&qp_in);
     // exit(1);
 
     // setup QP solver

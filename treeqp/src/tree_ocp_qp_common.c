@@ -521,7 +521,7 @@ int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
 
 
 
-void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
+void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     double min, max;
@@ -613,7 +613,7 @@ void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in)
 
 
 // TODO(dimitris): move prints to utils
-void print_tree_ocp_qp_out(int Nn, tree_ocp_qp_out *qp_out)
+void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 {
     int nx, nu;
 
@@ -801,7 +801,7 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
 
 
 
-void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in)
+void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
 
@@ -833,7 +833,7 @@ void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree
 
 
 
-void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, double *r,
+void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r,
     tree_ocp_qp_in *qp_in)
     {
     int Nn = qp_in->N;
@@ -877,7 +877,7 @@ void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, doubl
 
 
 
-void tree_ocp_qp_in_read_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
+void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
     tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
@@ -949,7 +949,7 @@ void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
 
 
 
-void tree_ocp_qp_in_set_constant_bounds(double *xmin, double *xmax, double *umin, double *umax,
+void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax,
     tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
@@ -994,7 +994,7 @@ void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0)
 
 
 
-void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath)
+void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath)
 {
     int Nn = qp_in->N;
     int dimx = number_of_states(qp_in);

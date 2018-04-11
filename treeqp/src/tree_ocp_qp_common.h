@@ -92,6 +92,21 @@ typedef struct
 } tree_ocp_qp_out;
 
 
+// TODO(dimitris): follow same order in .c file
+
+int number_of_states(tree_ocp_qp_in *qp_in);
+
+int max_number_of_states(tree_ocp_qp_in *qp_in);
+
+int number_of_controls(tree_ocp_qp_in *qp_in);
+
+int max_number_of_controls(tree_ocp_qp_in *qp_in);
+
+int number_of_primal_variables(tree_ocp_qp_in *qp_in);
+
+int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in);
+
+
 
 int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node *tree);
 
@@ -102,39 +117,42 @@ int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc);
 void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *qp_out, void *ptr);
 
 
+
 void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res);
 
 double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
-int number_of_states(tree_ocp_qp_in *qp_in);
-int max_number_of_states(tree_ocp_qp_in *qp_in);
-int number_of_controls(tree_ocp_qp_in *qp_in);
-int max_number_of_controls(tree_ocp_qp_in *qp_in);
-int number_of_primal_variables(tree_ocp_qp_in *qp_in);
-int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in);
 
-void print_tree_ocp_qp_in(tree_ocp_qp_in *qp_in);
+// TODO(dimitris): move to utils
+void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in);
 
-void print_tree_ocp_qp_out(int Nn, tree_ocp_qp_out *qp_out);
+void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out);
 
+void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath);
+
+
+
+// TODO(dimitris): move to C interface
+
+void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
+
+// TODO(dimitris): split to small functions and clean up
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_read_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in);
-
-void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
-
-void tree_ocp_qp_in_set_constant_bounds(double *xmin, double *xmax, double *umin, double *umax,
-    tree_ocp_qp_in *qp_in);
-
-void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
-
-void write_qp_out_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath);
 
 #ifdef __cplusplus
 }  /* extern "C" */

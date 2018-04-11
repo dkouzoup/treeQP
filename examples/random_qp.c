@@ -68,15 +68,15 @@ int main() {
     void *qp_in_memory = malloc(qp_in_size);
     tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
 
-    tree_ocp_qp_in_read_dynamics_colmajor(A, B, b, &qp_in);
+    tree_ocp_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
     #ifdef CLIPPING
-    tree_ocp_qp_in_read_objective_diag(Qd, Rd, q, r, &qp_in);
+    tree_ocp_qp_in_set_ltv_objective_diag(Qd, Rd, q, r, &qp_in);
     #else
-    tree_ocp_qp_in_read_objective_colmajor(Q, R, S, q, r, &qp_in);
+    tree_ocp_qp_in_set_ltv_objective_colmajor(Q, R, S, q, r, &qp_in);
     #endif
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
 
-    print_tree_ocp_qp_in(&qp_in);
+    tree_ocp_qp_in_print(&qp_in);
 
     // set up QP solver
 #ifndef USE_HPMPC
