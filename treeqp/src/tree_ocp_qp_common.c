@@ -690,6 +690,34 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
         }
         printf("\n\n");
 
+        printf("C[%d] = \n", ii);
+        blasfeo_print_dmat(qp_in->nc[ii], qp_in->nx[ii], &qp_in->C[ii], 0, 0);
+        printf("D[%d] = \n", ii);
+        blasfeo_print_dmat(qp_in->nc[ii], qp_in->nu[ii], &qp_in->D[ii], 0, 0);
+        for (int jj = 0; jj < qp_in->nc[ii]; jj++)
+        {
+            min = BLASFEO_DVECEL(&qp_in->dmin[ii], jj);
+            if (min > -1e10)
+            {
+                printf("%5.2f  ", min);
+            }
+            else
+            {
+                printf("-INF   ");
+            }
+            printf("<=  C[%d, :]*x + D[%d, :]*u  <=  ", jj, jj);
+            max = BLASFEO_DVECEL(&qp_in->dmax[ii], jj);
+            if (max < 1e10)
+            {
+                printf("%5.2f\n", max);
+            }
+            else
+            {
+                printf("  INF\n");
+            }
+        }
+        printf("\n\n");
+
         printf("Q[%d] = \n", ii);
         blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[ii], &qp_in->Q[ii], 0, 0);
 
