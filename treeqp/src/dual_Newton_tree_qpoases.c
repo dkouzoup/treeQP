@@ -188,6 +188,9 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
         blasfeo_pack_dmat(nvd, nvd, QP->flipper->Q, nvd, qpoases_data->sZ, 0, 0);
     }
 
+    // printf("idx = %d\n", idx);
+    // blasfeo_print_dmat(nvd, nvd, qpoases_data->sZ, 0, 0);
+
     // calculate P (matrix substitution + symmetric matrix matrix multiplication)
 
     // D <= alpha * B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
@@ -196,7 +199,7 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
 
     // D <= beta * C + alpha * A * B^T
     // TODO(dimitris): replace with dsyrk!
-    // TODO(dimitris): are m, n, k correct?
+    // TODO(dimitris): check with @giaf that m, n, k are correct (nvd x nvd result matrix)
     blasfeo_dgemm_nt(nvd, nvd, nzd, 1.0, qpoases_data->sZ, 0, 0, qpoases_data->sZ, 0, 0, 0.0,
         qpoases_data->sP, 0, 0, qpoases_data->sP, 0, 0);
 

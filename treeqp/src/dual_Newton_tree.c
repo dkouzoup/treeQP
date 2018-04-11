@@ -926,9 +926,10 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 }
 
 
-void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree,
-    treeqp_tdunes_workspace *work) {
 
+void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree,
+    treeqp_tdunes_workspace *work)
+{
     int kk, indx, indu, ind;
 
     int Nn = qp_in->N;
@@ -978,9 +979,11 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
     free(lambda);
 }
 
-int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work) {
 
+
+int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+{
     int status;
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
@@ -1025,7 +1028,8 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tic(&solver_tmr);
 
     // ------ dual Newton iterations
-    for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++) {
+    for (NewtonIter = 0; NewtonIter < opts->maxIter; NewtonIter++)
+    {
         #if PROFILE > 1
         treeqp_tic(&iter_tmr);
         #endif
@@ -1047,8 +1051,11 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
-        if (status == TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND) {
-            // printf("optimal solution found\n", 1);
+        if (status == TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
+        {
+            #if PRINT_LEVEL > 1
+            printf("optimal solution found\n", 1);
+            #endif
             break;
         }
 
