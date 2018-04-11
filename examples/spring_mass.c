@@ -49,7 +49,7 @@
 // TODO(dimitris): clean this up (and add matlab/python gen. script in utils)
 #include "examples/spring_mass_utils/data.c"
 
-#define TEST_GENERAL_CONSTRAINTS
+// #define TEST_GENERAL_CONSTRAINTS
 
 int main( ) {
     return_t status;
@@ -84,6 +84,9 @@ int main( ) {
     double *D = calloc(NC*NU, sizeof(double));
     double *dmin = calloc(NC, sizeof(double));
     double *dmax = calloc(NC, sizeof(double));
+
+    // NOTE(dimitris): changing xmax to have some active state  constraints at solution
+    xmax[1] = .2;
 
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -147,7 +150,8 @@ int main( ) {
         #ifdef TEST_GENERAL_CONSTRAINTS
         tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
         #else
-        tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+        // TODO(dimitris): SET BACK TO CLIPPING AND REMOVE TIGHT BOUND ON X AFTER FIXING BUG
+        tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
         #endif
     }
 
