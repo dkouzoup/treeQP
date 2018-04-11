@@ -411,6 +411,7 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
                 res[pos+jj] = mu*(-BLASFEO_DVECEL(&qp_out->x[ii], jj) + BLASFEO_DVECEL(&qp_in->xmin[ii], jj));
             }
         }
+        pos += nx[ii];
 
         for (int jj = 0; jj < nu[ii]; jj++)
         {
@@ -424,8 +425,6 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
                 res[pos+jj] = mu*(-BLASFEO_DVECEL(&qp_out->u[ii], jj) + BLASFEO_DVECEL(&qp_in->umin[ii], jj));
             }
         }
-
-        pos += nx[ii];
         pos += nu[ii];
     }
 
@@ -433,7 +432,7 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
     blasfeo_free_dvec(&tmp_u);
 
     assert(nKKT == pos && "incorrect size of KKT residuals");
-    // d_print_e_tran_mat(nKKT, 1, res, 1);
+    // d_print_e_mat(nKKT, 1, res, 1);
 }
 
 
@@ -952,10 +951,12 @@ void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
     {
         blasfeo_dvecse(sxmin[ii].m, -inf, &sxmin[ii], 0);
         blasfeo_dvecse(sxmax[ii].m, inf, &sxmax[ii], 0);
+        assert(sxmin[ii].m == qp_in->nx[ii]);
         assert(sxmax[ii].m == qp_in->nx[ii]);
 
         blasfeo_dvecse(sumin[ii].m, -inf, &sumin[ii], 0);
         blasfeo_dvecse(sumax[ii].m, inf, &sumax[ii], 0);
+        assert(sumin[ii].m == qp_in->nu[ii]);
         assert(sumax[ii].m == qp_in->nu[ii]);
     }
 
