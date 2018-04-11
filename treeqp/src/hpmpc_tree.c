@@ -273,12 +273,9 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
     // move pointer for proper alignment of doubles and blasfeo matrices/vectors
     align_char_to(64, &c_ptr);
 
+    // strmats
     for (int ii = 0; ii < Nn; ii++)
     {
-        init_strvec(nx[ii] + nu[ii], &work->sux[ii], &c_ptr);
-        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
-        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
-
         init_strmat(nx[ii]+nu[ii]+1, nx[ii]+nu[ii], &work->sRSQrq[ii], &c_ptr);
 
         if (ii > 0)
@@ -287,6 +284,14 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
             init_strmat(nx[idxp]+nu[idxp]+1, nx[ii], &work->sBAbt[ii-1], &c_ptr);
         }
         init_strmat(nx[ii]+nu[ii], work->ng[ii], &work->sDCt[ii], &c_ptr);
+    }
+
+    // strvecs
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        init_strvec(nx[ii] + nu[ii], &work->sux[ii], &c_ptr);
+        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->slam[ii], &c_ptr);
+        init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sst[ii], &c_ptr);
         init_strvec(2*work->nb[ii] + 2*work->ng[ii], &work->sd[ii], &c_ptr);
     }
 
