@@ -24,7 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,6 +34,7 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/profiling.h"
+#include "treeqp/utils/blasfeo.h"
 
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
@@ -162,7 +163,10 @@ int main() {
     free_tree(Nn, tree);
     free(tree);
 
-    // print_blasfeo_target();
+    print_blasfeo_target();
+
+    assert(qp_out.info.iter == 1 && "Unconstrained QP did not converge in out iteration!");
+    assert(kkt_err < 1e-12 && "maximum KKT residual too high!");
 
     return 0;
 }

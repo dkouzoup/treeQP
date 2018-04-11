@@ -103,9 +103,9 @@ int main() {
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
@@ -124,9 +124,9 @@ int main() {
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu);
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, &qp_out, qp_out_memory);
+    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
     #if PRINT_LEVEL > 0
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
