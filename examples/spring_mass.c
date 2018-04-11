@@ -49,6 +49,8 @@
 // TODO(dimitris): clean this up (and add matlab/python gen. script in utils)
 #include "examples/spring_mass_utils/data.c"
 
+#define TEST_GENERAL_CONSTRAINTS
+
 int main( ) {
     return_t status;
 
@@ -75,6 +77,12 @@ int main( ) {
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
+    int *nc = malloc(Nn*sizeof(int));
+
+    double *C = malloc((NX+NU)*NX*sizeof(double));
+    double *D = malloc((NX+NU)*NU*sizeof(double));
+    double *dmin = malloc((NX+NU)*sizeof(double));
+    double *dmax = malloc((NX+NU)*sizeof(double));
 
     for (int ii = 0; ii < Nn; ii++) {
         // state and input dimensions on each node (only different at root/leaves)
@@ -89,18 +97,79 @@ int main( ) {
         } else {
             nu[ii] = 0;
         }
+
+        #ifdef TEST_GENERAL_CONSTRAINTS
+        nc[ii] = nx[ii] + nu[ii];
+        #else
+        nc[ii] = 0;
+        #endif
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, nc, tree, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
+    #ifdef TEST_GENERAL_CONSTRAINTS
+    // set C, D, dmin, dmax equivalent to bounds
+    for (int jj = 0; jj < NX; jj++)
+    {
+        for (int ii = 0; ii < NX+NU; ii++)
+        {
+            if (ii == jj)
+                C[jj*(NX+NU)+ii] = 1.0;
+            else
+                C[jj*(NX+NU)+ii] = 0.0;
+        }
+    }
+    for (int jj = 0; jj < NU; jj++)
+    {
+        for (int ii = 0; ii < NX+NU; ii++)
+        {
+            if (ii == jj+NX)
+                D[jj*(NX+NU)+ii] = 1.0;
+            else
+                D[jj*(NX+NU)+ii] = 0.0;
+        }
+    }
+    for (int ii = 0; ii < NX; ii++)
+    {
+        dmin[ii] = xmin[ii];
+        dmax[ii] = xmax[ii];
+    }
+    for (int ii = 0; ii < NU; ii++)
+    {
+        dmin[ii+NX] = umin[ii];
+        dmax[ii+NX] = umax[ii];
+    }
+    // d_print_mat(NX+NU, NX, C, NX+NU);
+    // d_print_mat(NX+NU, NU, D, NX+NU);
+    // d_print_mat(NX+NU, 1, dmin, 1);
+    // d_print_mat(NX+NU, 1, dmax, 1);
+    // exit(1);
+
+    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+        xmin, xmax, umin, umax, x0, C, D, dmin, dmax, &qp_in);
+
+    // remove bounds
+    tree_ocp_qp_in_set_inf_bounds(&qp_in);
+    tree_ocp_qp_in_set_x0_bounds(&qp_in, x0);
+
+    #else
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, &qp_in);
+    #endif
 
     // set up tree-sparse dual Newton solver
     treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        #ifdef TEST_GENERAL_CONSTRAINTS
+        tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        #else
+        tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+        #endif
+    }
 
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
@@ -116,9 +185,9 @@ int main( ) {
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
+    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
 
     // solve with tree-sparse dual Newton strategy
     double overhead;
@@ -169,6 +238,12 @@ int main( ) {
     // Free memory
     free(nx);
     free(nu);
+    free(nc);
+
+    free(C);
+    free(D);
+    free(dmin);
+    free(dmax);
 
     free(qp_in_memory);
     free(qp_out_memory);
