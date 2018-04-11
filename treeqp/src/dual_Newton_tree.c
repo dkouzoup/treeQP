@@ -1172,7 +1172,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
     for (int ii = 0; ii < Nn; ii++)
     {
         stage_qp_set_fcn_ptrs(&stage_qp_ptrs, opts->qp_solver[ii]);
-        bytes += stage_qp_ptrs.calculate_size(qp_in->nx[ii], qp_in->nu[ii]);
+        bytes += stage_qp_ptrs.calculate_size(qp_in->nx[ii], qp_in->nu[ii], qp_in->nc[ii]);
     }
 
     // struct pointers
@@ -1392,7 +1392,7 @@ void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     }
     for (int ii = 0; ii < Nn; ii++)
     {
-        work->stage_qp_ptrs[ii].assign_data(qp_in->nx[ii], qp_in->nu[ii],
+        work->stage_qp_ptrs[ii].assign_data(qp_in->nx[ii], qp_in->nu[ii], qp_in->nc[ii],
             work->stage_qp_data[ii], &c_ptr);
     }
 

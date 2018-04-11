@@ -66,13 +66,13 @@ answer_t stage_qp_qpoases_is_applicable(tree_ocp_qp_in *qp_in, int idx);
 
 void stage_qp_qpoases_set_default_opts(stage_qp_qpoases_opts *opts);
 
-int stage_qp_qpoases_calculate_size(int nx, int nu);
+int stage_qp_qpoases_calculate_size(int nx, int nu, int nc);
 
 void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr);
 
 void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr);
 
-void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr);
+void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr);
 
 void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
 

@@ -57,14 +57,14 @@ void stage_qp_qpoases_set_default_opts(stage_qp_qpoases_opts *opts)
 
 
 
-int stage_qp_qpoases_calculate_size(int nx, int nu)
+int stage_qp_qpoases_calculate_size(int nx, int nu, int nc)
 {
     int bytes  = 0;
 
     bytes += sizeof(treeqp_tdunes_qpoases_data);
 
     int nvd = nx + nu;
-    int ngd = 0;  // TODO(dimitris): support general constraints
+    int ngd = nc;
 
     bytes += 1 * nvd * nvd * sizeof(double);  // H
     bytes += 1 * nvd * ngd * sizeof(double);  // C
@@ -121,13 +121,13 @@ void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, c
 
 
 
-void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr)
 {
     treeqp_tdunes_qpoases_data *qpoases_data;
     qpoases_data = (treeqp_tdunes_qpoases_data *)stage_qp_data;
 
     int nvd = nx + nu;
-    int ngd = 0;  // TODO(dimitris): support general constraints
+    int ngd = nc;
 
     create_double(nvd*nvd, &qpoases_data->H, c_double_ptr);
     create_double(nvd*ngd, &qpoases_data->C, c_double_ptr);
@@ -151,28 +151,41 @@ void stage_qp_qpoases_assign_data(int nx, int nu, void *stage_qp_data, char **c_
 
 
 
-static void QProblemB_build_elimination_matrix(QProblemB *QPB, int idx,
-    treeqp_tdunes_workspace *work)
+static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
+    treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
+    QProblemB *QPB = qpoases_data->QPB;
+    QProblem *QP = qpoases_data->QP;
 
-    int nvd = QProblemB_getNV(QPB);
-    int nzd = QProblemB_getNZ(QPB);  // nx + nu - n_act
+    int nc = qp_in->nc[idx];
+    int nvd, nzd, pos;
 
-    // extract Cholesky factor
-    blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
-
-    // TODO(dimitris): use this for QP (not used in QPB)
-    // blasfeo_pack_dmat(nvd, nvd, QPB->flipper->Q, nvd, qpoases_data->sZ, 0, 0);
-
-    // build Z
-    int pos;
-    blasfeo_dgese(nvd, nvd, 0.0, qpoases_data->sZ, 0, 0);
-    for (int ii = 0; ii < nzd; ii++)
+    if (nc == 0)
     {
-        pos = QPB->bounds->freee->number[ii];
-        BLASFEO_DMATEL(qpoases_data->sZ, pos, ii) = 1.0;
+        nvd = QProblemB_getNV(QPB);
+        nzd = QProblemB_getNZ(QPB);  // nx + nu - n_act
+
+        // extract Cholesky factor
+        blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
+
+        // build Z
+        blasfeo_dgese(nvd, nvd, 0.0, qpoases_data->sZ, 0, 0);
+        for (int ii = 0; ii < nzd; ii++)
+        {
+            pos = QPB->bounds->freee->number[ii];
+            BLASFEO_DMATEL(qpoases_data->sZ, pos, ii) = 1.0;
+        }
+    }
+    else
+    {
+        nvd = QProblem_getNV(QP);
+        nzd = QProblem_getNZ(QP);
+
+        // extract Cholesky factor
+        blasfeo_pack_tran_dmat(nzd, nzd, QP->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
+
+        // extract Z
+        blasfeo_pack_dmat(nvd, nvd, QP->flipper->Q, nvd, qpoases_data->sZ, 0, 0);
     }
 
     // calculate P (matrix substitution + symmetric matrix matrix multiplication)
@@ -201,6 +214,7 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
 
     int nx = qp_in->nx[idx];
     int nu = qp_in->nu[idx];
+    int nc = qp_in->nc[idx];
 
     stage_qp_qpoases_set_default_opts(&qpoases_data->opts);
 
@@ -212,7 +226,6 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
     QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
     // QProblemB_reset(QPB);
 
-    // TODO(dimitris): handle general constraints
     QProblem *QP = (QProblem *)qpoases_data->QP;
 
     // convert data
@@ -239,41 +252,69 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
         blasfeo_dgecp(nx, sB->n, sB, 0, 0, sAB, 0, sA->n);
     }
 
+    blasfeo_unpack_dvec(nc, &qp_in->dmin[idx], 0, &qpoases_data->lc[0]);
+    blasfeo_unpack_dvec(nc, &qp_in->dmax[idx], 0, &qpoases_data->uc[0]);
+
+    // TODO(dimitris): CHECK THIS IS CORRECT FOR MORE GENERAL CASE! (i.e nc != nx+nu)
+    assert (nc == nx+nu && "NOT TESTED YET!!!");
+    blasfeo_unpack_tran_dmat(nc, nx, &qp_in->C[idx], 0, 0, &qpoases_data->C[0], nx+nu);
+    blasfeo_unpack_tran_dmat(nc, nu, &qp_in->D[idx], 0, 0, &qpoases_data->C[nx], nx+nu);
+    // d_print_mat(nc, nx+nu, &qpoases_data->C[0], nc);
+
     // solve first QP instance
 
 	int nWSR = qpoases_data->opts.max_nwsr;
     double cputime = qpoases_data->opts.max_cputime;
 
-    QProblemBCON(QPB, nx+nu, HST_POSDEF);
-    QProblemB_setPrintLevel(QPB, PL_MEDIUM);  // TODO(dimitris): other options?
-    QProblemB_printProperties(QPB);  // TODO(dimitris): what is this for?
+    int status;
 
-	return_t status = QProblemB_init(QPB, qpoases_data->H, qpoases_data->g,
-        qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
+    if (nc == 0)
+    {
+        QP = NULL;
 
-    // if (status !=0)
-    // {
-    //     printf("\nUps... Initialization of stage QP %d failed (status flag %d).\n\n", idx, status);
-    //     d_print_mat(nx+nu, nx+nu, qpoases_data->H, nx+nu);
-    //     d_print_mat(1, nx+nu, qpoases_data->g, 1);
-    //     d_print_mat(1, nx+nu, qpoases_data->lb, 1);
-    //     d_print_mat(1, nx+nu, qpoases_data->ub, 1);
-    //     exit(1);
-    // }
+        QProblemBCON(QPB, nx+nu, HST_POSDEF);
+        QProblemB_setPrintLevel(QPB, PL_MEDIUM);  // TODO(dimitris): other options?
+        QProblemB_printProperties(QPB);  // TODO(dimitris): what is this for?
+
+        status = QProblemB_init(QPB, qpoases_data->H, qpoases_data->g, qpoases_data->lb,
+            qpoases_data->ub, &nWSR, &cputime);
+        }
+    else
+    {
+        QPB = NULL;
+
+        QProblemCON(QP, nx+nu, nc, HST_POSDEF);
+        QProblem_setPrintLevel(QP, PL_MEDIUM);  // TODO(dimitris): other options?
+        QProblem_printProperties(QP);  // TODO(dimitris): what is this for?
+
+        status = QProblem_init(QP, qpoases_data->H, qpoases_data->g, qpoases_data->C, qpoases_data->lb,
+            qpoases_data->ub,  qpoases_data->lc, qpoases_data->uc, &nWSR, &cputime);
+    }
+
+    if (status != 0)
+    {
+        printf("\n[TREEQP]: Error! Initialization of stage QP %d failed (status flag %d).\n\n", idx, status);
+        // d_print_mat(nx+nu, nx+nu, qpoases_data->H, nx+nu);
+        // d_print_mat(1, nx+nu, qpoases_data->g, 1);
+        // d_print_mat(1, nx+nu, qpoases_data->lb, 1);
+        // d_print_mat(1, nx+nu, qpoases_data->ub, 1);
+        exit(1);
+    }
     assert(status == 0 && "initialization of qpOASES failed!");
 }
 
 
 
-static void QProblemB_solve(tree_ocp_qp_in *qp_in, int idx,  treeqp_tdunes_workspace *work)
+static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
+    treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
     int nx = qp_in->nx[idx];
     int nu = qp_in->nu[idx];
+    int nc = qp_in->nc[idx];
 
     QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
+    QProblem *QP = (QProblem *)qpoases_data->QP;
 
     int nWSR = qpoases_data->opts.max_nwsr;
     double cputime = qpoases_data->opts.max_cputime;
@@ -283,37 +324,46 @@ static void QProblemB_solve(tree_ocp_qp_in *qp_in, int idx,  treeqp_tdunes_works
     blasfeo_unpack_dvec(nu, &work->srmod[idx], 0, &qpoases_data->g[nx]);
     for (int ii = 0; ii < nx+nu; ii++) qpoases_data->g[ii] = -qpoases_data->g[ii];
 
-	QProblemB_hotstart(QPB, qpoases_data->g, qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
-
-    blasfeo_pack_dvec(nx, &QPB->x[0], &work->sx[idx], 0);
-    blasfeo_pack_dvec(nu, &QPB->x[nx], &work->su[idx], 0);
+    if (nc == 0)
+    {
+	    QProblemB_hotstart(QPB, qpoases_data->g, qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
+        blasfeo_pack_dvec(nx, &QPB->x[0], &work->sx[idx], 0);
+        blasfeo_pack_dvec(nu, &QPB->x[nx], &work->su[idx], 0);
+    }
+    else
+    {
+	    QProblem_hotstart(QP, qpoases_data->g, qpoases_data->lb, qpoases_data->ub,
+            qpoases_data->lc, qpoases_data->uc, &nWSR, &cputime);
+        blasfeo_pack_dvec(nx, &QP->x[0], &work->sx[idx], 0);
+        blasfeo_pack_dvec(nu, &QP->x[nx], &work->su[idx], 0);
+    }
+    // printf("idx = %d\n", idx);
+    // blasfeo_print_tran_dvec(nx, &work->sx[idx], 0);
+    // blasfeo_print_tran_dvec(nu, &work->su[idx], 0);
 }
 
 
 
 void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
-    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
+    treeqp_tdunes_workspace *work = work_;
+    treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
+    // TODO(dimitris): remove useless castings as the ones below (void can be casted to anything)
+    // treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
+    // treeqp_tdunes_qpoases_data *qpoases_data =
+    //     (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
 
-    QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
+    QProblem_solve(qp_in, idx, work);
+    QProblem_build_elimination_matrix(qp_in, idx, work);
 
-    QProblemB_solve(qp_in, idx, work);
-    QProblemB_build_elimination_matrix(QPB, idx, work);
 }
 
 
 
 void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
-    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
-
-    QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
-
-    QProblemB_solve(qp_in, idx, work);
+    treeqp_tdunes_workspace *work = work_;
+    QProblem_solve(qp_in, idx, work);
 }
 
 
@@ -428,19 +478,30 @@ void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_
 
 void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_)
 {
-    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
+    treeqp_tdunes_workspace *work = work_;
+    treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
-    QProblemB *QPB = (QProblemB *)qpoases_data->QPB;
+    QProblemB *QPB = qpoases_data->QPB;
+    QProblem *QP = qpoases_data->QP;
 
     int nx = qp_out->x[idx].m;
     int nu = qp_out->u[idx].m;
+    int nc = 0;
 
-    blasfeo_pack_dvec(nx, &QPB->y[0], &qp_out->mu_x[idx], 0);
-    blasfeo_pack_dvec(nu, &QPB->y[nx], &qp_out->mu_u[idx], 0);
+    if (QPB != NULL)
+    {
+        blasfeo_pack_dvec(nx, &QPB->y[0], &qp_out->mu_x[idx], 0);
+        blasfeo_pack_dvec(nu, &QPB->y[nx], &qp_out->mu_u[idx], 0);
+    }
+    else if (QP != NULL)
+    {
+        nc = QProblem_getNC(QP);
+        blasfeo_pack_dvec(nx, &QP->y[0], &qp_out->mu_x[idx], 0);
+        blasfeo_pack_dvec(nu, &QP->y[nx], &qp_out->mu_u[idx], 0);
+        blasfeo_pack_dvec(nc, &QP->y[nx+nu], &qp_out->mu_d[idx], 0);
+    }
 
-    // TODO(dimitris): have same convention as qpOASES instead of flipping sign here
+    // TODO(dimitris): have same convention as qpOASES instead of flipping sign here (probably change convention on KKT residuals)
     for (int ii = 0; ii < nx; ii++)
     {
         BLASFEO_DVECEL(&qp_out->mu_x[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_x[idx], ii);
@@ -448,5 +509,12 @@ void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_)
     for (int ii = 0; ii < nu; ii++)
     {
         BLASFEO_DVECEL(&qp_out->mu_u[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_u[idx], ii);
+    }
+    if (QP != NULL)
+    {
+        for (int ii = 0; ii < nc; ii++)
+        {
+            BLASFEO_DVECEL(&qp_out->mu_d[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_d[idx], ii);
+        }
     }
 }

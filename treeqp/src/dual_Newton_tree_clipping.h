@@ -44,13 +44,13 @@ typedef struct treeqp_clipping_data_
 
 answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int idx);
 
-int stage_qp_clipping_calculate_size(int nx, int nu);
+int stage_qp_clipping_calculate_size(int nx, int nu, int nc);
 
 void stage_qp_clipping_assign_structs(void **stage_qp_data, char **c_double_ptr);
 
 void stage_qp_clipping_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr);
 
-void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr);
+void stage_qp_clipping_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr);
 
 void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
 

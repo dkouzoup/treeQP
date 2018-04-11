@@ -24,6 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -60,6 +61,11 @@ answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int idx)
         ans = NO;
     }
 
+    if (qp_in->nc[idx] > 0)
+    {
+        ans = NO;
+    }
+
     // NOTE(dimitris): currently throwing an error instead of returning answer
     if (ans == NO)
     {
@@ -72,7 +78,7 @@ answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int idx)
 
 
 
-int stage_qp_clipping_calculate_size(int nx, int nu)
+int stage_qp_clipping_calculate_size(int nx, int nu, int nc)
 {
     int bytes  = 0;
 
@@ -80,6 +86,8 @@ int stage_qp_clipping_calculate_size(int nx, int nu)
     bytes += 6*sizeof(struct blasfeo_dvec);  // Q, R, Qinv, Rinv, QinvCal, RinvCal
     bytes += 3*blasfeo_memsize_dvec(nx);  // Q, Qinv, QinvCal
     bytes += 3*blasfeo_memsize_dvec(nu);  // R, Rinv, RinvCal
+
+    assert (nc == 0);
 
     return bytes;
 }
@@ -131,7 +139,7 @@ void stage_qp_clipping_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, 
 
 
 
-void stage_qp_clipping_assign_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
+void stage_qp_clipping_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr)
 {
     // NOTE(dimitris): dummy function, all data are in blasfeo format.
 }

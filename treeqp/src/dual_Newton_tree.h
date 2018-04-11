@@ -44,10 +44,10 @@ extern "C" {
 typedef struct
 {
     answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int idx);
-    int (*calculate_size)(int nx, int nu);
+    int (*calculate_size)(int nx, int nu, int nc);
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
-    void (*assign_data)(int nx, int nu, void *data, char **c_double_ptr);
+    void (*assign_data)(int nx, int nu, int nc, void *data, char **c_double_ptr);
     void (*init)(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
     void (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
     void (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
