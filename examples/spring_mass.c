@@ -79,27 +79,35 @@ int main( ) {
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
 
-    double *C = malloc((NX+NU)*NX*sizeof(double));
-    double *D = malloc((NX+NU)*NU*sizeof(double));
-    double *dmin = malloc((NX+NU)*sizeof(double));
-    double *dmax = malloc((NX+NU)*sizeof(double));
+    int NC = 2;
+    double *C = calloc(NC*NX, sizeof(double));
+    double *D = calloc(NC*NU, sizeof(double));
+    double *dmin = calloc(NC, sizeof(double));
+    double *dmax = calloc(NC, sizeof(double));
 
-    for (int ii = 0; ii < Nn; ii++) {
+    for (int ii = 0; ii < Nn; ii++)
+    {
         // state and input dimensions on each node (only different at root/leaves)
-        if (ii > 0) {
+        if (ii > 0)
+        {
             nx[ii] = NX;
-        } else {
+        }
+        else
+        {
             nx[ii] = NX;
         }
 
-        if (tree[ii].nkids > 0) {  // not a leaf
+        if (tree[ii].nkids > 0)  // not a leaf
+        {
             nu[ii] = NU;
-        } else {
+        }
+        else
+        {
             nu[ii] = 0;
         }
 
         #ifdef TEST_GENERAL_CONSTRAINTS
-        nc[ii] = nx[ii] + nu[ii];
+        nc[ii] = NC;
         #else
         nc[ii] = 0;
         #endif
@@ -112,41 +120,13 @@ int main( ) {
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
-    for (int jj = 0; jj < NX; jj++)
-    {
-        for (int ii = 0; ii < NX+NU; ii++)
-        {
-            if (ii == jj)
-                C[jj*(NX+NU)+ii] = 1.0;
-            else
-                C[jj*(NX+NU)+ii] = 0.0;
-        }
-    }
-    for (int jj = 0; jj < NU; jj++)
-    {
-        for (int ii = 0; ii < NX+NU; ii++)
-        {
-            if (ii == jj+NX)
-                D[jj*(NX+NU)+ii] = 1.0;
-            else
-                D[jj*(NX+NU)+ii] = 0.0;
-        }
-    }
-    for (int ii = 0; ii < NX; ii++)
-    {
-        dmin[ii] = xmin[ii];
-        dmax[ii] = xmax[ii];
-    }
-    for (int ii = 0; ii < NU; ii++)
-    {
-        dmin[ii+NX] = umin[ii];
-        dmax[ii+NX] = umax[ii];
-    }
-    // d_print_mat(NX+NU, NX, C, NX+NU);
-    // d_print_mat(NX+NU, NU, D, NX+NU);
-    // d_print_mat(NX+NU, 1, dmin, 1);
-    // d_print_mat(NX+NU, 1, dmax, 1);
-    // exit(1);
+    C[0+1*NC] = 1.0;
+    D[1+0*NC] = 1.0;
+
+    dmin[0] = xmin[1];
+    dmin[1] = umin[0];
+    dmax[0] = xmax[1];
+    dmax[1] = umax[0];
 
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, C, D, dmin, dmax, &qp_in);
@@ -208,6 +188,8 @@ int main( ) {
     assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
+
+    exit(1);
 
     for (int ii = 0; ii < 5; ii++) {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);

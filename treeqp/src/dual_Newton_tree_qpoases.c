@@ -255,11 +255,8 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
     blasfeo_unpack_dvec(nc, &qp_in->dmin[idx], 0, &qpoases_data->lc[0]);
     blasfeo_unpack_dvec(nc, &qp_in->dmax[idx], 0, &qpoases_data->uc[0]);
 
-    // TODO(dimitris): CHECK THIS IS CORRECT FOR MORE GENERAL CASE! (i.e nc != nx+nu)
-    assert (nc == nx+nu && "NOT TESTED YET!!!");
     blasfeo_unpack_tran_dmat(nc, nx, &qp_in->C[idx], 0, 0, &qpoases_data->C[0], nx+nu);
     blasfeo_unpack_tran_dmat(nc, nu, &qp_in->D[idx], 0, 0, &qpoases_data->C[nx], nx+nu);
-    // d_print_mat(nc, nx+nu, &qpoases_data->C[0], nc);
 
     // solve first QP instance
 
