@@ -55,7 +55,6 @@ typedef struct treeqp_hpmpc_workspace_
 {
     int *nb;
     int **idxb;
-    int *ng;
 
     struct blasfeo_dvec *sux;
     struct blasfeo_dvec *slam;
