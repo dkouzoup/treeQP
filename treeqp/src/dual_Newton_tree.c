@@ -33,13 +33,11 @@
 #include <assert.h>
 
 // TODO(dimitris): VALGRIND CODE
-// TODO(dimitris): Try open MPI interface (message passing)
-// TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1)
-// TODO(dimitris): find out why algorithm is not scale-invariant
-// TODO(dimitris): on-the-fly regularization
+// TODO(dimitris): FIX BUG WITH LA=HP AND !MERGE_SUBS (HAPPENS ONLY IF Nr, md > 1) - check if still there..
 // TODO(dimitris): different types of line-search
 // TODO(dimitris): why saving so many Chol factorizations does not imporove cpu time?
 // TODO(dimitris): ask Gianluca if I can overwrite Chol. and check if it makes sense
+// TODO(dimitris): NREP > 1 slightly different (LS) results when using qpOASES
 
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
