@@ -858,9 +858,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
 
 
-static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
-    treeqp_tdunes_workspace *work) {
-
+static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+{
     int Nn = qp_in->N;
     int Np = work->Np;
 
@@ -875,18 +874,20 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
     struct blasfeo_dvec *slambda = work->slambda;
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
-    double dotProduct, fval, fval0;
+    double dot_product, fval, fval0;
     double tau = 1;
     double tauPrev = 0;
 
-    dotProduct = gradient_trans_times_direction(work);
+    dot_product = gradient_trans_times_direction(work);
     fval0 = evaluate_dual_function(qp_in, work);
-    // printf(" dot_product = %f\n", dotProduct);
-    // printf(" dual_function = %f\n", fval0);
+    // printf("dot_product = %f\n", dot_product);
+    // printf("dual_function[0] = %f\n", fval0);
+    assert(dot_product < 1e-10 && "Not a descent direction! (Probably but scaled dual Hessian)");
 
     int lsIter;
 
-    for (lsIter = 1; lsIter <= opts->lineSearchMaxIter; lsIter++) {
+    for (lsIter = 1; lsIter <= opts->lineSearchMaxIter; lsIter++)
+    {
         // update multipliers
         #ifdef PARALLEL
         #pragma omp parallel for
@@ -898,10 +899,10 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
 
         // evaluate dual function
         fval = evaluate_dual_function(qp_in, work);
-        // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dotProduct);
+        // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
-        if (fval < fval0 + opts->lineSearchGamma*tau*dotProduct) {
+        if (fval < fval0 + opts->lineSearchGamma*tau*dot_product) {
             // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
         } else {
@@ -915,11 +916,13 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
         indlam += slambda[kk].m;
     }
     write_double_vector_to_txt(lambda, dimlam, "examples/spring_mass_utils/lambda_opt.txt");
-    write_double_vector_to_txt(&dotProduct, 1, "examples/spring_mass_utils/dotProduct.txt");
+    write_double_vector_to_txt(&dot_product, 1, "examples/spring_mass_utils/dot_product.txt");
     write_double_vector_to_txt(&fval0, 1, "examples/spring_mass_utils/fval0.txt");
     write_int_vector_to_txt(&lsIter, 1, "examples/spring_mass_utils/lsiter.txt");
     free(lambda);
     #endif
+
+    // printf(" dual_function = %f\n", fval);
 
     return lsIter;
 }
