@@ -190,7 +190,6 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
         blasfeo_pack_tran_dmat(nzd, nzd, QP->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
 
         // extract Z
-        // TODO(dimitris):  TEST FOR MIXED BOUNDS ONCE IT WORKS
         blasfeo_pack_dmat(nvd, nvd, QP->Q, nvd, qpoases_data->sZ, 0, 0);
         // blasfeo_dgese(nvd, nvd, 0.0, qpoases_data->sZ, 0, 0);
         // blasfeo_pack_dmat(nvd, nzd, QP->Q, nvd, qpoases_data->sZ, 0, 0);

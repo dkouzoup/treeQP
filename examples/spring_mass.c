@@ -79,7 +79,13 @@ int main( ) {
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
 
-    int NC = 2;
+    int NC = 0;
+
+    #ifdef TEST_GENERAL_CONSTRAINTS
+    NC = 1;  // chose between 1 and 2
+    int make_u_constr_general = 1;  // if 1, choose which bound to convert to general constraint
+    #endif
+
     double *C = calloc(NC*NX, sizeof(double));
     double *D = calloc(NC*NU, sizeof(double));
     double *dmin = calloc(NC, sizeof(double));
@@ -123,19 +129,59 @@ int main( ) {
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
-    C[0+1*NC] = 1.0;
-    D[1+0*NC] = 1.0;
+    if (NC == 2)
+    {
+        C[0+1*NC] = 1.0;
+        D[1+0*NC] = 1.0;
 
-    dmin[0] = xmin[1];
-    dmin[1] = umin[0];
-    dmax[0] = xmax[1];
-    dmax[1] = umax[0];
+        dmin[0] = xmin[1];
+        dmin[1] = umin[0];
+        dmax[0] = xmax[1];
+        dmax[1] = umax[0];
+    }
+    else if (NC == 1)
+    {
+        if (make_u_constr_general == 1)
+        {
+            D[0] = 1;
+
+            dmin[0] = umin[0];
+            dmax[0] = umax[0];
+        }
+        else
+        {
+            C[1] = 1;
+
+            dmin[0] = xmin[1];
+            dmax[0] = xmax[1];
+        }
+    }
 
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, C, D, dmin, dmax, &qp_in);
 
     // remove bounds
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
+
+    if (NC == 1 && make_u_constr_general == 1)
+    {
+        // restore bounds on x
+        for (int ii = 0; ii < Nn; ii++)
+        {
+            blasfeo_pack_dvec(nx[ii], xmin, &qp_in.xmin[ii], 0);
+            blasfeo_pack_dvec(nx[ii], xmax, &qp_in.xmax[ii], 0);
+        }
+    }
+    else if (NC == 1 && make_u_constr_general == 0)
+    {
+        // restore bounds on u
+        for (int ii = 0; ii < Nn; ii++)
+        {
+            blasfeo_pack_dvec(nu[ii], umin, &qp_in.umin[ii], 0);
+            blasfeo_pack_dvec(nu[ii], umax, &qp_in.umax[ii], 0);
+        }
+    }
+    // restore bound on x0
     tree_ocp_qp_in_set_x0_bounds(&qp_in, x0);
 
     #else
@@ -150,8 +196,7 @@ int main( ) {
         #ifdef TEST_GENERAL_CONSTRAINTS
         tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
         #else
-        // TODO(dimitris): SET BACK TO CLIPPING AND REMOVE TIGHT BOUND ON X AFTER FIXING BUG
-        tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
         #endif
     }
     tdunes_opts.maxIter = 100;  // set to 1 for debugging
@@ -211,8 +256,6 @@ int main( ) {
 
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
 
-    exit(1);
-
     for (int ii = 0; ii < 5; ii++) {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
@@ -259,6 +302,8 @@ int main( ) {
     free(tree);
 
     free(lambda);
+
+    if (xmax[1] == .2) printf("[TREEQP] Warning! Bound on state has been overwritten with tighter one!\n\n");
 
     return 0;
 }
