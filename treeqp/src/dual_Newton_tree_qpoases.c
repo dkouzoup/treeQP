@@ -173,7 +173,7 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
         // extract Cholesky factor
         blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
 
-        // build Z
+        // build trivial Z
         blasfeo_dgese(nvd, nvd, 0.0, qpoases_data->sZ, 0, 0);
         for (int ii = 0; ii < nzd; ii++)
         {
@@ -184,23 +184,27 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
     else
     {
         nvd = QProblem_getNV(QP);
-        nzd = QProblem_getNZ(QP);
+        nzd = QProblem_getNZ(QP);  // nx + nu - n_act
 
         // extract Cholesky factor
         blasfeo_pack_tran_dmat(nzd, nzd, QP->R, nvd, qpoases_data->sCholZTHZ, 0, 0);
 
         // extract Z
-        blasfeo_pack_dmat(nvd, nvd, QP->flipper->Q, nvd, qpoases_data->sZ, 0, 0);
+        // TODO(dimitris):  TEST FOR MIXED BOUNDS ONCE IT WORKS
+        blasfeo_pack_dmat(nvd, nvd, QP->Q, nvd, qpoases_data->sZ, 0, 0);
+        // blasfeo_dgese(nvd, nvd, 0.0, qpoases_data->sZ, 0, 0);
+        // blasfeo_pack_dmat(nvd, nzd, QP->Q, nvd, qpoases_data->sZ, 0, 0);
     }
 
     // printf("idx = %d\n", idx);
+    // printf("Z (strmat):\n");
     // blasfeo_print_dmat(nvd, nvd, qpoases_data->sZ, 0, 0);
 
     // calculate P (matrix substitution + symmetric matrix matrix multiplication)
 
     // D <= alpha * B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
-    blasfeo_dtrsm_rltn(nvd, nzd, 1.0, qpoases_data->sCholZTHZ, 0, 0,
-        qpoases_data->sZ, 0, 0, qpoases_data->sZ, 0, 0);
+    blasfeo_dtrsm_rltn(nvd, nzd, 1.0, qpoases_data->sCholZTHZ, 0, 0, qpoases_data->sZ, 0, 0,
+        qpoases_data->sZ, 0, 0);
 
     // D <= beta * C + alpha * A * B^T
     // TODO(dimitris): replace with dsyrk!
