@@ -24,6 +24,7 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -67,7 +68,7 @@ int stage_qp_qpoases_calculate_size(int nx, int nu, int nc)
     int ngd = nc;
 
     bytes += 1 * nvd * nvd * sizeof(double);  // H
-    bytes += 1 * nvd * ngd * sizeof(double);  // C
+    bytes += 1 * ngd * nvd * sizeof(double);  // C
     bytes += 3 * nvd * sizeof(double);  // g, lb, ub
     bytes += 2 * ngd * sizeof(double);  // lc, uc
 
@@ -111,8 +112,7 @@ void stage_qp_qpoases_assign_structs(void **stage_qp_data, char **c_double_ptr)
 
 void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, char **c_double_ptr)
 {
-    treeqp_tdunes_qpoases_data *qpoases_data;
-    qpoases_data = (treeqp_tdunes_qpoases_data *)stage_qp_data;
+    treeqp_tdunes_qpoases_data *qpoases_data = stage_qp_data;
 
     init_strmat(nx+nu, nx+nu, qpoases_data->sCholZTHZ, c_double_ptr);
     init_strmat(nx+nu, nx+nu, qpoases_data->sZ, c_double_ptr);
@@ -123,14 +123,13 @@ void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, c
 
 void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr)
 {
-    treeqp_tdunes_qpoases_data *qpoases_data;
-    qpoases_data = (treeqp_tdunes_qpoases_data *)stage_qp_data;
+    treeqp_tdunes_qpoases_data *qpoases_data = stage_qp_data;
 
     int nvd = nx + nu;
     int ngd = nc;
 
     create_double(nvd*nvd, &qpoases_data->H, c_double_ptr);
-    create_double(nvd*ngd, &qpoases_data->C, c_double_ptr);
+    create_double(ngd*nvd, &qpoases_data->C, c_double_ptr);
     create_double(nvd, &qpoases_data->g, c_double_ptr);
     create_double(nvd, &qpoases_data->lb, c_double_ptr);
     create_double(nvd, &qpoases_data->ub, c_double_ptr);
@@ -160,10 +159,16 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
     int nc = qp_in->nc[idx];
     int nvd, nzd, pos;
 
+    // TODO(dimitris): talk to giaf about this hack. blasfeo_pack should reset use_dA!!!
+    qpoases_data->sCholZTHZ->use_dA = 0;
+
     if (nc == 0)
     {
         nvd = QProblemB_getNV(QPB);
         nzd = QProblemB_getNZ(QPB);  // nx + nu - n_act
+
+        // TODO(dimitris): find how to bypass asserts with make (as in cmake)
+        assert(nzd <= nvd && "Wrong nullspace dimension!");
 
         // extract Cholesky factor
         blasfeo_pack_tran_dmat(nzd, nzd, QPB->R, nvd, qpoases_data->sCholZTHZ, 0, 0);

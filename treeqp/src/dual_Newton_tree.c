@@ -880,7 +880,7 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts, tre
     fval0 = evaluate_dual_function(qp_in, work);
     // printf("dot_product = %f\n", dot_product);
     // printf("dual_function[0] = %f\n", fval0);
-    assert(dot_product < 1e-10 && "Not a descent direction! (Probably but scaled dual Hessian)");
+    assert(dot_product < 1e-10 && "Not a descent direction! (Either bad scaled dual Hessian, or nan)");
 
     int lsIter;
 
