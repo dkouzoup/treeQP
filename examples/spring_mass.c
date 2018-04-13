@@ -154,6 +154,7 @@ int main( ) {
         tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
         #endif
     }
+    tdunes_opts.maxIter = 100;  // set to 1 for debugging
 
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
@@ -178,7 +179,24 @@ int main( ) {
     double max_overhead = 0;
     for (int jj = 0; jj < NREP; jj++) {
         treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
-        treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+
+        if (tdunes_opts.maxIter == 1)  // run algorithm one iteration at a time
+        {
+            for (int ll = 0; ll < 50; ll++)
+            {
+                treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+
+                for (int kk = 1; kk < Nn; kk++)
+                {   // pass multipliers to next iteration
+                    blasfeo_dveccp(nx[kk], &qp_out.lam[kk], 0, &tdunes_work.slambda[tree[kk].dad], tdunes_work.idxpos[kk]);
+                }
+                printf("Newton iteration #%d\n", ll);
+            }
+        } else
+        {
+            treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+        }
+
         printf("tdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.3f ms\n", qp_out.info.solver_time*1e3);
         printf("interface time:\t %5.3f ms\n", qp_out.info.interface_time*1e3);
