@@ -74,6 +74,10 @@ int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec 
 
 void setup_nb(tree_ocp_qp_in *qp_in, int *nb);
 
+int get_size_idxb(tree_ocp_qp_in *qp_in);
+
+void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb);
+
 int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts);
 
 void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,

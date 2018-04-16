@@ -182,7 +182,7 @@ int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *o
         if (ii > 0)
         {
             idxp = qp_in->tree[ii].dad;
-            bytes += blasfeo_memsize_dmat(nx[idxp] + nu[idxp] + 1, nx[ii]);  // sABbt
+            bytes += blasfeo_memsize_dmat(nx[idxp] + nu[idxp] + 1, nx[ii]);  // sBAbt
         }
         bytes += blasfeo_memsize_dmat(nx[ii]+nu[ii], nc[ii]);  // sDCt
         bytes += blasfeo_memsize_dvec(2*nb[ii]+2*nc[ii]);  // sd
