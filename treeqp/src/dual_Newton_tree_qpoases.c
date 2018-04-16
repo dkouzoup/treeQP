@@ -159,9 +159,6 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
     int nc = qp_in->nc[idx];
     int nvd, nzd, pos;
 
-    // TODO(dimitris): talk to giaf about this hack. blasfeo_pack should reset use_dA!!!
-    qpoases_data->sCholZTHZ->use_dA = 0;
-
     if (nc == 0)
     {
         nvd = QProblemB_getNV(QPB);
