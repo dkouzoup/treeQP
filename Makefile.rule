@@ -33,6 +33,11 @@ BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
 # HPMPC target
 HPMPC_TARGET = X64_AVX
 
+# HPIPM target
+HPIPM_TARGET = AVX
+
+################################ OPTIONS #######################################
+
 # Parallelize computations with openmp (ON/OFF)
 # NOTE: slow on mac
 # NOTE: to define maximum number of threads type e.g. "export OMP_NUM_THREADS=4" in terminal
