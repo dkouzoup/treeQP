@@ -109,6 +109,7 @@ CFLAGS+=-DPRINT_LEVEL=$(PRINT_LEVEL)
 CFLAGS += -I$(TOP)
 CFLAGS += -I$(TOP)/external
 CFLAGS += -I$(TOP)/external/qpoases/include
+CFLAGS += -I$(TOP)/external/blasfeo/include
 
 # Lib dirs
 LDFLAGS =

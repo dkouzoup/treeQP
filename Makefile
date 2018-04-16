@@ -34,6 +34,7 @@ OBJS += treeqp/src/dual_Newton_tree.o
 OBJS += treeqp/src/dual_Newton_tree_clipping.o
 OBJS += treeqp/src/dual_Newton_tree_qpoases.o
 OBJS += treeqp/src/hpmpc_tree.o
+OBJS += treeqp/src/hpipm_tree.o
 OBJS += treeqp/utils/blasfeo.o
 OBJS += treeqp/utils/memory.o
 OBJS += treeqp/utils/profiling.o

@@ -35,6 +35,7 @@ OBJS += dual_Newton_tree.o
 OBJS += dual_Newton_tree_clipping.o
 OBJS += dual_Newton_tree_qpoases.o
 OBJS += hpmpc_tree.o
+OBJS += hpipm_tree.o
 
 obj: $(OBJS)
 

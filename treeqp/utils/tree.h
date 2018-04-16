@@ -36,6 +36,7 @@ extern "C" {
 
 // TODO(dimitris): MAKE INDEPENDENT OF ORDER (now HPMPC header must come first)
 #ifndef TREE_MPC
+#ifndef HPIPM_TREE_H_
 
 struct node
 {
@@ -49,6 +50,7 @@ struct node
     // total       256 bits
 };
 
+#endif
 #endif
 
 int calculate_number_of_nodes(int md, int Nr, int Nh);

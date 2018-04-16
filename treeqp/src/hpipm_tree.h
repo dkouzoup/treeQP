@@ -25,8 +25,8 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_SRC_HPMPC_TREE_H_
-#define TREEQP_SRC_HPMPC_TREE_H_
+#ifndef TREEQP_SRC_HPIPM_TREE_H_
+#define TREEQP_SRC_HPIPM_TREE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,52 +38,49 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
+#include "hpipm/include/hpipm_tree.h"
+#include "hpipm/include/hpipm_d_tree_ocp_qp_dim.h"
+#include "hpipm/include/hpipm_d_tree_ocp_qp.h"
+#include "hpipm/include/hpipm_d_tree_ocp_qp_sol.h"
+#include "hpipm/include/hpipm_d_tree_ocp_qp_ipm.h"
+
 typedef struct
 {
+    // TODO(dimitris): add all relevant opts
 	int maxIter;  // k_max
-	int mu0;  // max element value in cost function
-	double mu_tol;
-	double alpha_min;
-	int warm_start;  // read initial guess from x and u
-	int compute_mult;
+	// int mu0;  // max element value in cost function
+	// double mu_tol;
+	// double alpha_min;
+	// int warm_start;  // read initial guess from x and u
+	// int compute_mult;
 
-} treeqp_hpmpc_options_t;
+} treeqp_hpipm_options_t;
 
-treeqp_hpmpc_options_t treeqp_hpmpc_default_options();
+treeqp_hpipm_options_t treeqp_hpipm_default_options();
 
-typedef struct treeqp_hpmpc_workspace_
+typedef struct treeqp_hpipm_workspace_
 {
-    int *nb;
-    int **idxb;
+    int *nkids;
+	struct tree hpipm_tree;  // NOTE(dimitris): no extra memory for this struct
 
-    struct blasfeo_dvec *sux;
-    struct blasfeo_dvec *slam;
-    struct blasfeo_dvec *sst;
+	struct d_tree_ocp_qp_dim hpipm_qp_dim;
+	struct d_tree_ocp_qp hpipm_qp_in;
+	struct d_tree_ocp_qp_ipm_arg arg;
+	struct d_tree_ocp_qp_sol hpipm_qp_out;
+    struct d_tree_ocp_qp_ipm_workspace hpipm_memory;
 
-    struct blasfeo_dmat *sRSQrq;
-    struct blasfeo_dmat *sBAbt;
-    struct blasfeo_dmat *sDCt;
-    struct blasfeo_dvec *sd;
+} treeqp_hpipm_workspace;
 
-    double *status;
-    void *internal;
+int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts);
 
-} treeqp_hpmpc_workspace;
+void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
+    treeqp_hpipm_workspace *work, void *ptr);
 
-int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax);
-
-void setup_nb(tree_ocp_qp_in *qp_in, int *nb);
-
-int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts);
-
-void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
-    treeqp_hpmpc_workspace *work, void *ptr);
-
-int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_options_t *opts,
-    treeqp_hpmpc_workspace *work);
+int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_options_t *opts,
+    treeqp_hpipm_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
 
-#endif  /* TREEQP_SRC_HPMPC_TREE_H_ */
+#endif  /* TREEQP_SRC_HPIPM_TREE_H_ */
