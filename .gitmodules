@@ -7,3 +7,6 @@
 [submodule "external/qpoases"]
 	path = external/qpoases
 	url = https://github.com/acados/qpOASES
+[submodule "external/hpipm"]
+	path = external/hpipm
+	url = https://github.com/giaf/hpipm.git
