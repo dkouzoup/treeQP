@@ -127,6 +127,8 @@ double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
 
 // TODO(dimitris): move to utils
+void tree_ocp_qp_in_print_dims(tree_ocp_qp_in *qp_in);
+
 void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out);
@@ -153,7 +155,7 @@ void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
-    double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
+    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
 
 
 #ifdef __cplusplus

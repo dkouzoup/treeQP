@@ -631,6 +631,24 @@ int max_number_of_general_constraints(tree_ocp_qp_in *qp_in)
 
 
 
+void tree_ocp_qp_in_print_dims(tree_ocp_qp_in *qp_in)
+{
+    int N = qp_in->N;
+    int *nx = qp_in->nx;
+    int *nu = qp_in->nu;
+    int *nc = qp_in->nc;
+
+    // printf("k\tnx\tnu\tnb\tnbx\tnbu\tng\tns\n");
+    printf("k\tnx\tnu\tnc\n");
+
+    for (int ii = 0; ii < 10; ii++)
+    {
+        printf("%d\t%d\t%d\t%d\n", ii, nx[ii], nu[ii], nc[ii]);
+    }
+}
+
+
+
 void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
@@ -794,7 +812,7 @@ void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
-    double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
+    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     struct node *tree = (struct node *) qp_in->tree;
@@ -939,15 +957,21 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
         blasfeo_pack_dvec(sumin[ii].m, umin, &sumin[ii], 0);
         blasfeo_pack_dvec(sumax[ii].m, umax, &sumax[ii], 0);
 
-        if (C != NULL && D != NULL && dmin != NULL && dmax != NULL)
+        if (C != NULL && CN != NULL && D != NULL && dmin != NULL && dmax != NULL)
         {
-            blasfeo_pack_dmat(nc, nx, C, nc, &sC[ii], 0, 0);
-            blasfeo_pack_dmat(nc, nu, D, nc, &sD[ii], 0, 0);
-            blasfeo_pack_dvec(sdmin[ii].m, dmin, &sdmin[ii], 0);
-            blasfeo_pack_dvec(sdmax[ii].m, dmax, &sdmax[ii], 0);
+            if (tree[ii].nkids > 0)
+            {
+                blasfeo_pack_dmat(nc, nx, C, nc, &sC[ii], 0, 0);
+                blasfeo_pack_dmat(nc, nu, D, nc, &sD[ii], 0, 0);
+            }
+            else
+            {
+                blasfeo_pack_dmat(nc, nx, CN, nc, &sC[ii], 0, 0);
+            }
+            blasfeo_pack_dvec(nc, dmin, &sdmin[ii], 0);
+            blasfeo_pack_dvec(nc, dmax, &sdmax[ii], 0);
         }
     }
-
     if (eliminatedX0 == YES)
     {
         blasfeo_free_dmat(&sA0);

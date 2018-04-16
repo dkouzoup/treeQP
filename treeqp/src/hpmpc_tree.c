@@ -341,27 +341,42 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
             if (idxb < nu[ii])
             {
                 BLASFEO_DVECEL(&work->sd[ii], jj) = BLASFEO_DVECEL(&qp_in->umin[ii], idxb);
-                BLASFEO_DVECEL(&work->sd[ii], jj + nb[ii] + nc[ii]) = BLASFEO_DVECEL(&qp_in->umax[ii], idxb);
+                BLASFEO_DVECEL(&work->sd[ii], jj+nb[ii]+nc[ii]) = BLASFEO_DVECEL(&qp_in->umax[ii], idxb);
             }
             else
             {
                 BLASFEO_DVECEL(&work->sd[ii], jj) = BLASFEO_DVECEL(&qp_in->xmin[ii], idxb - nu[ii]);
-                BLASFEO_DVECEL(&work->sd[ii], jj + nb[ii] + nc [ii]) = BLASFEO_DVECEL(&qp_in->xmax[ii], idxb - nu[ii]);
+                BLASFEO_DVECEL(&work->sd[ii], jj+nb[ii]+nc[ii]) = BLASFEO_DVECEL(&qp_in->xmax[ii], idxb - nu[ii]);
             }
         }
         blasfeo_dgetr(nc[ii], nu[ii], &qp_in->D[ii], 0, 0, &sDCt[ii], 0, 0);
         blasfeo_dgetr(nc[ii], nx[ii], &qp_in->C[ii], 0, 0, &sDCt[ii], nu[ii], 0);
         blasfeo_dveccp(nc[ii], &qp_in->dmin[ii], 0, &work->sd[ii], nb[ii]);
         blasfeo_dveccp(nc[ii], &qp_in->dmax[ii], 0, &work->sd[ii], 2*nb[ii]+nc[ii]);
+        // blasfeo_dvecse(nc[ii], -1000.0, &qp_in->dmin[ii], 0);
+        // blasfeo_dvecse(nc[ii], +1000.0, &qp_in->dmax[ii], 0);
     }
-
     qp_out->info.interface_time = treeqp_toc(&interface_tmr);
     treeqp_tic(&solver_tmr);
+
+
+    // TODO(dimitris): fix bug in general constraints and remove those prints
+    // for (int ii = 0; ii < qp_in->N; ii++)
+    // {
+    //     printf("ii = %d / %d (nx = %d, nu = %d, nb = %d, nc = %d)\n", ii, qp_in->N, nx[ii], nu[ii], nb[ii], nc[ii]);
+    //     printf("idxb = \n");
+    //     int_print_mat(1, nb[ii], work->idxb[ii], 1);
+    //     printf("d = \n");
+    //     blasfeo_print_tran_dvec(2*nb[ii]+2*nc[ii], &work->sd[ii], 0);
+    //     printf("DCt = \n");
+    //     blasfeo_print_dmat(nx[ii]+nu[ii], nc[ii], &sDCt[ii], 0, 0);
+    //     // if (ii == 10) exit(1);
+    // }
 
     // solve QP
     int status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
-            nx, nu, nb, work->idxb, nc, sBAbt, sRSQrq, work->sDCt, work->sd,
+            nx, nu, nb, work->idxb, nc, sBAbt, sRSQrq, sDCt, work->sd,
             work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
 
     qp_out->info.solver_time = treeqp_toc(&solver_tmr);

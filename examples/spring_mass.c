@@ -79,17 +79,27 @@ int main( ) {
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
 
-    int NC = 0;
-
     #ifdef TEST_GENERAL_CONSTRAINTS
-    NC = 1;  // chose between 1 and 2
+    int NC = 1;  // chose between 1 (either state or inpute constraint converted) and 2 (both converted)
     int make_u_constr_general = 1;  // if 1, choose which bound to convert to general constraint
-    #endif
 
-    double *C = calloc(NC*NX, sizeof(double));
-    double *D = calloc(NC*NU, sizeof(double));
-    double *dmin = calloc(NC, sizeof(double));
-    double *dmax = calloc(NC, sizeof(double));
+    int NCn;  // number of general constraints at last stage
+    if (NC == 2)
+    {
+        NCn = 1;
+    }
+    else
+    {
+        if (make_u_constr_general == 0)
+        {
+            NCn = 1;
+        }
+        else
+        {
+            NCn = 0;
+        }
+    }
+    #endif
 
     // NOTE(dimitris): changing xmax to have some active state  constraints at solution
     xmax[1] = .2;
@@ -109,17 +119,19 @@ int main( ) {
         if (tree[ii].nkids > 0)  // not a leaf
         {
             nu[ii] = NU;
+            nc[ii] = 0;
+            #ifdef TEST_GENERAL_CONSTRAINTS
+            nc[ii] = NC;
+            #endif
         }
         else
         {
             nu[ii] = 0;
+            nc[ii] = 0;
+            #ifdef TEST_GENERAL_CONSTRAINTS
+            nc[ii] = NCn;
+            #endif
         }
-
-        #ifdef TEST_GENERAL_CONSTRAINTS
-        nc[ii] = NC;
-        #else
-        nc[ii] = 0;
-        #endif
     }
 
     int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree);
@@ -129,10 +141,17 @@ int main( ) {
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
+    double *C = calloc(NC*NX, sizeof(double));
+    double *CN = calloc(NCn*NX, sizeof(double));
+    double *D = calloc(NC*NU, sizeof(double));
+    double *dmin = calloc(NC, sizeof(double));
+    double *dmax = calloc(NC, sizeof(double));
+
     if (NC == 2)
     {
         C[0+1*NC] = 1.0;
         D[1+0*NC] = 1.0;
+        CN[0+1*NCn] = 1.0;
 
         dmin[0] = xmin[1];
         dmin[1] = umin[0];
@@ -151,14 +170,14 @@ int main( ) {
         else
         {
             C[1] = 1;
-
+            CN[1] = 1;
             dmin[0] = xmin[1];
             dmax[0] = xmax[1];
         }
     }
 
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
-        xmin, xmax, umin, umax, x0, C, D, dmin, dmax, &qp_in);
+        xmin, xmax, umin, umax, x0, C, CN, D, dmin, dmax, &qp_in);
 
     // remove bounds
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
@@ -186,7 +205,7 @@ int main( ) {
 
     #else
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
-        xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, &qp_in);
+        xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
     #endif
 
     // set up tree-sparse dual Newton solver
@@ -261,9 +280,16 @@ int main( ) {
     }
 
     // solve with tree-sparse HPMPC
+    int hpmpc_status = -1;
+
     max_overhead = 0;
     for (int jj = 0; jj < NREP; jj++) {
-        treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+        hpmpc_status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+        if (hpmpc_status != 0)
+        {
+            printf("HPMPC failed with status %d!\n", hpmpc_status);
+            exit(-1);
+        }
         printf("hpmpc run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);
         printf("interface time:\t %5.2f ms\n", qp_out.info.interface_time*1e3);
@@ -287,10 +313,13 @@ int main( ) {
     free(nu);
     free(nc);
 
+    #ifdef TEST_GENERAL_CONSTRAINTS
     free(C);
+    free(CN);
     free(D);
     free(dmin);
     free(dmax);
+    #endif
 
     free(qp_in_memory);
     free(qp_out_memory);
