@@ -160,6 +160,13 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *o
     dim.ns = ns;
     dim.memsize = -1;
 
+    // // TEMP
+    // int dim_size = d_memsize_tree_ocp_qp_dim(Nn);
+	// void *dim_mem = malloc(dim_size);
+	// struct d_tree_ocp_qp_dim dim_new;
+	// d_create_tree_ocp_qp_dim(Nn, &dim_new, dim_mem);
+	// d_cvt_int_to_tree_ocp_qp_dim(&hpipm_tree, nx, nu, nbx, nbu, nc, ns, &dim_new);
+
     // set up dummy qp in (only dims matter in calculate size)
     struct d_tree_ocp_qp qp;
     qp.dim = &dim;
@@ -322,8 +329,8 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
         blasfeo_dveccp(nx[ii], &qp_in->q[ii], 0, &srq[ii], nu[ii]);
 
         // TODO ARE THOSE NEEDED??
-        blasfeo_drowin(nu[ii], 1.0, &qp_in->r[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], 0);
-        blasfeo_drowin(nx[ii], 1.0, &qp_in->q[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
+        // blasfeo_drowin(nu[ii], 1.0, &qp_in->r[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], 0);
+        // blasfeo_drowin(nx[ii], 1.0, &qp_in->q[ii], 0, &sRSQrq[ii], nu[ii] + nx[ii], nu[ii]);
 
         if (ii > 0)
         {
@@ -333,7 +340,7 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
 
             blasfeo_dveccp(nx[ii], &qp_in->b[ii-1], 0, &sb[ii-1], 0);
             // TODO IS THIS NEEDED??
-            blasfeo_drowin(nx[ii], 1.0, &qp_in->b[ii-1], 0, &sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
+            // blasfeo_drowin(nx[ii], 1.0, &qp_in->b[ii-1], 0, &sBAbt[ii-1], nx[idxp] + nu[idxp], 0);
         }
 
         for (int jj = 0; jj < nb[ii]; jj++)
@@ -358,40 +365,126 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     qp_out->info.interface_time = treeqp_toc(&interface_tmr);
     treeqp_tic(&solver_tmr);
 
+#if 0
+
+    struct d_tree_ocp_qp *qp = &work->hpipm_qp_in;
+
+	int N2 = qp->dim->Nn;
+	int *nx2 = qp->dim->nx;
+	int *nu2 = qp->dim->nu;
+	int *nb2 = qp->dim->nb;
+	int *ng2 = qp->dim->ng;
+	int *ns2 = qp->dim->ns;
+
+	int ii;
+
+	printf("\nnb\n");
+	int_print_mat(1, N2, nb2, 1);
+	printf("\nng\n");
+	int_print_mat(1, N2, ng2, 1);
+	printf("\nns\n");
+	int_print_mat(1, N2, ns2, 1);
+
+    printf("\nd\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+		blasfeo_print_tran_dvec(2*nb[ii]+2*ng2[ii]+2*ns2[ii], qp->d+ii, 0);
+        assert((qp->d+ii)->m == 2*nb[ii]+2*ng2[ii]+2*ns2[ii]);
+    }
+
+    printf("\nlb\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+		blasfeo_print_tran_dvec(nb2[ii], qp->d+ii, 0);
+    }
+
+	printf("\nlg\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	blasfeo_print_tran_dvec(ng2[ii], qp->d+ii, nb2[ii]);
+    }
+
+    printf("\nub\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	blasfeo_print_tran_dvec(nb2[ii], qp->d+ii, nb2[ii]+ng2[ii]);
+    }
+
+    printf("\nug\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	blasfeo_print_tran_dvec(ng2[ii], qp->d+ii, 2*nb2[ii]+ng2[ii]);
+    }
+
+    printf("\nls\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	blasfeo_print_tran_dvec(ns2[ii], qp->d+ii, 2*nb2[ii]+2*ng2[ii]);
+    }
+
+    printf("\nus\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	blasfeo_print_tran_dvec(ns2[ii], qp->d+ii, 2*nb2[ii]+2*ng2[ii]+ns2[ii]);
+    }
+
+	printf("\nidxb\n");
+	for(ii=0; ii<N2; ii++)
+    {
+        printf("ii = %d\n", ii);
+    	int_print_mat(1, nb2[ii], qp->idxb[ii], 1);
+    }
+
+	printf("\nidxs\n");
+	for(ii=0; ii<N2; ii++)
+    {
+		int_print_mat(1, ns2[ii], qp->idxs[ii], 1);
+        assert(ns2[ii] == 0);
+    }
+
+	printf("\nZ\n");
+	for(ii=0; ii<N2; ii++)
+		blasfeo_print_tran_dvec(2*ns2[ii], qp->Z+ii, 0);
+
+    printf("\nrqz\n");
+	for(ii=0; ii<N2; ii++)
+		blasfeo_print_tran_dvec(nu2[ii]+nx2[ii]+2*ns2[ii], qp->rqz+ii, 0);
+
+	printf("\nRSQ\n");
+	for(ii=0; ii<N2; ii++)
+		blasfeo_print_dmat(nu2[ii]+nx2[ii]+2*ns2[ii], nu2[ii]+nx2[ii]+2*ns2[ii], qp->RSQrq+ii, 0, 0);
+
+	printf("\nBAt\n");
+	for(ii=0; ii<N2-1; ii++)
+		blasfeo_print_dmat(nu2[ii]+nx2[ii], nx2[ii+1], qp->BAbt+ii, 0, 0);
+
+#endif
+
     // solve QP
     // TODO(dimitris): rename arg to hpipm_arg
+    // work->hpipm_qp_in.dim->ttree->kids = NULL;  // TODO is this even needed?
     int status = d_solve_tree_ocp_qp_ipm(&work->hpipm_qp_in, &work->hpipm_qp_out, &work->arg, &work->hpipm_memory);
 
 
-    // TODO(dimitris): fix bug and remove those prints
-    assert(Nn == work->hpipm_qp_in.dim->Nn);
-    for (int ii = 0; ii < qp_in->N; ii++)
-    {
-        assert(nx[ii] == work->hpipm_qp_in.dim->nx[ii]);
-        assert(nu[ii] == work->hpipm_qp_in.dim->nu[ii]);
-        assert(nb[ii] == work->hpipm_qp_in.dim->nbu[ii]+work->hpipm_qp_in.dim->nbx[ii]);
-        assert(nc[ii] == work->hpipm_qp_in.dim->ng[ii]);
-        assert(work->hpipm_qp_in.dim->ns[ii] == 0);
-        printf("ii = %d / %d (nx = %d, nu = %d, nb = %d, nc = %d)\n", ii, qp_in->N, nx[ii], nu[ii], nb[ii], nc[ii]);
-        // printf("idxb = \n");
-        // int_print_mat(1, nb[ii], work->idxb[ii], 1);
-        // printf("d = \n");
-        // blasfeo_print_tran_dvec(2*nb[ii]+2*nc[ii], &sd[ii], 0);
-        // printf("sRSQrq\n");
-        // blasfeo_print_dmat(nx[ii]+nu[ii], nx[ii]+nu[ii], &sRSQrq[ii], 0, 0);
+#if 0
 
-        // if (ii > 0)
-        // {
-        //     printf("sBAt\n");
-        //     blasfeo_print_dmat(sBAbt[ii-1].m-1, sBAbt[ii-1].n, &sBAbt[ii-1], 0, 0);
-        // }
+    struct d_tree_ocp_qp_sol *sol = &work->hpipm_qp_out;
 
-        // printf("DCt = \n");
-        // blasfeo_print_dmat(nx[ii]+nu[ii], nc[ii], &sDCt[ii], 0, 0);
-        // if (ii == 10) exit(1);
-    }
+    printf("\nux\n");
+	for(ii=0; ii<N2; ii++)
+		blasfeo_print_tran_dvec(nu2[ii]+nx2[ii], sol->ux+ii, 0);
+    exit(1);
 
     printf("\nSTATUS = %d!!!!", status);
+
+#endif
 
     qp_out->info.solver_time = treeqp_toc(&solver_tmr);
 
@@ -422,7 +515,7 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
         // blasfeo_daxpy(nc[ii], -1.0, &work->slam[ii], nb[ii], &work->slam[ii], 2*nb[ii]+nc[ii], &qp_out->mu_d[ii], 0);
     }
 
-    // qp_out->info.interface_time += treeqp_toc(&interface_tmr);
+    qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
-    // return status;
+    return status;
 }

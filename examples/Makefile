@@ -49,7 +49,9 @@ spring_mass_sdunes_example: spring_mass_dual_newton_scenarios.o
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_example: spring_mass.o
-	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
+spring_mass_debug_example: spring_mass_debug.o
+	$(CC) -o spring_mass_debug.out spring_mass_debug.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc -lhpipm
+	./spring_mass_debug.out
 
 fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc

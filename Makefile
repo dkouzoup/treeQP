@@ -88,6 +88,9 @@ spring_mass_tdunes_example: treeqp_static
 spring_mass_sdunes_example: treeqp_static
 	( cd examples; $(MAKE) spring_mass_sdunes_example TOP=$(TOP) )
 
+spring_mass_debug_example: treeqp_static
+	( cd examples; $(MAKE) spring_mass_debug_example TOP=$(TOP) )
+
 fault_tolerance_example: treeqp_static # code-generate data in python first first
 	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
 
