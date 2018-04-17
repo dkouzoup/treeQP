@@ -76,7 +76,6 @@ void setup_nkids(tree_ocp_qp_in *qp_in, int *nkids)
             nkids[kk++] = tree[ii].kids[jj];
         }
     }
-    nkids[Nn] = 0;
 }
 
 
