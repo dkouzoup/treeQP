@@ -37,10 +37,10 @@ FAULT_TOLERANCE_OBJS =
 FAULT_TOLERANCE_OBJS += fault_tolerance.o
 FAULT_TOLERANCE_OBJS += fault_tolerance_utils/load_data.o
 
-LIBS = -ltreeqp -lblasfeo -lqpoases -lm -ldl
+LIBS = -ltreeqp -lhpmpc -lhpipm -lblasfeo -lqpoases -lm -ldl
 
 random_qp_example: random_qp.o
-	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
+	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_tdunes_example: spring_mass_dual_newton_tree.o
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
@@ -49,15 +49,15 @@ spring_mass_sdunes_example: spring_mass_dual_newton_scenarios.o
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_example: spring_mass.o
-	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc -lhpipm
+	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_debug_example: spring_mass_debug.o
-	$(CC) -o spring_mass_debug.out spring_mass_debug.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc -lhpipm
+	$(CC) -o spring_mass_debug.out spring_mass_debug.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 	./spring_mass_debug.out
 
 fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
-	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc
-	$(CC) -o fault_tolerance.so fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -shared -lhpmpc
+	$(CC) -o fault_tolerance.out fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o fault_tolerance.so fault_tolerance.o fault_tolerance_utils/transition_matrix.c fault_tolerance_utils/load_data.o $(CFLAGS) $(LDFLAGS) $(LIBS) -shared
 
 examples:
 	$(MAKE) random_qp_example
