@@ -50,14 +50,28 @@ treeqp_hpipm_options_t treeqp_hpipm_default_options()
     treeqp_hpipm_options_t opts;
 
     opts.maxIter = 20;
-
-	// opts.mu0 = 2.0;
-	// opts.mu_tol = 1e-12;
-	// opts.alpha_min = 1e-8;
-	// opts.warm_start = 0;
-    // opts.compute_mult = 1;
+	opts.mu0 = 2.0;
+	opts.tol = 1e-12;
+	opts.alpha_min = 1e-8;
+	opts.warm_start = 0;
 
     return opts;
+}
+
+
+
+static void cast_options(treeqp_hpipm_options_t *treeqp_opts, struct d_tree_ocp_qp_ipm_arg *hpipm_opts)
+{
+    hpipm_opts->iter_max = treeqp_opts->maxIter;
+    hpipm_opts->stat_max = treeqp_opts->maxIter;
+    hpipm_opts->mu0 = treeqp_opts->mu0;
+    hpipm_opts->alpha_min = treeqp_opts->alpha_min;
+    hpipm_opts->warm_start = treeqp_opts->warm_start;
+
+    hpipm_opts->res_g_max = treeqp_opts->tol;
+    hpipm_opts->res_b_max = treeqp_opts->tol;
+    hpipm_opts->res_d_max = treeqp_opts->tol;
+    hpipm_opts->res_m_max = treeqp_opts->tol;
 }
 
 
@@ -253,7 +267,7 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
     // set up args
     d_create_tree_ocp_qp_ipm_arg(NULL, &work->arg, c_ptr);
 	d_set_default_tree_ocp_qp_ipm_arg(&work->arg);
-    work->arg.stat_max = opts->maxIter; // TODO CAST OPTIONS PROPERLY!!!!!!!!!!!!!!!!!!!!!!!!!!
+    cast_options(opts, &work->arg);
     c_ptr += work->arg.memsize;
 
     // set up qp sol
@@ -501,6 +515,6 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     }
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
-
+    qp_out->info.iter = work->hpipm_memory.iter;
     return status;
 }

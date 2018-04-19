@@ -41,7 +41,7 @@ extern "C" {
 typedef struct
 {
 	int maxIter;  // k_max
-	int mu0;  // max element value in cost function
+	double mu0;  // max element value in cost function
 	double mu_tol;
 	double alpha_min;
 	int warm_start;  // read initial guess from x and u

@@ -46,14 +46,11 @@ extern "C" {
 
 typedef struct
 {
-    // TODO(dimitris): add all relevant opts
-	int maxIter;  // k_max
-	// int mu0;  // max element value in cost function
-	// double mu_tol;
-	// double alpha_min;
-	// int warm_start;  // read initial guess from x and u
-	// int compute_mult;
-
+	int maxIter;
+	double mu0;
+	double tol;  // tolerance for res_g_max, res_b_max, res_d_max, res_m_max (can also tune individually in hpipm...)
+	double alpha_min;
+	int warm_start;
 } treeqp_hpipm_options_t;
 
 treeqp_hpipm_options_t treeqp_hpipm_default_options();
