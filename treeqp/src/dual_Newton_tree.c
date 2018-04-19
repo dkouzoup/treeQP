@@ -110,8 +110,8 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts)
     opts->lineSearchBeta = 0.6;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
-    opts->regTol   = 1.0e-12;
-    opts->regValue = 1.0e-8;
+    opts->regTol   = 1.0e-6;
+    opts->regValue = 1.0e-6;
 }
 
 

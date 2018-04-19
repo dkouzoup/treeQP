@@ -1,7 +1,7 @@
 /* Defs */
 
 #define SOLVE_WITH_TDUNES
-// #define SOLVE_WITH_SDUNES  NOT IMPLEMENTED YET!
+#define SOLVE_WITH_SDUNES
 #define SOLVE_WITH_HPMPC
 #define SOLVE_WITH_HPIPM
 

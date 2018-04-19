@@ -32,6 +32,7 @@
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/hpipm_tree.h"
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/dual_Newton_scenarios.h"
 
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
@@ -50,22 +51,43 @@
 // TODO(dimitris): clean this up (and add matlab/python gen. script in utils)
 #include "examples/spring_mass_utils/data.c"
 
-int main( ) {
+int main( )
+{
+    #ifdef SOLVE_WITH_TDUNES
+    #ifdef TEST_GENERAL_CONSTRAINTS
+    printf("Cannot test general constraints with SDUNES!\n");
+    return -1;
+    #endif
+    #endif
+
     return_t status;
 
     int Nn = calculate_number_of_nodes(md, Nr, Nh);
     int Np = Nn - ipow(md, Nr);
+    int Ns = ipow(md, Nr);
 
-    // read initial point from txt file
-    int nl = Nn*NX;
-    double *lambda = malloc(nl*sizeof(double));
-    status = read_double_vector_from_txt(lambda, nl, "examples/spring_mass_utils/lambda0_tree.txt");
+    // read initial point for tdunes from txt file
+    int nl_tdunes = Nn*NX;
+    double *lambda_tdunes = malloc(nl_tdunes*sizeof(double));
+    status = read_double_vector_from_txt(lambda_tdunes, nl_tdunes, "examples/spring_mass_utils/lambda0_tree.txt");
     if (status != TREEQP_OK) return -1;
+
+
+    // read initial point for sdunes from txt file
+    int nl_sdunes = treeqp_sdunes_calculate_dual_dimension(Nr, md, NU);
+    double *mu_sdunes = malloc(Ns*Nh*NX*sizeof(double));
+    double *lambda_sdunes = malloc(nl_sdunes*sizeof(double));
+    status = read_double_vector_from_txt(mu_sdunes, Ns*Nh*NX, "examples/spring_mass_utils/mu0_scen.txt");
+    if (status != 0) return -1;
+    status = read_double_vector_from_txt(lambda_sdunes, nl_sdunes, "examples/spring_mass_utils/lambda0_scen.txt");
+    if (status != 0) return -1;
+
 
     // read constraint on x0 from txt file
     double x0[NX];
     status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
     if (status != TREEQP_OK) return status;
+
 
     // setup scenario tree
     struct node *tree = malloc(Nn*sizeof(struct node));
@@ -79,6 +101,7 @@ int main( ) {
     int *nc = malloc(Nn*sizeof(int));
 
     #ifdef TEST_GENERAL_CONSTRAINTS
+
     int NC = 1;  // chose between 1 (either state or inpute constraint converted) and 2 (both converted)
     int make_u_constr_general = 1;  // if 1, choose which bound to convert to general constraint
 
@@ -112,7 +135,7 @@ int main( ) {
         }
         else
         {
-            nx[ii] = NX;
+            nx[ii] = 0;
         }
 
         if (tree[ii].nkids > 0)  // not a leaf
@@ -207,6 +230,17 @@ int main( ) {
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
     #endif
 
+    // setup QP solution
+    tree_ocp_qp_out qp_out;
+
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
+    void *qp_out_memory = malloc(qp_out_size);
+    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
+
+    double overhead;
+    double max_overhead;
+    double kkt_err;
+
     // set up tree-sparse dual Newton solver
     #ifdef SOLVE_WITH_TDUNES
 
@@ -224,11 +258,20 @@ int main( ) {
         tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
         #endif
     }
-    tdunes_opts.maxIter = 100;  // set to 1 for debugging
 
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
     treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, tdunes_memory);
+    #endif
+
+    // set up scenario-based dual Newton solver
+    #ifdef SOLVE_WITH_SDUNES
+    treeqp_sdunes_opts_t sdunes_opts;
+    treeqp_sdunes_opts_set_default(Nn, &sdunes_opts);
+
+    treeqp_sdunes_workspace sdunes_work;
+    void *sdunes_memory = malloc(treeqp_sdunes_calculate_size(&qp_in, &sdunes_opts));
+    treeqp_sdunes_create(&qp_in, &sdunes_opts, &sdunes_work, sdunes_memory);
     #endif
 
     // set up HPMPC solver
@@ -257,40 +300,21 @@ int main( ) {
     treeqp_hpipm_create(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
     #endif
 
-    // setup QP solution
-    tree_ocp_qp_out qp_out;
-
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
-    void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
-
-    double overhead;
-    double max_overhead;
-    double kkt_err;
-
     // solve with tree-sparse dual Newton strategy
     #ifdef SOLVE_WITH_TDUNES
+    int tdunes_status = -1;
     max_overhead = 0;
+
     for (int jj = 0; jj < NREP; jj++)
     {
-        treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
+        treeqp_tdunes_set_dual_initialization(lambda_tdunes, &tdunes_work);
 
-        if (tdunes_opts.maxIter == 1)  // run algorithm one iteration at a time for debugging
-        {
-            for (int ll = 0; ll < 50; ll++)
-            {
-                treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+        tdunes_status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
 
-                for (int kk = 1; kk < Nn; kk++)
-                {   // pass multipliers to next iteration
-                    blasfeo_dveccp(nx[kk], &qp_out.lam[kk], 0, &tdunes_work.slambda[tree[kk].dad], tdunes_work.idxpos[kk]);
-                }
-                printf("Newton iteration #%d\n", ll);
-            }
-        }
-        else
+        if (tdunes_status != TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
         {
-            treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+            printf("TDUNES failed with status %d! <--------------------------------------------------\n", tdunes_status);
+            // exit(-1);
         }
 
         printf("tdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
@@ -306,6 +330,42 @@ int main( ) {
     assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
+
+    for (int ii = 0; ii < 5; ii++)
+    {
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+    }
+    #endif
+
+
+    // solve with scenario-based dual Newton strategy
+    #ifdef SOLVE_WITH_SDUNES
+    int sdunes_status = -1;
+    max_overhead = 0;
+
+    for (int jj = 0; jj < NREP; jj++)
+    {
+        treeqp_sdunes_set_dual_initialization(lambda_sdunes, mu_sdunes, &sdunes_work);
+
+        sdunes_status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
+        if (sdunes_status != TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
+        {
+            printf("SDUNES failed with status %d! <--------------------------------------------------\n", sdunes_status);
+            // exit(-1);
+        }
+        printf("sdunes run # %d (%d iterations)\n", jj, qp_out.info.iter);
+        printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);
+        printf("interface time:\t %5.2f ms\n", qp_out.info.interface_time*1e3);
+        overhead = 100*qp_out.info.interface_time/qp_out.info.solver_time;
+        printf("overhead:\t %5.2f %% \n", overhead);
+        if (overhead > max_overhead) max_overhead = overhead;
+    }
+
+    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (sdunes):\t\t\t %2.2e\n\n", kkt_err);
+    assert(kkt_err < 1e-10 && "KKT tolerance of sdunes in spring_mass.c too high!");
+
+    printf("Maximum overhead of treeQP interface (sdunes):\t\t %4.2f%%\n\n", max_overhead);
 
     for (int ii = 0; ii < 5; ii++)
     {
@@ -413,7 +473,9 @@ int main( ) {
     free_tree(Nn, tree);
     free(tree);
 
-    free(lambda);
+    free(lambda_tdunes);
+    free(lambda_sdunes);
+    free(mu_sdunes);
 
     if (xmax[1] == .2) printf("[TREEQP] Warning! Bound on state has been overwritten with tighter one!\n\n");
 

@@ -88,8 +88,8 @@ void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts)
     opts->lineSearchBeta = 0.6;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
-    opts->regTol   = 1.0e-12;
-    opts->regValue = 1.0e-8;
+    opts->regTol   = 1.0e-6;
+    opts->regValue = 1.0e-6;
 }
 
 
@@ -1918,7 +1918,8 @@ int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         error = calculate_error_in_residuals(Ns, Nh, opts->termCondition, work);
 
         // printf("\n-------- qpdunes iteration %d, error %f \n\n", NewtonIter+1, error);
-        if (error < opts->stationarityTolerance) {
+        if (error < opts->stationarityTolerance)
+        {
             // printf("optimal solution found (error = %5.2e)\n", error);
             status = TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
             break;
