@@ -38,18 +38,27 @@ extern "C" {
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
+
+// memory to store temporary calculations when calculating solver size
 typedef struct
 {
-	int maxIter;  // k_max
-	double mu0;  // max element value in cost function
-	double mu_tol;
-	double alpha_min;
-	int warm_start;  // read initial guess from x and u
-	int compute_mult;
+    int *nb;
+} scrap_memory_hpmpc_t;
 
-} treeqp_hpmpc_options_t;
 
-treeqp_hpmpc_options_t treeqp_hpmpc_default_options();
+
+typedef struct
+{
+	int maxIter;                 // maximum number of IP iterations (status = 1 if reached)
+	double mu0;                  // max element value in cost function
+	double mu_tol;               // tolerance for termination condition (status = 0 if reached)
+	double alpha_min;            // minimum step size (status = 2 if reached)
+	int warm_start;              // read initial guess from x and u
+	int compute_mult;            // compute dual variables
+    scrap_memory_hpmpc_t scrap;  // scrap memory needed in treeqp_hpmpc_calculate_size
+} treeqp_hpmpc_opts_t;
+
+
 
 typedef struct treeqp_hpmpc_workspace_
 {
@@ -70,6 +79,16 @@ typedef struct treeqp_hpmpc_workspace_
 
 } treeqp_hpmpc_workspace;
 
+
+
+int treeqp_hpmpc_opts_calculate_size(int Nn);
+
+void treeqp_hpmpc_opts_create(int Nn, treeqp_hpmpc_opts_t *opts, void *ptr);
+
+void treeqp_hpmpc_opts_set_default(treeqp_hpmpc_opts_t *opts);
+
+
+
 int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax);
 
 void setup_nb(tree_ocp_qp_in *qp_in, int *nb);
@@ -78,13 +97,15 @@ int get_size_idxb(tree_ocp_qp_in *qp_in);
 
 void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb);
 
-int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts);
 
-void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
-    treeqp_hpmpc_workspace *work, void *ptr);
 
-int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_options_t *opts,
-    treeqp_hpmpc_workspace *work);
+int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts);
+
+void treeqp_hpmpc_create(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work, void *ptr);
+
+int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work);
+
+
 
 #ifdef __cplusplus
 }  /* extern "C" */

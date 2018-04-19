@@ -94,11 +94,11 @@ int main( ) {
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
 
     // set up HPMPC solver
-	treeqp_hpmpc_options_t hpmpc_opts = treeqp_hpmpc_default_options();
+	treeqp_hpmpc_opts_t hpmpc_opts = treeqp_hpmpc_opts_set_default();
 
     treeqp_hpmpc_workspace hpmpc_work;
     void *hpmpc_memory = malloc(treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts));
-    create_treeqp_hpmpc(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
+    treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
 
     // set up HPIPM solver
 	treeqp_hpipm_options_t hpipm_opts = treeqp_hpipm_default_options();

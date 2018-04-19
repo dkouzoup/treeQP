@@ -435,7 +435,9 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
 
     // set up QP solver options
     treeqp_tdunes_options_t tdunes_opts;
-    treeqp_hpmpc_options_t hpmpc_opts;
+    treeqp_hpmpc_opts_t hpmpc_opts;
+    int opts_size;
+    void *hpmpc_opts_mem;
 
     int max_Nn = data[0].Nn;
     for (int ii = 1; ii < n_realizations; ii++)
@@ -463,7 +465,10 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             for (int ii = 0; ii < max_Nn; ii++) tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
             break;
         case TREEQP_HPMPC:
-            hpmpc_opts = treeqp_hpmpc_default_options(max_Nn);
+            opts_size = treeqp_hpmpc_opts_calculate_size(max_Nn);
+            hpmpc_opts_mem = malloc(opts_size);
+            treeqp_hpmpc_opts_create(max_Nn, &hpmpc_opts, hpmpc_opts_mem);
+            treeqp_hpmpc_opts_set_default(&hpmpc_opts);
             break;
         default:
             printf("Unknown specified solver. Exiting . . .\n");
@@ -514,12 +519,12 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
                 case TREEQP_HPMPC:
                     size = treeqp_hpmpc_calculate_size(&qp_ins[ii], &hpmpc_opts);
                     solver_memories[ii] = malloc(size);
-                    create_treeqp_hpmpc(&qp_ins[ii], &hpmpc_opts, &works_hpmpc[ii], solver_memories[ii]);
+                    treeqp_hpmpc_create(&qp_ins[ii], &hpmpc_opts, &works_hpmpc[ii], solver_memories[ii]);
                     break;
             }
 
             // set up QP solution
-            size = tree_ocp_qp_out_calculate_size(data[ii].Nn, data[ii].nx, NULL, data[ii].nu);
+            size = tree_ocp_qp_out_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL);
             qp_out_memories[ii] = malloc(size);
             tree_ocp_qp_out_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, &qp_outs[ii], qp_out_memories[ii]);
         }

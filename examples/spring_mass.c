@@ -227,11 +227,15 @@ int main( ) {
 
     // set up HPMPC solver
     #ifdef SOLVE_WITH_HPMPC
-	treeqp_hpmpc_options_t hpmpc_opts = treeqp_hpmpc_default_options();
+    treeqp_hpmpc_opts_t hpmpc_opts;
+    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
+    void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
+    treeqp_hpmpc_opts_create(Nn, &hpmpc_opts, hpmpc_opts_mem);
+    treeqp_hpmpc_opts_set_default(&hpmpc_opts);
 
     treeqp_hpmpc_workspace hpmpc_work;
     void *hpmpc_memory = malloc(treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts));
-    create_treeqp_hpmpc(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
+    treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
     #endif
 
     // set up HPIPM solver

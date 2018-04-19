@@ -99,12 +99,17 @@ int main() {
     create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
 
 #else
-    treeqp_hpmpc_options_t opts = treeqp_hpmpc_default_options(Nn);
+    treeqp_hpmpc_opts_t opts;
+    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
+    void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
+    treeqp_hpmpc_opts_create(Nn, &opts, hpmpc_opts_mem);
+    treeqp_hpmpc_opts_set_default(&opts);
+
     treeqp_hpmpc_workspace work;
 
     int treeqp_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
-    create_treeqp_hpmpc(&qp_in, &opts, &work, qp_solver_memory);
+    treeqp_hpmpc_create(&qp_in, &opts, &work, qp_solver_memory);
 #endif
 
     // set up QP solution
@@ -165,7 +170,7 @@ int main() {
 
     print_blasfeo_target();
 
-    assert(qp_out.info.iter == 1 && "Unconstrained QP did not converge in out iteration!");
+    assert(qp_out.info.iter == 1 || qp_out.info.iter == 0 && "Unconstrained QP did not converge in one iteration!");
     assert(kkt_err < 1e-12 && "maximum KKT residual too high!");
 
     return 0;

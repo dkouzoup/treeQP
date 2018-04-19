@@ -46,18 +46,36 @@
 #define INF 1e10 // TODO(dimitris): option instead of hardcoded here?
 
 
-treeqp_hpmpc_options_t treeqp_hpmpc_default_options()
+
+int treeqp_hpmpc_opts_calculate_size(int Nn)
 {
-    treeqp_hpmpc_options_t opts;
+    int bytes =  Nn*sizeof(int);  // scrap.nb
+    return bytes;
+}
 
-    opts.maxIter = 20;
-	opts.mu0 = 2.0;
-	opts.mu_tol = 1e-12;
-	opts.alpha_min = 1e-8;
-	opts.warm_start = 0;
-    opts.compute_mult = 1;
 
-    return opts;
+
+void treeqp_hpmpc_opts_create(int Nn, treeqp_hpmpc_opts_t *opts, void *ptr)
+{
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    opts->scrap.nb = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    assert((char *)ptr + treeqp_hpmpc_opts_calculate_size(Nn) == c_ptr);
+}
+
+
+
+void treeqp_hpmpc_opts_set_default(treeqp_hpmpc_opts_t *opts)
+{
+    opts->maxIter = 20;
+	opts->mu0 = 2.0;
+	opts->mu_tol = 1e-12;
+	opts->alpha_min = 1e-8;
+	opts->warm_start = 0;
+    opts->compute_mult = 1;
 }
 
 
@@ -146,7 +164,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
 
 
 
-int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts)
+int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
 {
     int bytes = 0;
     int idxp;
@@ -155,8 +173,7 @@ int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *o
     int *nu = qp_in->nu;
     int *nc = qp_in->nc;
 
-    // TODO(dimitris): can we avoid memory allocation in here?
-    int *nb = (int *)malloc(Nn*sizeof(int));
+    int *nb = opts->scrap.nb;
     setup_nb(qp_in, nb);
 
     bytes += Nn*sizeof(int);  // nb
@@ -195,14 +212,12 @@ int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *o
     make_int_multiple_of(64, &bytes);
     bytes += 2*64;
 
-    free(nb);
-
     return bytes;
 }
 
 
 
-void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
+void treeqp_hpmpc_create(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
     treeqp_hpmpc_workspace *work, void *ptr)
 {
     int idxp;
@@ -295,7 +310,7 @@ void create_treeqp_hpmpc(tree_ocp_qp_in *qp_in, treeqp_hpmpc_options_t *opts,
 
 
 
-int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_options_t *opts,
+int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_opts_t *opts,
     treeqp_hpmpc_workspace *work)
 {
     struct node *tree = qp_in->tree;
