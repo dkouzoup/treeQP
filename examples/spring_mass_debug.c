@@ -93,10 +93,6 @@ int main( ) {
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
 
-    // remove all bounds to solve unconstrained problem
-    tree_ocp_qp_in_set_inf_bounds(&qp_in);
-    tree_ocp_qp_in_set_x0_bounds(&qp_in, x0);
-
     // set up HPMPC solver
 	treeqp_hpmpc_options_t hpmpc_opts = treeqp_hpmpc_default_options();
 

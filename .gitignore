@@ -22,3 +22,5 @@ include/*
 
 #TMP FILES
 tmp/
+correct.txt
+wrong.txt

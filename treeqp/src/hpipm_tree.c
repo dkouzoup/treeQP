@@ -253,6 +253,7 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
     {
         work->hpipm_qp_dim.nx[ii] = nx[ii];
         work->hpipm_qp_dim.nu[ii] = nu[ii];
+        work->hpipm_qp_dim.ng[ii] = nc[ii];
     }
     setup_nbx(qp_in, work->hpipm_qp_dim.nbx);
     setup_nbu(qp_in, work->hpipm_qp_dim.nbu);
@@ -462,7 +463,7 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
 	printf("\nBAt\n");
 	for(ii=0; ii<N2-1; ii++)
 		blasfeo_print_dmat(nu2[ii]+nx2[ii], nx2[ii+1], qp->BAbt+ii, 0, 0);
-
+    exit(1);
 #endif
 
     // solve QP

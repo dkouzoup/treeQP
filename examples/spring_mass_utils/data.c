@@ -1,3 +1,13 @@
+/* Defs */
+
+#define SOLVE_WITH_TDUNES
+// #define SOLVE_WITH_SDUNES  NOT IMPLEMENTED YET!
+#define SOLVE_WITH_HPMPC
+#define SOLVE_WITH_HPIPM
+
+// TODO(dimitris): fix HPMPC/HPMPC bug with general constraints
+// #define TEST_GENERAL_CONSTRAINTS
+
 /* Dimensions */
 
 int Nh = 10;
