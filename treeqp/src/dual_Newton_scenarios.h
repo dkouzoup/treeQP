@@ -41,6 +41,27 @@ extern "C" {
 #include "blasfeo/include/blasfeo_common.h"
 
 
+
+typedef struct treeqp_sdunes_opts_t_
+{
+    int maxIter;                    // maximum number of dual Newton iterations
+
+    int checkLastActiveSet;         // save computations per iteration by monitoring active set changes
+
+    double stationarityTolerance;   // tolerance for termination condition on dual gradient
+    termination_t termCondition;    // norm of termination condition (TREEQP_SUMSQUAREDERRORS, TREEQP_TWONORM, TREEQP_INFNORM)
+
+    regType_t regType;              // regularization strategy (TREEQP_NO_REGULARIZATION, TREEQP_ALWAYS_LEVENBERG_MARQUARDT, TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    double regTol;                  // tolerance for adding regularization (in TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT only)
+    double regValue;                // value of regularization on diagonal (in TREEQP_ALWAYS_LEVENBERG_MARQUARDT and TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+
+    int lineSearchMaxIter;          // maximum number of line search iterations per Newton iteration
+    double lineSearchGamma;         // gamma parameter in line search
+    double lineSearchBeta;          // beta parameter in line search
+} treeqp_sdunes_opts_t;
+
+
+
 typedef struct treeqp_sdunes_workspace_
 {
     int Ns;  // number of scenarios
@@ -107,50 +128,27 @@ typedef struct treeqp_sdunes_workspace_
 
 
 
-// Options of QP solver
-typedef struct
-{
-    // iterations
-    int maxIter;
-    int lineSearchMaxIter;
+int treeqp_sdunes_opts_calculate_size(int Nn);
 
-    // algorithmic details
-    int checkLastActiveSet;
+void treeqp_sdunes_opts_create(int Nn, treeqp_sdunes_opts_t *opts, void *ptr);
 
-    // numerical tolerances
-    double stationarityTolerance;
-
-    // termination condition options
-    termination_t termCondition;
-
-    // regularization options
-    regType_t regType;
-    double regTol;  // tolerance for on-the-fly regularization // TODO(dimitris): implement for tree
-    double regValue;
-
-    // line search options
-    double lineSearchGamma;
-    double lineSearchBeta;
-} treeqp_sdunes_options_t;
+void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts);
 
 
 
-treeqp_sdunes_options_t treeqp_sdunes_default_options();
+int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts);
 
-int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts);
+void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work, void *ptr);
 
-void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts,
-    treeqp_sdunes_workspace *work, void *ptr);
-
-int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work);
-
-int calculate_dimension_of_lambda(int Nr, int md, int nu);
+int treeqp_sdunes_calculate_dual_dimension(int Nr, int md, int nu);
 
 void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdunes_workspace *work);
 
-void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int nu,
-    int NewtonIter, treeqp_sdunes_workspace *work);
+int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work);
+
+
+// TODO(dimitris): move out of here
+void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int nu, int NewtonIter, treeqp_sdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

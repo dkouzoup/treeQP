@@ -61,30 +61,40 @@
 
 
 
-treeqp_sdunes_options_t treeqp_sdunes_default_options()
+int treeqp_sdunes_opts_calculate_size(int Nn)
 {
-    treeqp_sdunes_options_t opts;
-
-    opts.maxIter = 100;
-    opts.termCondition = TREEQP_INFNORM;
-    opts.stationarityTolerance = 1.0e-12;
-
-    opts.checkLastActiveSet = 1;
-
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.6;
-
-    opts.regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
-    opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-8;
-
-    return opts;
+    return 0;
 }
 
 
 
-int calculate_dimension_of_lambda(int Nr, int md, int nu) {
+void treeqp_sdunes_opts_create(int Nn, treeqp_sdunes_opts_t *opts, void *ptr)
+{
+    // no pointers in opts struct
+}
+
+
+
+void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts)
+{
+    opts->maxIter = 100;
+    opts->termCondition = TREEQP_INFNORM;
+    opts->stationarityTolerance = 1.0e-12;
+
+    opts->checkLastActiveSet = 1;
+
+    opts->lineSearchMaxIter = 50;
+    opts->lineSearchGamma = 0.1;
+    opts->lineSearchBeta = 0.6;
+
+    opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
+    opts->regTol   = 1.0e-12;
+    opts->regValue = 1.0e-8;
+}
+
+
+
+int treeqp_sdunes_calculate_dual_dimension(int Nr, int md, int nu) {
     int Ns = ipow(md, Nr);
 
     if (Ns == 1) {
@@ -135,7 +145,7 @@ void save_stage_problems(int Ns, int Nh, int Nr, int md, treeqp_sdunes_workspace
     int ii, kk;
     int nu = work->su[0][0].m;
     int nx = work->sx[0][0].m;
-    int nl = calculate_dimension_of_lambda(Nr, md, nu);
+    int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
     double residuals_k[Ns*Nh*nx], residual[nl], xit[Ns*Nh*nx], uit[Ns*Nh*nu];
     double QinvCal_k[Ns*Nh*nx], RinvCal_k[Ns*Nh*nu];
     double LambdaD[Ns*Nh*nx*nx], LambdaL[Ns*(Nh-1)*nx*nx];
@@ -200,7 +210,7 @@ void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int
     int indx = 0;
     int indu = 0;
     int indLambda = 0;
-    int nl = calculate_dimension_of_lambda(Nr, md, nu);
+    int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
     double *muIter = malloc(Ns*Nh*nx*sizeof(double));
     double *xIter = malloc(Ns*Nh*nx*sizeof(double));
     double *uIter = malloc(Ns*Nh*nu*sizeof(double));
@@ -297,7 +307,7 @@ int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct b
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
 static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in *qp_in,
-    treeqp_sdunes_workspace *work, treeqp_sdunes_options_t *opts) {
+    treeqp_sdunes_workspace *work, treeqp_sdunes_opts_t *opts) {
 
     int ii, kk, idx, idxp1, idxm1;
     int nu = work->su[0][0].m;
@@ -573,7 +583,7 @@ static void find_starting_point_of_factorization(int Ns, int Nh, int *idxStart,
 
 
 
-static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work) {
+static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
     int ii, kk;
     int nx = work->sx[0][0].m;
 
@@ -761,7 +771,7 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
 }
 
 
-void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work) {
+void form_and_factorize_Jay(int Ns, int nu, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
     int ii, dim, dimNxt;
     int *commonNodes = work->commonNodes;
 
@@ -851,7 +861,7 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
 
     #ifdef SAVE_DATA
     int ind = 0;
-    int nl = calculate_dimension_of_lambda(Nr, md, nu);
+    int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
     double *rhsNonAnticip = malloc(nl*sizeof(double));
     #endif
 
@@ -979,7 +989,7 @@ void calculate_delta_lambda(int Ns, int Nr, int md, treeqp_sdunes_workspace *wor
 
     #ifdef SAVE_DATA
     int ind = 0;
-    int nl = calculate_dimension_of_lambda(Nr, md, nu);
+    int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
     double Deltalambda[nl];
     #endif
 
@@ -1345,7 +1355,7 @@ double evaluate_dual_function(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdun
 }
 
 
-int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts,
+int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work) {
 
     int ii, jj, kk;
@@ -1454,7 +1464,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
 }
 
 
-int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts)
+int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
 {
     struct node *tree = (struct node *) qp_in->tree;
     int nx = qp_in->nx[1];
@@ -1562,7 +1572,7 @@ int treeqp_dune_scenarios_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_op
 }
 
 
-void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t *opts,
+void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work, void *ptr) {
 
     struct node *tree = (struct node *) qp_in->tree;
@@ -1793,9 +1803,9 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
 
     free(processedNodes);
 
-    assert((char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in, opts) >= c_ptr);
+    assert((char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + treeqp_dune_scenarios_calculate_size(qp_in, opts) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) - c_ptr);
     // exit(1);
 
     #ifndef REV_CHOL
@@ -1807,8 +1817,8 @@ void create_treeqp_dune_scenarios(tree_ocp_qp_in *qp_in, treeqp_sdunes_options_t
 }
 
 
-int treeqp_dune_scenarios_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_sdunes_options_t *opts, treeqp_sdunes_workspace *work) {
+int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+    treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
 
     int NewtonIter, lsIter;
     double error;

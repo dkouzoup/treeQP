@@ -56,11 +56,13 @@
 int main() {
     return_t status;
 
-    int nl = calculate_dimension_of_lambda(Nr, md, NU);
+    int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, NU);
     int Nn = calculate_number_of_nodes(md, Nr, Nh);
     int Ns = ipow(md, Nr);
 
-    treeqp_sdunes_options_t opts = treeqp_sdunes_default_options();
+    treeqp_sdunes_opts_t opts;
+    treeqp_sdunes_opts_set_default(Nn, &opts);
+
     #ifdef READ_SCENARIOS_OPTIONS_FROM_C_FILE
     treeqp_sdunes_matlab_options(&opts);
     #endif
@@ -117,9 +119,9 @@ int main() {
     // setup QP solver
     treeqp_sdunes_workspace work;
 
-    int treeqp_size = treeqp_dune_scenarios_calculate_size(&qp_in, &opts);
+    int treeqp_size = treeqp_sdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
-    create_treeqp_dune_scenarios(&qp_in, &opts, &work, qp_solver_memory);
+    treeqp_sdunes_create(&qp_in, &opts, &work, qp_solver_memory);
 
     // setup QP solution
     tree_ocp_qp_out qp_out;
@@ -144,7 +146,7 @@ int main() {
         treeqp_tic(&tot_tmr);
         #endif
 
-        status = treeqp_dune_scenarios_solve(&qp_in, &qp_out, &opts, &work);
+        status = treeqp_sdunes_solve(&qp_in, &qp_out, &opts, &work);
 
         // printf("QP solver status at run %d: %d\n", jj, status);
 
