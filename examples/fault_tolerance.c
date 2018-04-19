@@ -434,9 +434,10 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     }
 
     // set up QP solver options
-    treeqp_tdunes_options_t tdunes_opts;
+    treeqp_tdunes_opts_t tdunes_opts;
     treeqp_hpmpc_opts_t hpmpc_opts;
     int opts_size;
+    void *tdunes_opts_mem;
     void *hpmpc_opts_mem;
 
     int max_Nn = data[0].Nn;
@@ -451,7 +452,10 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     switch (solver)
     {
         case TREEQP_TDUNES:
-            tdunes_opts = treeqp_tdunes_default_options(max_Nn);
+            opts_size = treeqp_tdunes_opts_calculate_size(max_Nn);
+            tdunes_opts_mem = malloc(opts_size);
+            treeqp_tdunes_opts_create(max_Nn, &tdunes_opts, tdunes_opts_mem);
+            treeqp_tdunes_opts_set_default(max_Nn, &tdunes_opts);
 
             tdunes_opts.maxIter = maxIter;
             tdunes_opts.termCondition = TREEQP_INFNORM;
@@ -514,7 +518,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
                 case TREEQP_TDUNES:
                     size = treeqp_tdunes_calculate_size(&qp_ins[ii], &tdunes_opts);
                     solver_memories[ii] = malloc(size);
-                    create_treeqp_tdunes(&qp_ins[ii], &tdunes_opts, &works_tdunes[ii], solver_memories[ii]);
+                    treeqp_tdunes_create(&qp_ins[ii], &tdunes_opts, &works_tdunes[ii], solver_memories[ii]);
                     break;
                 case TREEQP_HPMPC:
                     size = treeqp_hpmpc_calculate_size(&qp_ins[ii], &hpmpc_opts);

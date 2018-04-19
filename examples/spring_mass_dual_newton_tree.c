@@ -55,7 +55,11 @@ int main( ) {
     int Nn = calculate_number_of_nodes(md, Nr, Nh);
     int Np = Nn - ipow(md, Nr);
 
-    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
+    treeqp_tdunes_opts_t opts;
+    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(Nn);
+    void *tdunes_opts_mem = malloc(tdunes_opts_size);
+    treeqp_tdunes_opts_create(Nn, &opts, tdunes_opts_mem);
+    treeqp_tdunes_opts_set_default(Nn, &opts);
 
     #ifdef READ_TREE_OPTIONS_FROM_C_FILE
     treeqp_tdunes_matlab_options(Nn, &opts);
@@ -117,7 +121,7 @@ int main( ) {
 
     int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
-    create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
+    treeqp_tdunes_create(&qp_in, &opts, &work, qp_solver_memory);
 
     // setup QP solution
     tree_ocp_qp_out qp_out;

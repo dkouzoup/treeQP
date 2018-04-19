@@ -35,13 +35,13 @@ extern "C" {
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/types.h"
-// #include "treeqp/utils/tree.h"
 
 #include "blasfeo/include/blasfeo_target.h"
 #include "blasfeo/include/blasfeo_common.h"
 
 
-typedef struct
+
+typedef struct stage_qp_fcn_ptrs_
 {
     answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int idx);
     int (*calculate_size)(int nx, int nu, int nc);
@@ -57,6 +57,28 @@ typedef struct
     void (*eval_dual_term)(tree_ocp_qp_in *qp_in, int idx, void *work_);
     void (*export_mu)(tree_ocp_qp_out *qp_out, int idx, void *work_);
 } stage_qp_fcn_ptrs;
+
+
+
+typedef struct treeqp_tdunes_opts_t_
+{
+    int maxIter;                    // maximum number of dual Newton iterations
+
+    stage_qp_t *qp_solver;          // stage QP solver stage-wise (TREEQP_CLIPPING_SOLVER or TREEQP_QPOASES_SOLVER)
+
+    int checkLastActiveSet;         // save computations per iteration by monitoring active set changes
+
+    double stationarityTolerance;   // tolerance for termination condition on dual gradient
+    termination_t termCondition;    // norm of termination condition (TREEQP_SUMSQUAREDERRORS, TREEQP_TWONORM, TREEQP_INFNORM)
+
+    regType_t regType;              // regularization strategy (TREEQP_NO_REGULARIZATION, TREEQP_ALWAYS_LEVENBERG_MARQUARDT, TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    double regTol;                  // tolerance for adding regularization (in TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT only)
+    double regValue;                // value of regularization on diagonal (in TREEQP_ALWAYS_LEVENBERG_MARQUARDT and TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+
+    int lineSearchMaxIter;          // maximum number of line search iterations per Newton iteration
+    double lineSearchGamma;         // gamma parameter in line search
+    double lineSearchBeta;          // beta parameter in line search
+} treeqp_tdunes_opts_t;
 
 
 
@@ -115,52 +137,25 @@ typedef struct treeqp_tdunes_workspace_
 
 
 
-typedef struct
-{
-    // iterations
-    int maxIter;
-    int lineSearchMaxIter;
+int treeqp_tdunes_opts_calculate_size(int Nn);
 
-    // solution of stage QPs (1 x Nn)
-    stage_qp_t *qp_solver;
+void treeqp_tdunes_opts_create(int Nn, treeqp_tdunes_opts_t *opts, void *ptr);
 
-    // algorithmic details
-    int checkLastActiveSet;
-
-    // numerical tolerances
-    double stationarityTolerance;
-
-    // termination condition options
-    termination_t termCondition;
-
-    // regularization options
-    regType_t regType;
-    // TODO(dimitris): implement on-the-gly regularization option!
-    // TODO(dimitris): ONCE ADDED, ALSO ADD CORRESPONDING OPTION IN MATLAB CODE!!!!!!
-    double regTol;
-    double regValue;
-
-    // line search options
-    double lineSearchGamma;
-    double lineSearchBeta;
-} treeqp_tdunes_options_t;
+void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts);
 
 
 
-treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn);
+int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts);
 
-int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts);
-
-void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
-    treeqp_tdunes_workspace *work, void *ptr);
+void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work, void *ptr);
 
 void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work);
 
-int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work);
+int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
 
-void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree,
-    treeqp_tdunes_workspace *work);
+
+// TODO(dimitris): move to utils!
+void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree, treeqp_tdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

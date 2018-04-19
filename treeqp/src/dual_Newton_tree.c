@@ -62,37 +62,56 @@
 
 // #define _MERGE_FACTORIZATION_WITH_SUBSTITUTION_
 
-treeqp_tdunes_options_t treeqp_tdunes_default_options(int Nn)
+
+
+int treeqp_tdunes_opts_calculate_size(int Nn)
 {
-    treeqp_tdunes_options_t opts;
+    int bytes =  Nn*sizeof(stage_qp_t);  // qp_solver
+    return bytes;
+}
 
-    opts.maxIter = 100;
-    opts.termCondition = TREEQP_INFNORM;
-    opts.stationarityTolerance = 1.0e-12;
 
-    opts.checkLastActiveSet = 1;
 
-    // TODO(dimitris): replace with calculate_size/create for args
-    opts.qp_solver = malloc(Nn*sizeof(stage_qp_t));
+void treeqp_tdunes_opts_create(int Nn, treeqp_tdunes_opts_t *opts, void *ptr)
+{
+    // char pointer
+    char *c_ptr = (char *) ptr;
 
-    // for (int ii = 0; ii < Nn; ii++) opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+    opts->qp_solver = (stage_qp_t *)c_ptr;
+    c_ptr += Nn*sizeof(stage_qp_t);
+
+    assert((char *)ptr + treeqp_tdunes_opts_calculate_size(Nn) == c_ptr);
+}
+
+
+
+void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts)
+{
+    opts->maxIter = 100;
+    opts->termCondition = TREEQP_INFNORM;
+    opts->stationarityTolerance = 1.0e-12;
+
+    opts->checkLastActiveSet = 1;
+
     for (int ii = 0; ii < Nn; ii++)
     {
         if (0) // (ii % 2 == 0)
-            opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        {
+            opts->qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        }
         else
-            opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+        {
+            opts->qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+        }
     }
 
-    opts.lineSearchMaxIter = 50;
-    opts.lineSearchGamma = 0.1;
-    opts.lineSearchBeta = 0.6;
+    opts->lineSearchMaxIter = 50;
+    opts->lineSearchGamma = 0.1;
+    opts->lineSearchBeta = 0.6;
 
-    opts.regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
-    opts.regTol   = 1.0e-12;
-    opts.regValue = 1.0e-8;
-
-    return opts;
+    opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
+    opts->regTol   = 1.0e-12;
+    opts->regValue = 1.0e-8;
 }
 
 
@@ -392,7 +411,7 @@ static double calculate_error_in_residuals(termination_t condition, treeqp_tdune
 
 
 static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+    treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
 
     int idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
@@ -587,7 +606,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
 
 static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
-    treeqp_tdunes_workspace *work, treeqp_tdunes_options_t *opts)
+    treeqp_tdunes_workspace *work, treeqp_tdunes_opts_t *opts)
 {
     struct node *tree = (struct node *)qp_in->tree;
     int idxdad, idxpos;
@@ -856,7 +875,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
 
 
-static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     int Nn = qp_in->N;
     int Np = work->Np;
@@ -982,7 +1001,7 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
 
 
 int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
-    treeqp_tdunes_options_t *opts, treeqp_tdunes_workspace *work)
+    treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     int status;
     int idxFactorStart;  // TODO(dimitris): move to workspace
@@ -1147,7 +1166,7 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
 
 
 
-int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts)
+int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts)
 {
     struct node *tree = (struct node *) qp_in->tree;
     int bytes = 0;
@@ -1263,7 +1282,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t 
 
 
 
-void create_treeqp_tdunes(tree_ocp_qp_in *qp_in, treeqp_tdunes_options_t *opts,
+void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
     treeqp_tdunes_workspace *work, void *ptr)
 {
     struct node *tree = (struct node *) qp_in->tree;

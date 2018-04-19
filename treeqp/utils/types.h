@@ -68,9 +68,7 @@ typedef enum {
 // Stage QP solvers
 typedef enum {
     TREEQP_CLIPPING_SOLVER = 0,
-    TREEQP_QPOASES_SOLVER,  // TODO(dimitris): qpOASES - WIP, HPIPM/QORE - NIY
-    // TREEQP_HPIPM_SOLVER,
-    // TREEQP_QORE_SOLVER,
+    TREEQP_QPOASES_SOLVER,
 } stage_qp_t;
 
 #ifdef __cplusplus

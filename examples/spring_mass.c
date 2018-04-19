@@ -209,7 +209,13 @@ int main( ) {
 
     // set up tree-sparse dual Newton solver
     #ifdef SOLVE_WITH_TDUNES
-    treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);
+
+    treeqp_tdunes_opts_t tdunes_opts;
+    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(Nn);
+    void *tdunes_opts_mem = malloc(tdunes_opts_size);
+    treeqp_tdunes_opts_create(Nn, &tdunes_opts, tdunes_opts_mem);
+    treeqp_tdunes_opts_set_default(Nn, &tdunes_opts);
+
     for (int ii = 0; ii < Nn; ii++)
     {
         #ifdef TEST_GENERAL_CONSTRAINTS
@@ -222,7 +228,7 @@ int main( ) {
 
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
-    create_treeqp_tdunes(&qp_in, &tdunes_opts, &tdunes_work, tdunes_memory);
+    treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, tdunes_memory);
     #endif
 
     // set up HPMPC solver

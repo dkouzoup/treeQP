@@ -80,7 +80,12 @@ int main() {
 
     // set up QP solver
 #ifndef USE_HPMPC
-    treeqp_tdunes_options_t opts = treeqp_tdunes_default_options(Nn);
+
+    treeqp_tdunes_opts_t opts;
+    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(Nn);
+    void *tdunes_opts_mem = malloc(tdunes_opts_size);
+    treeqp_tdunes_opts_create(Nn, &opts, tdunes_opts_mem);
+    treeqp_tdunes_opts_set_default(Nn, &opts);
 
     opts.maxIter = 10;
     opts.stationarityTolerance = 1.0e-10;
@@ -96,7 +101,7 @@ int main() {
 
     int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
-    create_treeqp_tdunes(&qp_in, &opts, &work, qp_solver_memory);
+    treeqp_tdunes_create(&qp_in, &opts, &work, qp_solver_memory);
 
 #else
     treeqp_hpmpc_opts_t opts;
