@@ -28,9 +28,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "treeqp/src/dual_Newton_tree.h"
-#include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/hpmpc_tree.h"
+#include "treeqp/src/hpipm_tree.h"
+#include "treeqp/src/dual_Newton_tree.h"
 
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
@@ -48,8 +49,6 @@
 
 // TODO(dimitris): clean this up (and add matlab/python gen. script in utils)
 #include "examples/spring_mass_utils/data.c"
-
-// #define TEST_GENERAL_CONSTRAINTS
 
 int main( ) {
     return_t status;
@@ -138,7 +137,6 @@ int main( ) {
     void *qp_in_memory = malloc(qp_in_size);
     tree_ocp_qp_in_create(Nn, nx, nu, nc, tree, &qp_in, qp_in_memory);
 
-    // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
     double *C = calloc(NC*NX, sizeof(double));
@@ -204,11 +202,13 @@ int main( ) {
     tree_ocp_qp_in_set_x0_bounds(&qp_in, x0);
 
     #else
+    // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
     #endif
 
     // set up tree-sparse dual Newton solver
+    #ifdef SOLVE_WITH_TDUNES
     treeqp_tdunes_options_t tdunes_opts = treeqp_tdunes_default_options(Nn);
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -223,13 +223,25 @@ int main( ) {
     treeqp_tdunes_workspace tdunes_work;
     void *tdunes_memory = malloc(treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts));
     create_treeqp_tdunes(&qp_in, &tdunes_opts, &tdunes_work, tdunes_memory);
+    #endif
 
     // set up HPMPC solver
+    #ifdef SOLVE_WITH_HPMPC
 	treeqp_hpmpc_options_t hpmpc_opts = treeqp_hpmpc_default_options();
 
     treeqp_hpmpc_workspace hpmpc_work;
     void *hpmpc_memory = malloc(treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts));
     create_treeqp_hpmpc(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
+    #endif
+
+    // set up HPIPM solver
+    #ifdef SOLVE_WITH_HPIPM
+	treeqp_hpipm_options_t hpipm_opts = treeqp_hpipm_default_options();
+
+    treeqp_hpipm_workspace hpipm_work;
+    void *hpipm_memory = malloc(treeqp_hpipm_calculate_size(&qp_in, &hpipm_opts));
+    create_treeqp_hpipm(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
+    #endif
 
     // setup QP solution
     tree_ocp_qp_out qp_out;
@@ -238,13 +250,18 @@ int main( ) {
     void *qp_out_memory = malloc(qp_out_size);
     tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
 
-    // solve with tree-sparse dual Newton strategy
     double overhead;
-    double max_overhead = 0;
-    for (int jj = 0; jj < NREP; jj++) {
+    double max_overhead;
+    double kkt_err;
+
+    // solve with tree-sparse dual Newton strategy
+    #ifdef SOLVE_WITH_TDUNES
+    max_overhead = 0;
+    for (int jj = 0; jj < NREP; jj++)
+    {
         treeqp_tdunes_set_dual_initialization(lambda, &tdunes_work);
 
-        if (tdunes_opts.maxIter == 1)  // run algorithm one iteration at a time
+        if (tdunes_opts.maxIter == 1)  // run algorithm one iteration at a time for debugging
         {
             for (int ll = 0; ll < 50; ll++)
             {
@@ -256,7 +273,8 @@ int main( ) {
                 }
                 printf("Newton iteration #%d\n", ll);
             }
-        } else
+        }
+        else
         {
             treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
         }
@@ -269,26 +287,30 @@ int main( ) {
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    kkt_err = max_KKT_residual(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
     printf("Maximum overhead of treeQP interface (tdunes):\t\t %4.2f%%\n\n", max_overhead);
 
-    for (int ii = 0; ii < 5; ii++) {
+    for (int ii = 0; ii < 5; ii++)
+    {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
+    #endif
 
     // solve with tree-sparse HPMPC
+    #ifdef SOLVE_WITH_HPMPC
     int hpmpc_status = -1;
 
     max_overhead = 0;
-    for (int jj = 0; jj < NREP; jj++) {
+    for (int jj = 0; jj < NREP; jj++)
+    {
         hpmpc_status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
         if (hpmpc_status != 0)
         {
-            printf("HPMPC failed with status %d!\n", hpmpc_status);
-            exit(-1);
+            printf("HPMPC failed with status %d! <--------------------------------------------------\n", hpmpc_status);
+            // exit(-1);
         }
         printf("hpmpc run # %d (%d iterations)\n", jj, qp_out.info.iter);
         printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);
@@ -304,9 +326,49 @@ int main( ) {
 
     printf("Maximum overhead of treeQP interface (hpmpc):\t\t %4.2f%%\n\n", max_overhead);
 
-    for (int ii = 0; ii < 5; ii++) {
+    for (int ii = 0; ii < 5; ii++)
+    {
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
+    // printf("HPMPC\n:");
+    // tree_ocp_qp_out_print(Nn, &qp_out);
+    #endif
+
+
+    // solve with tree-sparse HPIPM
+    #ifdef SOLVE_WITH_HPIPM
+    int hpipm_status = -1;
+
+    max_overhead = 0;
+    for (int jj = 0; jj < NREP; jj++)
+    {
+        hpipm_status = treeqp_hpipm_solve(&qp_in, &qp_out, &hpipm_opts, &hpipm_work);
+        if (hpipm_status != 0)
+        {
+            printf("HPIPM failed with status %d! <--------------------------------------------------\n", hpipm_status);
+            // exit(-1);
+        }
+        printf("hpipm run # %d (%d iterations)\n", jj, qp_out.info.iter);
+        printf("solver time:\t %5.2f ms\n", qp_out.info.solver_time*1e3);
+        printf("interface time:\t %5.2f ms\n", qp_out.info.interface_time*1e3);
+        overhead = 100*qp_out.info.interface_time/qp_out.info.solver_time;
+        printf("overhead:\t %5.2f %% \n", overhead);
+        if (overhead > max_overhead) max_overhead = overhead;
+    }
+
+    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    printf("Maximum error in KKT residuals (hpipm):\t\t\t %2.2e\n\n", kkt_err);
+    // assert(kkt_err < 1e-10 && "KKT tolerance of tree hpipm in spring_mass.c too high!");
+
+    printf("Maximum overhead of treeQP interface (hpipm):\t\t %4.2f%%\n\n", max_overhead);
+
+    for (int ii = 0; ii < 5; ii++)
+    {
+        blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+    }
+    // printf("HPIPM\n:");
+    // tree_ocp_qp_out_print(Nn, &qp_out);
+    #endif
 
     // Free memory
     free(nx);
@@ -324,8 +386,15 @@ int main( ) {
     free(qp_in_memory);
     free(qp_out_memory);
 
+    #ifdef SOLVE_WITH_TDUNES
     free(tdunes_memory);
+    #endif
+    #ifdef SOLVE_WITH_HPMPC
     free(hpmpc_memory);
+    #endif
+    #ifdef SOLVE_WITH_HPIPM
+    free(hpipm_memory);
+    #endif
 
     free_tree(Nn, tree);
     free(tree);
