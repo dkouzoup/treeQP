@@ -49,6 +49,8 @@ spring_mass_sdunes_example: spring_mass_dual_newton_scenarios.o
 	$(CC) -o spring_mass_sdunes.out spring_mass_dual_newton_scenarios.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_example: spring_mass.o
+	$(CC) -o spring_mass.out spring_mass.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc -lhpipm
+
 spring_mass_debug_example: spring_mass_debug.o
 	$(CC) -o spring_mass_debug.out spring_mass_debug.o $(CFLAGS) $(LDFLAGS) $(LIBS) -lhpmpc -lhpipm
 	./spring_mass_debug.out

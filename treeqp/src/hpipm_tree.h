@@ -60,9 +60,6 @@ treeqp_hpipm_options_t treeqp_hpipm_default_options();
 
 typedef struct treeqp_hpipm_workspace_
 {
-	int **idxb;
-	int **idxs;  // TODO: needed??
-
     int *nkids;
 	struct tree hpipm_tree;  // NOTE(dimitris): no extra memory for this struct
 

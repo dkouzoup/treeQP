@@ -176,9 +176,6 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *o
 
     // calculate memory size
 
-    bytes += 2*Nn*sizeof(int*);  // idxb, idxs
-    bytes += get_size_idxb(qp_in)*sizeof(int);
-
     bytes += Nn*sizeof(int);  // hpipm_tree.nkids
 
 	bytes += d_memsize_tree_ocp_qp_dim(Nn);  // hpipm_qp_dim
@@ -218,18 +215,6 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
     // char pointer
     char *c_ptr = (char *) ptr;
 
-    // double pointers
-    work->idxb = (int **) c_ptr;
-    c_ptr += Nn*sizeof(int *);
-    work->idxs = (int **) c_ptr;
-    c_ptr += Nn*sizeof(int *);
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        work->idxb[ii] = (int *) c_ptr;
-        c_ptr += number_of_bounds(&qp_in->umin[ii], &qp_in->umax[ii])*sizeof(int);
-        c_ptr += number_of_bounds(&qp_in->xmin[ii], &qp_in->xmax[ii])*sizeof(int);
-    }
-
     // pointers
     work->nkids = (int *) c_ptr;
     c_ptr += Nn*sizeof(int);
@@ -255,7 +240,6 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
         work->hpipm_qp_dim.nx[ii] = nx[ii];
         work->hpipm_qp_dim.nu[ii] = nu[ii];
     }
-    setup_nb_idxb(qp_in, work->hpipm_qp_dim.nb, work->idxb);
     setup_nbx(qp_in, work->hpipm_qp_dim.nbx);
     setup_nbu(qp_in, work->hpipm_qp_dim.nbu);
     setup_nb(qp_in, work->hpipm_qp_dim.nb);
@@ -264,6 +248,7 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
     // set up qp
 	d_create_tree_ocp_qp(&work->hpipm_qp_dim, &work->hpipm_qp_in, c_ptr);
     c_ptr += work->hpipm_qp_in.memsize;
+    setup_nb_idxb(qp_in, work->hpipm_qp_dim.nb, work->hpipm_qp_in.idxb);
 
     // set up args
     d_create_tree_ocp_qp_ipm_arg(NULL, &work->arg, c_ptr);
@@ -311,7 +296,7 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     treeqp_timer solver_tmr, interface_tmr;
 
     int idxp, idxb;
-    // double mu_lb, mu_ub;
+    double mu_lb, mu_ub;
 
     // convert input to HPIPM format
 
@@ -344,7 +329,7 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
 
         for (int jj = 0; jj < nb[ii]; jj++)
         {
-            idxb = work->idxb[ii][jj];
+            idxb = work->hpipm_qp_in.idxb[ii][jj];
             if (idxb < nu[ii])
             {
                 BLASFEO_DVECEL(&sd[ii], jj) = BLASFEO_DVECEL(&qp_in->umin[ii], idxb);
@@ -495,23 +480,24 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
         blasfeo_dveccp(nu[ii], &sux[ii], 0, &qp_out->u[ii], 0);
         blasfeo_dveccp(nx[ii], &sux[ii], nu[ii], &qp_out->x[ii], 0);
 
-        // blasfeo_dvecse(nx[ii], 0.0, &qp_out->mu_x[ii], 0);
-        // blasfeo_dvecse(nu[ii], 0.0, &qp_out->mu_u[ii], 0);
-        // for (int jj = 0; jj < nb[ii]; jj++)
-        // {
-        //     idxb = work->idxb[ii][jj];
-        //     mu_lb = BLASFEO_DVECEL(&work->slam[ii], jj);
-        //     mu_ub = BLASFEO_DVECEL(&work->slam[ii], jj+nb[ii]+nc[ii]);
-        //     if (idxb < nu[ii])
-        //     {
-        //         BLASFEO_DVECEL(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
-        //     }
-        //     else //if (idxb < nu[ii]+nx[ii])
-        //     {
-        //         BLASFEO_DVECEL(&qp_out->mu_x[ii], idxb-nu[ii]) +=  mu_ub -mu_lb;
-        //     }
-        // }
-        // blasfeo_daxpy(nc[ii], -1.0, &work->slam[ii], nb[ii], &work->slam[ii], 2*nb[ii]+nc[ii], &qp_out->mu_d[ii], 0);
+        blasfeo_dvecse(nx[ii], 0.0, &qp_out->mu_x[ii], 0);
+        blasfeo_dvecse(nu[ii], 0.0, &qp_out->mu_u[ii], 0);
+        for (int jj = 0; jj < nb[ii]; jj++)
+        {
+            idxb = work->hpipm_qp_in.idxb[ii][jj];
+            mu_lb = BLASFEO_DVECEL(&work->hpipm_qp_out.lam[ii], jj);
+            mu_ub = BLASFEO_DVECEL(&work->hpipm_qp_out.lam[ii], jj+nb[ii]+nc[ii]);
+            if (idxb < nu[ii])
+            {
+                BLASFEO_DVECEL(&qp_out->mu_u[ii], idxb) += mu_ub - mu_lb;
+            }
+            else //if (idxb < nu[ii]+nx[ii])
+            {
+                BLASFEO_DVECEL(&qp_out->mu_x[ii], idxb-nu[ii]) +=  mu_ub -mu_lb;
+            }
+        }
+        blasfeo_daxpy(nc[ii], -1.0, &work->hpipm_qp_out.lam[ii], nb[ii],
+            &work->hpipm_qp_out.lam[ii], 2*nb[ii]+nc[ii], &qp_out->mu_d[ii], 0);
     }
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
