@@ -40,14 +40,14 @@ extern "C" {
 
 
 // memory to store temporary calculations when calculating solver size
-typedef struct
+typedef struct scrap_memory_hpmpc_t_
 {
     int *nb;
 } scrap_memory_hpmpc_t;
 
 
 
-typedef struct
+typedef struct treeqp_hpmpc_opts_t_
 {
 	int maxIter;                 // maximum number of IP iterations (status = 1 if reached)
 	double mu0;                  // max element value in cost function

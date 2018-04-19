@@ -40,27 +40,57 @@
 #include "blasfeo/include/blasfeo_d_aux.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-// #include "hpipm/include/hpipm_target.h" // WHERE IS THIS????
+// #include "hpipm/include/hpipm_target.h" // TODO(dimitris): WHERE IS THIS????
 #include "hpipm/include/hpipm_tree.h"
 
 
 
-treeqp_hpipm_options_t treeqp_hpipm_default_options()
+int treeqp_hpipm_opts_calculate_size(int Nn)
 {
-    treeqp_hpipm_options_t opts;
+    int bytes = 5*Nn*sizeof(int);  // scrap.nkids, scrap.nb, scrap.nbx, scrap.nbu, scrap.ns
 
-    opts.maxIter = 20;
-	opts.mu0 = 2.0;
-	opts.tol = 1e-12;
-	opts.alpha_min = 1e-8;
-	opts.warm_start = 0;
-
-    return opts;
+    return bytes;
 }
 
 
 
-static void cast_options(treeqp_hpipm_options_t *treeqp_opts, struct d_tree_ocp_qp_ipm_arg *hpipm_opts)
+void treeqp_hpipm_opts_create(int Nn, treeqp_hpipm_opts_t *opts, void *ptr)
+{
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    opts->scrap.nkids = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    opts->scrap.nb = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    opts->scrap.nbx = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    opts->scrap.nbu = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    opts->scrap.ns = (int *)c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    assert((char *)ptr + treeqp_hpipm_opts_calculate_size(Nn) == c_ptr);
+}
+
+
+
+void treeqp_hpipm_opts_set_default(treeqp_hpipm_opts_t *opts)
+{
+    opts->maxIter = 20;
+	opts->mu0 = 2.0;
+	opts->tol = 1e-12;
+	opts->alpha_min = 1e-8;
+	opts->warm_start = 0;
+}
+
+
+
+static void cast_options(treeqp_hpipm_opts_t *treeqp_opts, struct d_tree_ocp_qp_ipm_arg *hpipm_opts)
 {
     hpipm_opts->iter_max = treeqp_opts->maxIter;
     hpipm_opts->stat_max = treeqp_opts->maxIter;
@@ -130,20 +160,19 @@ void setup_ns(tree_ocp_qp_in *qp_in, int *ns)
 
 
 
-int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts)
+int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts)
 {
     int bytes = 0;
+
     int Nn = qp_in->N;
     int *nx = qp_in->nx;
     int *nu = qp_in->nu;
     int *nc = qp_in->nc;
-
-    // TODO(dimitris): can we avoid memory allocation in here?
-    int *nkids = (int *)malloc(Nn*sizeof(int));
-    int *nb = (int *)malloc(Nn*sizeof(int));
-    int *nbx = (int *)malloc(Nn*sizeof(int));
-    int *nbu = (int *)malloc(Nn*sizeof(int));
-    int *ns = (int *)malloc(Nn*sizeof(int));
+    int *nkids = opts->scrap.nkids;
+    int *nb = opts->scrap.nb;
+    int *nbx = opts->scrap.nbx;
+    int *nbu = opts->scrap.nbu;
+    int *ns = opts->scrap.ns;
 
     setup_nkids(qp_in, nkids);
     setup_nb(qp_in, nb);
@@ -173,13 +202,6 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *o
     dim.ns = ns;
     dim.memsize = -1;
 
-    // // TEMP
-    // int dim_size = d_memsize_tree_ocp_qp_dim(Nn);
-	// void *dim_mem = malloc(dim_size);
-	// struct d_tree_ocp_qp_dim dim_new;
-	// d_create_tree_ocp_qp_dim(Nn, &dim_new, dim_mem);
-	// d_cvt_int_to_tree_ocp_qp_dim(&hpipm_tree, nx, nu, nbx, nbu, nc, ns, &dim_new);
-
     // set up dummy qp in (only dims matter in calculate size)
     struct d_tree_ocp_qp qp;
     qp.dim = &dim;
@@ -206,18 +228,12 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *o
 
     bytes += 1*64;
 
-    free(nkids);
-    free(nb);
-    free(nbx);
-    free(nbu);
-    free(ns);
-
     return bytes;
 }
 
 
 
-void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
+void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
     treeqp_hpipm_workspace *work, void *ptr)
 {
     struct node *tree = qp_in->tree;
@@ -287,7 +303,7 @@ void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
 
 
 
-int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_options_t *opts,
+int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts,
     treeqp_hpipm_workspace *work)
 {
     struct node *tree = qp_in->tree;

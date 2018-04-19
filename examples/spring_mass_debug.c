@@ -94,17 +94,26 @@ int main( ) {
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
 
     // set up HPMPC solver
-	treeqp_hpmpc_opts_t hpmpc_opts = treeqp_hpmpc_opts_set_default();
+    treeqp_hpmpc_opts_t hpmpc_opts;
+    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
+    void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
+    treeqp_hpmpc_opts_create(Nn, &hpmpc_opts, hpmpc_opts_mem);
+    treeqp_hpmpc_opts_set_default(&hpmpc_opts);
 
     treeqp_hpmpc_workspace hpmpc_work;
     void *hpmpc_memory = malloc(treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts));
     treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, hpmpc_memory);
 
     // set up HPIPM solver
-	treeqp_hpipm_options_t hpipm_opts = treeqp_hpipm_default_options();
+    treeqp_hpipm_opts_t hpipm_opts;
+    int hpipm_opts_size = treeqp_hpipm_opts_calculate_size(Nn);
+    void *hpipm_opts_mem = malloc(hpipm_opts_size);
+    treeqp_hpipm_opts_create(Nn, &hpipm_opts, hpipm_opts_mem);
+    treeqp_hpipm_opts_set_default(&hpipm_opts);
+
     treeqp_hpipm_workspace hpipm_work;
     void *hpipm_memory = malloc(treeqp_hpipm_calculate_size(&qp_in, &hpipm_opts));
-    create_treeqp_hpipm(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
+    treeqp_hpipm_create(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
 
     // setup QP solution
     tree_ocp_qp_out qp_out;

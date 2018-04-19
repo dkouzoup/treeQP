@@ -240,11 +240,15 @@ int main( ) {
 
     // set up HPIPM solver
     #ifdef SOLVE_WITH_HPIPM
-	treeqp_hpipm_options_t hpipm_opts = treeqp_hpipm_default_options();
+    treeqp_hpipm_opts_t hpipm_opts;
+    int hpipm_opts_size = treeqp_hpipm_opts_calculate_size(Nn);
+    void *hpipm_opts_mem = malloc(hpipm_opts_size);
+    treeqp_hpipm_opts_create(Nn, &hpipm_opts, hpipm_opts_mem);
+    treeqp_hpipm_opts_set_default(&hpipm_opts);
 
     treeqp_hpipm_workspace hpipm_work;
     void *hpipm_memory = malloc(treeqp_hpipm_calculate_size(&qp_in, &hpipm_opts));
-    create_treeqp_hpipm(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
+    treeqp_hpipm_create(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
     #endif
 
     // setup QP solution

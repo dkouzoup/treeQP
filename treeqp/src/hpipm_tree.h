@@ -44,16 +44,31 @@ extern "C" {
 #include "hpipm/include/hpipm_d_tree_ocp_qp_sol.h"
 #include "hpipm/include/hpipm_d_tree_ocp_qp_ipm.h"
 
-typedef struct
-{
-	int maxIter;
-	double mu0;
-	double tol;  // tolerance for res_g_max, res_b_max, res_d_max, res_m_max (can also tune individually in hpipm...)
-	double alpha_min;
-	int warm_start;
-} treeqp_hpipm_options_t;
 
-treeqp_hpipm_options_t treeqp_hpipm_default_options();
+
+// memory to store temporary calculations when calculating solver size
+typedef struct scrap_memory_hpipm_t_
+{
+    int *nkids;
+    int *nb;
+    int *nbx;
+    int *nbu;
+    int *ns;
+} scrap_memory_hpipm_t;
+
+
+
+typedef struct treeqp_hpipm_opts_t_
+{
+	int maxIter;			 	 // maximum number of IP iterations (status = 1 if reached)
+	double mu0;			 		 // max element value in cost function
+	double tol; 	  			 // tolerance for res_g_max, res_b_max, res_d_max, res_m_max (can also tune individually in hpipm...)
+	double alpha_min;			 // minimum step size (status = 2 if reached)
+	int warm_start;				 // read initial guess from x and u
+	scrap_memory_hpipm_t scrap;  // scrap memory needed in treeqp_hpmpc_calculate_size
+} treeqp_hpipm_opts_t;
+
+
 
 typedef struct treeqp_hpipm_workspace_
 {
@@ -68,13 +83,23 @@ typedef struct treeqp_hpipm_workspace_
 
 } treeqp_hpipm_workspace;
 
-int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts);
 
-void create_treeqp_hpipm(tree_ocp_qp_in *qp_in, treeqp_hpipm_options_t *opts,
-    treeqp_hpipm_workspace *work, void *ptr);
 
-int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_options_t *opts,
-    treeqp_hpipm_workspace *work);
+int treeqp_hpipm_opts_calculate_size(int Nn);
+
+void treeqp_hpipm_opts_create(int Nn, treeqp_hpipm_opts_t *opts, void *ptr);
+
+void treeqp_hpipm_opts_set_default(treeqp_hpipm_opts_t *opts);
+
+
+
+int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts);
+
+void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work, void *ptr);
+
+int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work);
+
+
 
 #ifdef __cplusplus
 }  /* extern "C" */
