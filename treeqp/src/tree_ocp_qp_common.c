@@ -664,8 +664,8 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
         for (int jj = 0; jj < qp_in->nx[ii]; jj++)
         {
             min = BLASFEO_DVECEL(&qp_in->xmin[ii], jj);
-            if (min > -1e10)
-            {  // TODO(dimitris): check opts->inf instead
+            if (min >= -TREEQP_INF)
+            {
                 printf("%5.2f  ", min);
             }
             else
@@ -674,7 +674,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
             }
             printf("<=  x_%d  <=  ", jj);
             max = BLASFEO_DVECEL(&qp_in->xmax[ii], jj);
-            if (max < 1e10)
+            if (max <= TREEQP_INF)
             {
                 printf("%5.2f\n", max);
             } else
@@ -688,7 +688,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
         for (int jj = 0; jj < qp_in->nu[ii]; jj++)
         {
             min = BLASFEO_DVECEL(&qp_in->umin[ii], jj);
-            if (min > -1e10)
+            if (min >= -TREEQP_INF)
             {
                 printf("%5.2f  ", min);
             }
@@ -698,7 +698,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
             }
             printf("<=  u_%d  <=  ", jj);
             max = BLASFEO_DVECEL(&qp_in->umax[ii], jj);
-            if (max < 1e10)
+            if (max <= TREEQP_INF)
             {
                 printf("%5.2f\n", max);
             }
@@ -716,7 +716,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
         for (int jj = 0; jj < qp_in->nc[ii]; jj++)
         {
             min = BLASFEO_DVECEL(&qp_in->dmin[ii], jj);
-            if (min > -1e10)
+            if (min >= -TREEQP_INF)
             {
                 printf("%5.2f  ", min);
             }
@@ -726,7 +726,7 @@ void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
             }
             printf("<=  C[%d, :]*x + D[%d, :]*u  <=  ", jj, jj);
             max = BLASFEO_DVECEL(&qp_in->dmax[ii], jj);
-            if (max < 1e10)
+            if (max <= TREEQP_INF)
             {
                 printf("%5.2f\n", max);
             }
@@ -809,7 +809,7 @@ void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
 
 
 // NOTE(dimitris): weights are scaled to minimize the average cost over all scenarios
-void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
+void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
     double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
@@ -981,6 +981,383 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
 
 
 
+void tree_ocp_qp_in_set_edge_dynamics_colmajor(double *A, double *B, double *b,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+
+    struct node *tree = qp_in->tree;
+
+    int nxp = qp_in->nx[tree[node_indx].dad];
+    int nup = qp_in->nu[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    struct blasfeo_dmat *sA = &qp_in->A[indx];
+    struct blasfeo_dmat *sB = &qp_in->B[indx];
+    struct blasfeo_dvec *sb = &qp_in->b[indx];
+
+    blasfeo_pack_dmat(nx, nxp, A, nx, sA, 0, 0);
+    blasfeo_pack_dmat(nx, nup, B, nx, sB, 0, 0);
+    blasfeo_pack_dvec(nx, b, sb, 0);
+
+    assert(sA->m == nx);
+    assert(sA->n == nxp);
+    assert(sB->m == nx);
+    assert(sB->n == nup);
+    assert(sb->m == nx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+
+    struct blasfeo_dmat *sQ = &qp_in->Q[indx];
+    struct blasfeo_dmat *sR = &qp_in->R[indx];
+    struct blasfeo_dmat *sS = &qp_in->S[indx];
+    struct blasfeo_dvec *sq = &qp_in->q[indx];
+    struct blasfeo_dvec *sr = &qp_in->r[indx];
+
+    if (nx > 0)
+    {
+        blasfeo_pack_dmat(nx, nx, Q, nx, sQ, 0, 0);
+        blasfeo_pack_dvec(nx, q, sq, 0);
+
+        assert(sQ->m == nx);
+        assert(sQ->n == nx);
+        assert(sq->m == nx);
+    }
+
+    if (nu > 0)
+    {
+        blasfeo_pack_dmat(nu, nu, R, nu, sR, 0, 0);
+        blasfeo_pack_dvec(nu, r, sr, 0);
+
+        assert(sR->m == nu);
+        assert(sR->n == nu);
+        assert(sr->m == nu);
+    }
+
+    if (nx > 0 && nu > 0)
+    {
+        blasfeo_pack_dmat(nu, nx, S, nu, sS, 0, 0);
+
+        assert(sS->m == nu);
+        assert(sS->n == nx);
+    }
+    // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
+}
+
+
+
+void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+
+    struct blasfeo_dmat *sQ = &qp_in->Q[indx];
+    struct blasfeo_dmat *sR = &qp_in->R[indx];
+    struct blasfeo_dmat *sS = &qp_in->S[indx];
+    struct blasfeo_dvec *sq = &qp_in->q[indx];
+    struct blasfeo_dvec *sr = &qp_in->r[indx];
+
+    // set cross-term to zero
+    if (nx > 0 && nu > 0)
+    {
+        blasfeo_dgese(nu, nx, 0.0, sS, 0, 0);
+        assert(sS->m == nu);
+        assert(sS->n == nx);
+    }
+
+    // temporarily pack Qd to q and then copy it to the diagonal of Q
+    if (nx > 0)
+    {
+        blasfeo_dgese(nx, nx, 0.0, sQ, 0, 0);
+        blasfeo_pack_dvec(nx, Qd, sq, 0);
+        blasfeo_ddiain(nx, 1.0, sq, 0, sQ, 0, 0);
+
+        blasfeo_pack_dvec(nx, q, sq, 0);
+
+        assert(sQ->m == nx);
+        assert(sQ->n == nx);
+        assert(sq->m == nx);
+    }
+
+    // do the same with Rd
+    if (nu > 0)
+    {
+        blasfeo_dgese(nu, nu, 0.0, sR, 0, 0);
+        blasfeo_pack_dvec(nu, Rd, sr, 0);
+        blasfeo_ddiain(nu, 1.0, sr, 0, sR, 0, 0);
+
+        blasfeo_pack_dvec(nu, r, sr, 0);
+
+        assert(sR->m == nu);
+        assert(sR->n == nu);
+        assert(sr->m == nu);
+    }
+    // TODO(dimitris): assert Q,R pos. semi-definite
+}
+
+
+
+void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+
+    struct blasfeo_dvec *sxmin = &qp_in->xmin[indx];
+    struct blasfeo_dvec *sxmax = &qp_in->xmax[indx];
+    struct blasfeo_dvec *sumin = &qp_in->umin[indx];
+    struct blasfeo_dvec *sumax = &qp_in->umax[indx];
+
+    if (nx > 0)
+    {
+        blasfeo_pack_dvec(nx, xmin, sxmin, 0);
+        blasfeo_pack_dvec(nx, xmax, sxmax, 0);
+        assert(sxmin->m == nx);
+        assert(sxmax->m == nx);
+    }
+
+    if (nu > 0)
+    {
+        blasfeo_pack_dvec(nu, umin, sumin, 0);
+        blasfeo_pack_dvec(nu, umax, sumax, 0);
+        assert(sumin->m == nu);
+        assert(sumax->m == nu);
+    }
+    // TODO(dimitris): assert lower bounds <= upper bounds
+}
+
+
+
+void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+    int nc = qp_in->nc[indx];
+
+    struct blasfeo_dmat *sC = &qp_in->C[indx];
+    struct blasfeo_dmat *sD = &qp_in->D[indx];
+    struct blasfeo_dvec *sdmin = &qp_in->dmin[indx];
+    struct blasfeo_dvec *sdmax = &qp_in->dmax[indx];
+
+    if (nc == 0)
+    {
+        if (nx > 0) assert(sC->m == 0);
+        if (nu > 0) assert(sD->m == 0);
+        return;
+    }
+
+    if (nx > 0)
+    {
+        blasfeo_pack_dmat(nc, nx, C, nc, sC, 0, 0);
+        assert(sC->m == nc);
+        assert(sC->n == nx);
+    }
+
+    if (nu > 0)
+    {
+        blasfeo_pack_dmat(nc, nu, D, nc, sD, 0, 0);
+        assert(sD->m == nc);
+        assert(sD->n == nu);
+    }
+
+    blasfeo_pack_dvec(nc, dmin, sdmin, 0);
+    blasfeo_pack_dvec(nc, dmax, sdmax, 0);
+
+    assert(sdmin->m == nc);
+    assert(sdmax->m == nc);
+    // TODO(dimitris): assert lower bounds <= upper bounds
+}
+
+
+
+// NOTE(dimitris): weights are scaled to minimize the average cost over all scenarios
+void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
+    double *Q, double *q, double *P, double *p, double *R, double *r,
+    double *xmin, double *xmax, double *umin, double *umax, double *x0,
+    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
+{
+    int Nn = qp_in->N;
+    // TODO(dimitris): remove this unnecessary cast everywhere
+    struct node *tree = (struct node *) qp_in->tree;
+    struct blasfeo_dmat *sA = qp_in->A;
+    struct blasfeo_dmat *sB = qp_in->B;
+    struct blasfeo_dvec *sb = qp_in->b;
+    struct blasfeo_dmat *sQ = qp_in->Q;
+    struct blasfeo_dmat *sR = qp_in->R;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
+    struct blasfeo_dmat *sC = qp_in->C;
+    struct blasfeo_dmat *sD = qp_in->D;
+    struct blasfeo_dvec *sdmin = qp_in->dmin;
+    struct blasfeo_dvec *sdmax = qp_in->dmax;
+
+    int re, nx, nu, nc, nxp, nup;
+    double scalingFactor;
+    int currentStage = 0;
+    int nodesInStage = 0;
+    int numberOfLeaves = 1;
+
+
+    nx = qp_in->nx[1];
+    nu = qp_in->nu[0];
+
+    // detect number of leaves
+    for (int ii = Nn-1; ii > 0; ii--)
+    {
+        if (tree[ii].stage == tree[ii-1].stage)
+        {
+            numberOfLeaves++;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    // check if x0 is eliminated
+    answer_t eliminatedX0;
+    struct blasfeo_dmat sA0;
+    struct blasfeo_dvec sx0;
+    struct blasfeo_dvec sb_tmp;
+    double *b_tmp;
+
+    blasfeo_allocate_dvec(qp_in->nx[1], &sb_tmp);
+    b_tmp = malloc(qp_in->nx[1]*sizeof(double));
+
+    if (qp_in->nx[0] == 0)
+    {
+        eliminatedX0 = YES;
+        // TODO(dimitris): avoid allocating memory here
+        blasfeo_allocate_dmat(qp_in->nx[1], qp_in->nx[1], &sA0);
+        blasfeo_allocate_dvec(qp_in->nx[1], &sx0);
+        blasfeo_pack_dvec(qp_in->nx[1], x0, &sx0, 0);
+    }
+    else
+    {
+        eliminatedX0 = NO;
+    }
+
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        nx = qp_in->nx[ii];
+        nu = qp_in->nu[ii];
+        nc = qp_in->nc[ii];
+
+        if (ii > 0)
+        {
+            re = tree[ii].real;
+            nxp = qp_in->nx[tree[ii].dad];
+            nup = qp_in->nu[tree[ii].dad];
+
+            // build b vector
+            blasfeo_pack_dvec(nx, &b[re*nx], &sb_tmp, 0);
+            if (tree[ii].dad == 0 && eliminatedX0 == YES)
+            {
+                blasfeo_pack_dmat(nx, nx, &A[re*nx*nx], nx, &sA0, 0, 0);
+                blasfeo_dgemv_n(sA0.m, sA0.n, 1.0, &sA0, 0, 0, &sx0, 0, 1.0, &sb_tmp, 0, &sb_tmp, 0);
+            }
+            blasfeo_unpack_dvec(nx, &sb_tmp, 0, b_tmp);
+
+            tree_ocp_qp_in_set_edge_dynamics_colmajor(&A[re*nx*nxp], &B[re*nx*nup], b_tmp, qp_in, ii-1);
+        }
+
+        if (tree[ii].nkids > 0)
+            tree_ocp_qp_in_set_node_objective_diag(Q, R, q, r, qp_in, ii);
+        else
+            tree_ocp_qp_in_set_node_objective_diag(P, NULL, p, NULL, qp_in, ii);
+
+        // scale objective function with number of nodes per stage
+        if (tree[ii].stage > currentStage)
+        {
+            scalingFactor = numberOfLeaves/nodesInStage;
+            // printf("--- detected %d nodes on stage %d (scaling factor = %f)\n", nodesInStage, currentStage, scalingFactor);
+            for (int jj = 1; jj <= nodesInStage; jj++)
+            {
+                // printf("- scaling node %d with %f\n", ii-jj, scalingFactor);
+                blasfeo_dgesc(sQ[ii-jj].m, sQ[ii-jj].n, scalingFactor, &sQ[ii-jj], 0, 0);
+                blasfeo_dgesc(sR[ii-jj].m, sR[ii-jj].n, scalingFactor, &sR[ii-jj], 0, 0);
+                blasfeo_dvecsc(sq[ii-jj].m, scalingFactor, &sq[ii-jj], 0);
+                blasfeo_dvecsc(sr[ii-jj].m, scalingFactor, &sr[ii-jj], 0);
+            }
+            // reset counters
+            currentStage = tree[ii].stage;
+            nodesInStage = 1;
+        }
+        else
+        {
+            nodesInStage++;
+        }
+
+
+        if (ii == 0 && eliminatedX0 == NO)
+        {
+            tree_ocp_qp_in_set_node_bounds(x0, x0, umin, umax, qp_in, ii);
+        }
+        else
+        {
+            tree_ocp_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
+        }
+
+        if (tree[ii].nkids > 0)
+        {
+            tree_ocp_qp_in_set_node_general_constraints(C, D, dmin, dmax, qp_in, ii);
+        }
+        else
+        {
+            tree_ocp_qp_in_set_node_general_constraints(CN, NULL, dmin, dmax, qp_in, ii);
+        }
+    }
+
+    if (eliminatedX0 == YES)
+    {
+        blasfeo_free_dmat(&sA0);
+        blasfeo_free_dvec(&sx0);
+    }
+    blasfeo_free_dvec(&sb_tmp);
+    free(b_tmp);
+}
+
+
+
 void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in)
 {
     int Nn = qp_in->N;
@@ -995,27 +1372,28 @@ void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, t
 
     for(int ii = 0; ii < Nn-1; ii++)
     {
+        #if 1
+        tree_ocp_qp_in_set_edge_dynamics_colmajor(&A[idxA], &B[idxB], &b[idxb], qp_in, ii);
+        idxA += sA[ii].m * sA[ii].n;
+        idxB += sB[ii].m * sB[ii].n;
+        idxb += sb[ii].m;
+        #else
         blasfeo_pack_dmat(sA[ii].m, sA[ii].n, &A[idxA], sA[ii].m, &sA[ii], 0, 0);
         idxA += sA[ii].m * sA[ii].n;
-        assert(sA[ii].m == qp_in->nx[ii+1]);
-        assert(sA[ii].n == qp_in->nx[qp_in->tree[ii+1].dad]);
 
         blasfeo_pack_dmat(sB[ii].m, sB[ii].n, &B[idxB], sB[ii].m, &sB[ii], 0, 0);
         idxB += sB[ii].m * sB[ii].n;
-        assert(sB[ii].m == qp_in->nx[ii+1]);
-        assert(sB[ii].n == qp_in->nu[qp_in->tree[ii+1].dad]);
 
         blasfeo_pack_dvec(sb[ii].m, &b[idxb], &sb[ii], 0);
         idxb += sb[ii].m;
-        assert(sb[ii].m == qp_in->nx[ii+1]);
+        #endif
     }
 }
 
 
 
-void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r,
-    tree_ocp_qp_in *qp_in)
-    {
+void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in)
+{
     int Nn = qp_in->N;
 
     struct blasfeo_dmat *sQ = qp_in->Q;
@@ -1024,25 +1402,26 @@ void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, do
     struct blasfeo_dvec *sq = qp_in->q;
     struct blasfeo_dvec *sr = qp_in->r;
 
-    struct blasfeo_dvec sQvec, sRvec;
+    // struct blasfeo_dvec sQvec, sRvec;
 
     int idxQ = 0;
     int idxR = 0;
 
     for (int ii = 0; ii < Nn; ii++)
     {
+        #if 1
+        tree_ocp_qp_in_set_node_objective_diag(&Qd[idxQ], &Rd[idxR], &q[idxQ], &r[idxR], qp_in, ii);
+        idxQ += sQ[ii].m;
+        idxR += sR[ii].m;
+        #else
         blasfeo_dgese(sQ[ii].m, sQ[ii].n, 0.0, &sQ[ii], 0, 0);
         blasfeo_create_dvec(sQ[ii].m, &sQvec, &Qd[idxQ]);
         blasfeo_ddiain(sQ[ii].m, 1.0, &sQvec, 0, &sQ[ii], 0, 0);
         blasfeo_pack_dvec(sq[ii].m, &q[idxQ], &sq[ii], 0);
 
         idxQ += sQ[ii].m;
-        assert(sQ[ii].m == qp_in->nx[ii]);
-        assert(sQ[ii].n == qp_in->nx[ii]);
 
         blasfeo_dgese(sS[ii].m, sS[ii].m, 0.0, &sS[ii], 0, 0);
-        assert(sS[ii].m == qp_in->nu[ii]);
-        assert(sS[ii].n == qp_in->nx[ii]);
 
         blasfeo_dgese(sR[ii].m, sR[ii].n, 0.0, &sR[ii], 0, 0);
         blasfeo_create_dvec(sR[ii].m, &sRvec, &Rd[idxR]);
@@ -1050,8 +1429,7 @@ void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, do
         blasfeo_pack_dvec(sr[ii].m, &r[idxR], &sr[ii], 0);
 
         idxR += sR[ii].m;
-        assert(sR[ii].m == qp_in->nu[ii]);
-        assert(sR[ii].n == qp_in->nu[ii]);
+        #endif
     }
 }
 
@@ -1076,57 +1454,30 @@ void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, 
 
     for(int ii = 0; ii < Nn; ii++)
     {
+        #if 1
+        tree_ocp_qp_in_set_node_objective_colmajor(&Q[idxQ], &R[idxR], &S[idxS], &q[idxq], &r[idxr], qp_in, ii);
+        idxQ += sQ[ii].m * sQ[ii].n;
+        idxR += sR[ii].m * sR[ii].n;
+        idxS += sS[ii].m * sS[ii].n;
+        idxq += sq[ii].m;
+        idxr += sr[ii].m;
+        #else
         blasfeo_pack_dmat(sQ[ii].m, sQ[ii].n, &Q[idxQ], sQ[ii].m, &sQ[ii], 0, 0);
         idxQ += sQ[ii].m * sQ[ii].n;
-        assert(sQ[ii].m == qp_in->nx[ii]);
-        assert(sQ[ii].n == qp_in->nx[ii]);
-        // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
 
         blasfeo_pack_dmat(sR[ii].m, sR[ii].n, &R[idxR], sR[ii].m, &sR[ii], 0, 0);
         idxR += sR[ii].m * sR[ii].n;
-        assert(sR[ii].m == qp_in->nu[ii]);
-        assert(sR[ii].n == qp_in->nu[ii]);
 
         blasfeo_pack_dmat(sS[ii].m, sS[ii].n, &S[idxS], sS[ii].m, &sS[ii], 0, 0);
         idxS += sS[ii].m * sS[ii].n;
-        assert(sS[ii].m == qp_in->nu[ii]);
-        assert(sS[ii].n == qp_in->nx[ii]);
 
         blasfeo_pack_dvec(sq[ii].m, &q[idxq], &sq[ii], 0);
         idxq += sq[ii].m;
-        assert(sq[ii].m == qp_in->nx[ii]);
 
         blasfeo_pack_dvec(sr[ii].m, &r[idxr], &sr[ii], 0);
         idxr += sr[ii].m;
-        assert(sr[ii].m == qp_in->nu[ii]);
+        #endif
     }
-}
-
-
-
-void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
-{
-    double inf = 1e12;
-    int Nn = qp_in->N;
-
-    struct blasfeo_dvec *sxmin = qp_in->xmin;
-    struct blasfeo_dvec *sxmax = qp_in->xmax;
-    struct blasfeo_dvec *sumin = qp_in->umin;
-    struct blasfeo_dvec *sumax = qp_in->umax;
-
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        blasfeo_dvecse(sxmin[ii].m, -inf, &sxmin[ii], 0);
-        blasfeo_dvecse(sxmax[ii].m, inf, &sxmax[ii], 0);
-        assert(sxmin[ii].m == qp_in->nx[ii]);
-        assert(sxmax[ii].m == qp_in->nx[ii]);
-
-        blasfeo_dvecse(sumin[ii].m, -inf, &sumin[ii], 0);
-        blasfeo_dvecse(sumax[ii].m, inf, &sumax[ii], 0);
-        assert(sumin[ii].m == qp_in->nu[ii]);
-        assert(sumax[ii].m == qp_in->nu[ii]);
-    }
-
 }
 
 
@@ -1146,32 +1497,91 @@ void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, d
     for (int ii = 0; ii < Nn; ii++)
     {
         assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
-        assert(sxmax[ii].m == qp_in->nx[ii]);
         assert(qp_in->nu[ii] == nu || qp_in->nu[ii] == 0);
-        assert(sumax[ii].m == qp_in->nu[ii]);
+
+        tree_ocp_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
     }
-
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        blasfeo_pack_dvec(sxmin[ii].m, xmin, &sxmin[ii], 0);
-        blasfeo_pack_dvec(sxmax[ii].m, xmax, &sxmax[ii], 0);
-
-        blasfeo_pack_dvec(sumin[ii].m, umin, &sumin[ii], 0);
-        blasfeo_pack_dvec(sumax[ii].m, umax, &sumax[ii], 0);
-    }
-
 }
 
 
 
-// TODO(dimitris): extend to set b instead if nx[0] = 0
-void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0)
+void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
 {
+    int Nn = qp_in->N;
+    int *nx = qp_in->nx;
+    int *nu = qp_in->nu;
+
+    double inf = TREEQP_INF;
+
     struct blasfeo_dvec *sxmin = qp_in->xmin;
     struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
 
-    blasfeo_pack_dvec(sxmin[0].m, x0, &sxmin[0], 0);
-    blasfeo_pack_dvec(sxmax[0].m, x0, &sxmax[0], 0);
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        blasfeo_dvecse(sxmin[ii].m, -inf, &sxmin[ii], 0);
+        blasfeo_dvecse(sxmax[ii].m, inf, &sxmax[ii], 0);
+        assert(sxmin[ii].m == nx[ii]);
+        assert(sxmax[ii].m == nx[ii]);
+
+        blasfeo_dvecse(sumin[ii].m, -inf, &sumin[ii], 0);
+        blasfeo_dvecse(sumax[ii].m, inf, &sumax[ii], 0);
+        assert(sumin[ii].m == nu[ii]);
+        assert(sumax[ii].m == nu[ii]);
+    }
+}
+
+
+
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0, double *x0_prev)
+{
+    int Nn = qp_in->N;
+    int nx0 = qp_in->nx[0];
+
+    struct node *tree = qp_in->tree;
+
+    if (nx0 > 0)  // x0 not eliminated (x0_prev not relevant)
+    {
+        struct blasfeo_dvec *sxmin0 = &qp_in->xmin[0];
+        struct blasfeo_dvec *sxmax0 = &qp_in->xmax[0];
+
+        blasfeo_pack_dvec(sxmin0->m, x0, sxmin0, 0);
+        blasfeo_pack_dvec(sxmax0->m, x0, sxmax0, 0);
+
+        assert(sxmin0->m == nx0);
+        assert(sxmax0->m == nx0);
+    }
+    else
+    {
+        // TODO(dimitris): NOT TESTED!!!
+        // TODO: FIX ME!
+        // TODO: WHY DOES SPRING_MASS WORK ALSO WHEN IT'S COMMENTED OUT?? (nx[0]=0)
+        int nx_HACK = qp_in->nx[1];
+
+        // TODO(dimitris): move to scrap memory in qp_in?
+        struct blasfeo_dvec sx0;
+        blasfeo_allocate_dvec(nx_HACK, &sx0);
+
+        for (int ii = 1; ii < Nn; ii++)
+        {
+            if (tree[ii].dad == 0)
+            {
+                // b = b - A*x0_prev (back to unmodified b)
+                blasfeo_pack_dvec(nx_HACK, x0_prev, &sx0, 0);
+                blasfeo_dgemv_n(qp_in->A[ii-1].m, qp_in->A[ii-1].n, -1.0, &qp_in->A[ii-1], 0, 0,
+                    &sx0, 0, 1.0, &qp_in->b[ii-1], 0, &qp_in->b[ii-1], 0);
+
+                // b = b + A*x0 (new modified b)
+                blasfeo_pack_dvec(nx_HACK, x0, &sx0, 0);
+                blasfeo_dgemv_n(qp_in->A[ii-1].m, qp_in->A[ii-1].n, 1.0, &qp_in->A[ii-1], 0, 0,
+                    &sx0, 0, 1.0, &qp_in->b[ii-1], 0, &qp_in->b[ii-1], 0);
+
+                assert(qp_in->A[ii-1].n == nx0);
+            }
+        }
+        blasfeo_free_dvec(&sx0);
+    }
 }
 
 

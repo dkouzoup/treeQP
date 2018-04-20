@@ -102,7 +102,7 @@ int main( )
 
     #ifdef TEST_GENERAL_CONSTRAINTS
 
-    int NC = 1;  // chose between 1 (either state or inpute constraint converted) and 2 (both converted)
+    int NC = 2;  // chose between 1 (either state or inpute constraint converted) and 2 (both converted)
     int make_u_constr_general = 1;  // if 1, choose which bound to convert to general constraint
 
     int NCn;  // number of general constraints at last stage
@@ -222,7 +222,8 @@ int main( )
         }
     }
     // restore bound on x0
-    tree_ocp_qp_in_set_x0_bounds(&qp_in, x0);
+    double x0_prev[] = {0., 0., 0., 0.};
+    tree_ocp_qp_in_set_x0_bounds(&qp_in, x0, x0_prev);
 
     #else
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones

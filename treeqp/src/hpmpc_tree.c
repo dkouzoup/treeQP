@@ -43,8 +43,6 @@
 #include "hpmpc/include/tree.h"
 #include "hpmpc/include/mpc_solvers.h"
 
-#define INF 1e10 // TODO(dimitris): option instead of hardcoded here?
-
 
 
 int treeqp_hpmpc_opts_calculate_size(int Nn)
@@ -88,7 +86,7 @@ int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec 
 
     for (int ii = 0; ii < n; ii++)
     {
-        if (BLASFEO_DVECEL(vmin, ii) > -INF || BLASFEO_DVECEL(vmax, ii) < INF)
+        if (BLASFEO_DVECEL(vmin, ii) > -TREEQP_INF || BLASFEO_DVECEL(vmax, ii) < TREEQP_INF)
         {
             nb += 1;
         }
@@ -144,7 +142,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
         kk = 0;
         for (int jj = 0; jj < qp_in->nu[ii]; jj++)
         {
-            if (BLASFEO_DVECEL(&sumin[ii], jj) > -INF || BLASFEO_DVECEL(&sumax[ii], jj) < INF)
+            if (BLASFEO_DVECEL(&sumin[ii], jj) > -TREEQP_INF || BLASFEO_DVECEL(&sumax[ii], jj) < TREEQP_INF)
             {
                 nb[ii] += 1;
                 idxb[ii][kk++] = jj;
@@ -152,7 +150,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
         }
         for (int jj = 0; jj < qp_in->nx[ii]; jj++)
         {
-            if (BLASFEO_DVECEL(&sxmin[ii], jj) > -INF || BLASFEO_DVECEL(&sxmax[ii], jj) < INF)
+            if (BLASFEO_DVECEL(&sxmin[ii], jj) > -TREEQP_INF || BLASFEO_DVECEL(&sxmax[ii], jj) < TREEQP_INF)
             {
                 nb[ii] += 1;
                 idxb[ii][kk++] = jj + qp_in->nu[ii];
@@ -375,7 +373,7 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     treeqp_tic(&solver_tmr);
 
 
-    // TODO(dimitris): fix bug in general constraints and remove those prints
+    // // TODO(dimitris): fix bug in general constraints and remove those prints
     // for (int ii = 0; ii < qp_in->N; ii++)
     // {
     //     printf("ii = %d / %d (nx = %d, nu = %d, nb = %d, nc = %d)\n", ii, qp_in->N, nx[ii], nu[ii], nb[ii], nc[ii]);
@@ -387,6 +385,7 @@ int treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
     //     blasfeo_print_dmat(nx[ii]+nu[ii], nc[ii], &sDCt[ii], 0, 0);
     //     // if (ii == 10) exit(1);
     // }
+    // exit(1);
 
     // solve QP
     int status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,

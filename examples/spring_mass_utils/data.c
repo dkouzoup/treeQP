@@ -3,7 +3,7 @@
 #define SOLVE_WITH_TDUNES
 #define SOLVE_WITH_SDUNES
 #define SOLVE_WITH_HPMPC
-#define SOLVE_WITH_HPIPM
+// #define SOLVE_WITH_HPIPM
 
 // TODO(dimitris): fix HPMPC/HPMPC bug with general constraints
 // #define TEST_GENERAL_CONSTRAINTS

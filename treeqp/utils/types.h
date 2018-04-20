@@ -34,6 +34,7 @@ extern "C" {
 
 typedef unsigned int uint;
 
+#define TREEQP_INF 1e12
 
 // Boolean answer
 typedef enum {

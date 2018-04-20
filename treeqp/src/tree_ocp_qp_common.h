@@ -147,28 +147,44 @@ void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out
 
 
 
-// TODO(dimitris): write better setters-getters
+// set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]
+void tree_ocp_qp_in_set_edge_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in, int indx);
 
+void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
+
+void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
+
+void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_ocp_qp_in *qp_in, int indx);
+
+void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in, int indx);
+
+
+// A, B, b contain all matrices/vectors of appropriate dimensions concatenated in one vector
 void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_ocp_qp_in *qp_in);
 
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0);
+// x0_prev used to update b vectors only when x0 is eliminated (b = b_prev - A*x0_prev + A*x0)
+void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0, double *x0_prev);
 
 
-
-// TODO(dimitris): split to small functions and clean up
+// TODO(dimitris): clean up
 void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
     double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
 
+void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double *b,
+    double *Q, double *q, double *P, double *p, double *R, double *r,
+    double *xmin, double *xmax, double *umin, double *umax, double *x0,
+    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
 
 #ifdef __cplusplus
 }  /* extern "C" */
