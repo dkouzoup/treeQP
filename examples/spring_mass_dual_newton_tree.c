@@ -166,7 +166,7 @@ int main( ) {
     }
     #endif
 
-    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     #if PRINT_LEVEL > 0
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-8 && "KKT tolerance in spring_mass_dual_newton_tree.c too high!");

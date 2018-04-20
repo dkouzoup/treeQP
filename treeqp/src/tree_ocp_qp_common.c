@@ -301,12 +301,12 @@ void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *
 
 
 
-void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res)
+void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res)
 {
     int Nn = qp_in->N;
-    int nz = number_of_primal_variables(qp_in);
-    int ne = number_of_dynamic_constraints(qp_in);
-    int ng = number_of_general_constraints(qp_in);
+    int nz = total_number_of_primal_variables(qp_in);
+    int ne = total_number_of_dynamic_constraints(qp_in);
+    int ng = total_number_of_general_constraints(qp_in);
     int nKKT = 3*nz + ne + 2*ng;
 
     for (int ii = 0; ii < nKKT; ii++)
@@ -526,15 +526,15 @@ void calculate_KKT_residuals(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, dou
 
 
 
-double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
+double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
 {
-    int nz = number_of_primal_variables(qp_in);
-    int ne = number_of_dynamic_constraints(qp_in);
-    int ng = number_of_general_constraints(qp_in);
+    int nz = total_number_of_primal_variables(qp_in);
+    int ne = total_number_of_dynamic_constraints(qp_in);
+    int ng = total_number_of_general_constraints(qp_in);
     int nKKT = 3*nz + ne + 2*ng;
 
     double *res = malloc(nKKT*sizeof(double));
-    calculate_KKT_residuals(qp_in, qp_out, res);
+    tree_ocp_qp_out_calculate_KKT_res(qp_in, qp_out, res);
 
     double err = ABS(res[0]);
     double cur;
@@ -549,7 +549,7 @@ double max_KKT_residual(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
 
 
 
-int number_of_states(tree_ocp_qp_in *qp_in)
+int total_number_of_states(tree_ocp_qp_in *qp_in)
 {
     int nx = 0;
 
@@ -571,7 +571,7 @@ int max_number_of_states(tree_ocp_qp_in *qp_in)
 
 
 
-int number_of_controls(tree_ocp_qp_in *qp_in)
+int total_number_of_controls(tree_ocp_qp_in *qp_in)
 {
     int nu = 0;
 
@@ -593,14 +593,14 @@ int max_number_of_controls(tree_ocp_qp_in *qp_in)
 
 
 
-int number_of_primal_variables(tree_ocp_qp_in *qp_in)
+int total_number_of_primal_variables(tree_ocp_qp_in *qp_in)
 {
-    return number_of_controls(qp_in) + number_of_states(qp_in);
+    return total_number_of_controls(qp_in) + total_number_of_states(qp_in);
 }
 
 
 
-int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
+int total_number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
 {
     int ne = 0;
 
@@ -610,7 +610,7 @@ int number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
 
 
 
-int number_of_general_constraints(tree_ocp_qp_in *qp_in)
+int total_number_of_general_constraints(tree_ocp_qp_in *qp_in)
 {
     int ng = 0;
 
@@ -1179,8 +1179,8 @@ void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0)
 void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath)
 {
     int Nn = qp_in->N;
-    int dimx = number_of_states(qp_in);
-    int dimu = number_of_controls(qp_in);
+    int dimx = total_number_of_states(qp_in);
+    int dimu = total_number_of_controls(qp_in);
     int iter = qp_out->info.iter;
 
     // TODO(dimitris): also write multipliers

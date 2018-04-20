@@ -163,7 +163,7 @@ int main() {
     }
     printf("ITERS = %d\n", qp_out.info.iter);
 
-    double kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("\nMaximum error in KKT residuals:\t%2.2e\n\n", kkt_err);
 
     free(qp_solver_memory);

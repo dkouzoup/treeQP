@@ -53,7 +53,7 @@
 
 int main( )
 {
-    #ifdef SOLVE_WITH_TDUNES
+    #ifdef SOLVE_WITH_SDUNES
     #ifdef TEST_GENERAL_CONSTRAINTS
     printf("Cannot test general constraints with SDUNES!\n");
     return -1;
@@ -325,7 +325,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
@@ -361,7 +361,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (sdunes):\t\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of sdunes in spring_mass.c too high!");
 
@@ -394,7 +394,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpmpc):\t\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of tree hpmpc in spring_mass.c too high!");
 
@@ -430,7 +430,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = max_KKT_residual(&qp_in, &qp_out);
+    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpipm):\t\t\t %2.2e\n\n", kkt_err);
     // assert(kkt_err < 1e-10 && "KKT tolerance of tree hpipm in spring_mass.c too high!");
 

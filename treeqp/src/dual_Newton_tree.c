@@ -234,9 +234,9 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     int indh = 0;
     int indx = 0;
     int indu = 0;
-    int dimh = number_of_primal_variables(qp_in);
-    int dimx = number_of_states(qp_in);
-    int dimu = number_of_controls(qp_in);
+    int dimh = total_number_of_primal_variables(qp_in);
+    int dimx = total_number_of_states(qp_in);
+    int dimu = total_number_of_controls(qp_in);
     double *hmod = malloc(dimh*sizeof(double));
     double *xit = malloc(dimx*sizeof(double));
     double *uit = malloc(dimu*sizeof(double));
@@ -451,7 +451,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
 
     #ifdef SAVE_DATA
     int indres = 0;
-    int dimres = number_of_states(qp_in) - qp_in->nx[0];
+    int dimres = total_number_of_states(qp_in) - qp_in->nx[0];
     double res[dimres];
     int dimW = 0;
     int dimUt = 0;
@@ -625,7 +625,7 @@ static void calculate_delta_lambda(tree_ocp_qp_in *qp_in, int idxFactorStart,
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
     #ifdef SAVE_DATA
-    int dimlam = number_of_states(qp_in) - qp_in->nx[0];
+    int dimlam = total_number_of_states(qp_in) - qp_in->nx[0];
     double deltalambda[dimlam];
     int indlam = 0;
     #endif
@@ -883,7 +883,7 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp
     struct node *tree = (struct node *)qp_in->tree;
 
     #ifdef SAVE_DATA
-    int dimlam = number_of_states(qp_in) - qp_in->nx[0];
+    int dimlam = total_number_of_states(qp_in) - qp_in->nx[0];
     double *lambda = malloc(dimlam*sizeof(double));
     int indlam = 0;
     #endif
@@ -952,8 +952,8 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
     int kk, indx, indu, ind;
 
     int Nn = qp_in->N;
-    int dimx = number_of_states(qp_in);
-    int dimu = number_of_controls(qp_in);
+    int dimx = total_number_of_states(qp_in);
+    int dimu = total_number_of_controls(qp_in);
     int dimlam = dimx - qp_in->nx[0];
 
     struct blasfeo_dvec *sx = work->sx;

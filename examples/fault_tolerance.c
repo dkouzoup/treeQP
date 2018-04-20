@@ -568,7 +568,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             printf("maximum number of iterations reached\n");
 
         // check KKT conditions
-        res->kkt_tol[tt] = max_KKT_residual(&qp_ins[mpc_config], &qp_outs[mpc_config]);
+        res->kkt_tol[tt] = tree_ocp_qp_out_max_KKT_res(&qp_ins[mpc_config], &qp_outs[mpc_config]);
         // printf("KKT = %f\n", res->kkt_tol[tt]);
         // assert(res->kkt_tol[tt] <= tol && "violation of KKT conditions too high");
         if (res->kkt_tol[tt] > tol)
