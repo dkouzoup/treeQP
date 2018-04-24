@@ -90,17 +90,16 @@ int main() {
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
 
-    for (int ii = 0; ii < Nn; ii++) {
-        // state and input dimensions on each node (only different at root/leaves)
-        if (ii > 0) {
-            nx[ii] = NX;
-        } else {
-            nx[ii] = 0;  // NOTE(dimitris): x0 variable is eliminated
-        }
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        nx[ii] = NX;
 
-        if (tree[ii].nkids > 0) {  // not a leaf
+        if (tree[ii].nkids > 0)  // not a leaf
+        {
             nu[ii] = NU;
-        } else {
+        }
+        else
+        {
             nu[ii] = 0;
         }
     }
@@ -116,19 +115,23 @@ int main() {
     // tree_ocp_qp_in_print(&qp_in);
     // exit(1);
 
-    // setup QP solver
-    treeqp_sdunes_workspace work;
-
-    int treeqp_size = treeqp_sdunes_calculate_size(&qp_in, &opts);
-    void *qp_solver_memory = malloc(treeqp_size);
-    treeqp_sdunes_create(&qp_in, &opts, &work, qp_solver_memory);
-
     // setup QP solution
     tree_ocp_qp_out qp_out;
 
     int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
     tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
+
+    // eliminate x0 from QP
+    tree_ocp_qp_in_eliminate_x0(&qp_in);
+    tree_ocp_qp_out_eliminate_x0(&qp_out);
+
+    // setup QP solver
+    treeqp_sdunes_workspace work;
+
+    int treeqp_size = treeqp_sdunes_calculate_size(&qp_in, &opts);
+    void *qp_solver_memory = malloc(treeqp_size);
+    treeqp_sdunes_create(&qp_in, &opts, &work, qp_solver_memory);
 
     #if PRINT_LEVEL > 0
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);

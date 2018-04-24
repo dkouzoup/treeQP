@@ -1168,7 +1168,7 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
 
 int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts)
 {
-    struct node *tree = (struct node *) qp_in->tree;
+    struct node *tree = qp_in->tree;
     int bytes = 0;
     int Nn = qp_in->N;
     int Nh = tree[Nn-1].stage;
@@ -1285,7 +1285,7 @@ int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *op
 void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
     treeqp_tdunes_workspace *work, void *ptr)
 {
-    struct node *tree = (struct node *) qp_in->tree;
+    struct node *tree = qp_in->tree;
     int Nn = qp_in->N;
     int Nh = tree[Nn-1].stage;
     int Np = get_number_of_parent_nodes(Nn, tree);

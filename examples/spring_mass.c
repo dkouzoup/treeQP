@@ -55,7 +55,7 @@ int main( )
 {
     #ifdef SOLVE_WITH_SDUNES
     #ifdef TEST_GENERAL_CONSTRAINTS
-    printf("Cannot test general constraints with SDUNES!\n");
+    printf("\n\nCannot test general constraints with SDUNES!\n\n");
     return -1;
     #endif
     #endif
@@ -135,7 +135,7 @@ int main( )
         }
         else
         {
-            nx[ii] = 0;
+            nx[ii] = NX;
         }
 
         if (tree[ii].nkids > 0)  // not a leaf
@@ -222,8 +222,7 @@ int main( )
         }
     }
     // restore bound on x0
-    double x0_prev[] = {0., 0., 0., 0.};
-    tree_ocp_qp_in_set_x0_bounds(&qp_in, x0, x0_prev);
+    tree_ocp_qp_in_set_x0_colmaj(&qp_in, x0);
 
     #else
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
@@ -237,6 +236,10 @@ int main( )
     int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
     void *qp_out_memory = malloc(qp_out_size);
     tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
+
+    // eliminate x0 from QP
+    tree_ocp_qp_in_eliminate_x0(&qp_in);
+    tree_ocp_qp_out_eliminate_x0(&qp_out);
 
     double overhead;
     double max_overhead;

@@ -50,6 +50,26 @@ typedef struct treeqp_info_t_
 
 
 
+// internal memory to eliminate x0 from QP
+typedef struct qp_internal_t_
+{
+    int *is_initialized;        // flag to denote whether (A0, b0) pair is initialized
+
+    struct blasfeo_dvec x0;     // space to pack x0
+
+    struct blasfeo_dmat *A0;    // matrices A of all children of root
+    struct blasfeo_dvec *b0;    // vectors b of all children of root
+
+    struct blasfeo_dmat C0;     // TODO: is_initialized for this too
+    struct blasfeo_dvec dmax0;
+    struct blasfeo_dvec dmin0;
+
+    // TODO(dimitris): contribution from S term missing!
+
+} qp_internal_t;
+
+
+
 // input to solver
 typedef struct tree_ocp_qp_in_
 {
@@ -79,6 +99,8 @@ typedef struct tree_ocp_qp_in_
     struct blasfeo_dvec *dmax;
 
     struct node *tree;
+
+    qp_internal_t internal_memory;
 
 } tree_ocp_qp_in;
 
@@ -130,6 +152,9 @@ int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc);
 void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *qp_out, void *ptr);
 
 
+void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in);
+
+void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out);
 
 void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res);
 
@@ -171,8 +196,9 @@ void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, d
 
 void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in);
 
-// x0_prev used to update b vectors only when x0 is eliminated (b = b_prev - A*x0_prev + A*x0)
-void tree_ocp_qp_in_set_x0_bounds(tree_ocp_qp_in *qp_in, double *x0, double *x0_prev);
+void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx0);
+
+void tree_ocp_qp_in_set_x0_colmaj(tree_ocp_qp_in *qp_in, double *x0);
 
 
 // TODO(dimitris): clean up

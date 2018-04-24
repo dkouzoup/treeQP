@@ -1466,7 +1466,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
 
 int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
 {
-    struct node *tree = (struct node *) qp_in->tree;
+    struct node *tree = qp_in->tree;
     int nx = qp_in->nx[1];
     int nu = qp_in->nu[0];
     int Nn = qp_in->N;
@@ -1575,7 +1575,7 @@ int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *op
 void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work, void *ptr) {
 
-    struct node *tree = (struct node *) qp_in->tree;
+    struct node *tree = qp_in->tree;
     int nx = qp_in->nx[1];
     int nu = qp_in->nu[0];
     int Nn = qp_in->N;
