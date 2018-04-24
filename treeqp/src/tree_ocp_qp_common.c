@@ -407,13 +407,20 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
     assert(check_error_strvec(&qp_in->xmin[0], &qp_in->xmax[0]) < 1e-10);
 
     tree_ocp_qp_in_set_x0_strvec(qp_in, &qp_in->xmin[0]);
+
+    qp_in->xmin[0].m = 0;
+    qp_in->xmax[0].m = 0;
 }
 
 
 
 void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out)
 {
+    qp_out->x[0].pa = NULL;
     qp_out->x[0].m = 0;
+
+    qp_out->mu_x[0].pa = NULL;
+    qp_out->mu_x[0].m = 0;
 }
 
 
