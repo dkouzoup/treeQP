@@ -793,24 +793,24 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
     int Nn = work->Nn;
     int Np = work->Np;
 
-    int *nx = (int *)qp_in->nx;
-    int *nu = (int *)qp_in->nu;
+    int *nx = qp_in->nx;
+    int *nu = qp_in->nu;
 
     double *fvals = work->fval;
     double *cmod = work->cmod;
 
-    struct blasfeo_dmat *sA = (struct blasfeo_dmat *) qp_in->A;
-    struct blasfeo_dmat *sB = (struct blasfeo_dmat *) qp_in->B;
-    struct blasfeo_dvec *sb = (struct blasfeo_dvec *) qp_in->b;
+    struct blasfeo_dmat *sA = qp_in->A;
+    struct blasfeo_dmat *sB = qp_in->B;
+    struct blasfeo_dvec *sb = qp_in->b;
 
-    struct blasfeo_dvec *sq = (struct blasfeo_dvec *) qp_in->q;
-    struct blasfeo_dvec *sr = (struct blasfeo_dvec *) qp_in->r;
+    struct blasfeo_dvec *sq = qp_in->q;
+    struct blasfeo_dvec *sr = qp_in->r;
 
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
     struct blasfeo_dvec *slambda = work->slambda;
 
-    struct node *tree = (struct node *)qp_in->tree;
+    struct node *tree = qp_in->tree;
 
     #ifdef PARALLEL
     #pragma omp parallel for private(idxkid, idxpos, idxdad)
@@ -848,7 +848,8 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
             idxpos = work->idxpos[idxkid];
 
             // cmod[k] += b[jj]' * lambda[jj]
-            cmod[kk] += blasfeo_ddot(nx[kk], &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
+            // TODO(dimitris): here it was nx[kk] instead of sb[idxkid-1].m which was wrong when x0 is eliminated, check if same happens elsewhere
+            cmod[kk] += blasfeo_ddot(sb[idxkid-1].m, &sb[idxkid-1], 0, &slambda[idxdad], idxpos);
 
             // return x^T * y
 
@@ -909,8 +910,9 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp
         #ifdef PARALLEL
         #pragma omp parallel for
         #endif
-        for (int kk = 0; kk < Np; kk++) {
-            blasfeo_daxpy( sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
+        for (int kk = 0; kk < Np; kk++)
+        {
+            blasfeo_daxpy(sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
                 &slambda[kk], 0);
         }
 
@@ -919,10 +921,13 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp
         // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
-        if (fval < fval0 + opts->lineSearchGamma*tau*dot_product) {
+        if (fval < fval0 + opts->lineSearchGamma*tau*dot_product)
+        {
             // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
-        } else {
+        }
+        else
+        {
             tauPrev = tau;
             tau = opts->lineSearchBeta*tauPrev;
         }

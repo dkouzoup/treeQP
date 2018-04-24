@@ -208,6 +208,7 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
     blasfeo_dgemm_nt(nvd, nvd, nzd, 1.0, qpoases_data->sZ, 0, 0, qpoases_data->sZ, 0, 0, 0.0,
         qpoases_data->sP, 0, 0, qpoases_data->sP, 0, 0);
 
+    // printf("idx = %d\n", idx);
     // printf("P (strmat):\n");
     // blasfeo_print_dmat(nvd, nvd, qpoases_data->sP, 0, 0);
 }
@@ -452,9 +453,8 @@ void stage_qp_qpoases_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, in
 
 void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
-    treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
-    treeqp_tdunes_qpoases_data *qpoases_data =
-        (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
+    treeqp_tdunes_workspace *work = work_;
+    treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
     int nx = qp_in->nx[idx];
     int nu = qp_in->nu[idx];
@@ -465,6 +465,22 @@ void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_
     // feval = - (1/2)x[k]' * Q[k] * x[k] + x[k]' * qmod[k] - cmod[k]
     // NOTE: qmod[k] has already a minus sign
     // NOTE: xas used as workspace
+
+    // printf("x{%d} = [ ... \n", idx+1);
+    // blasfeo_print_tran_dvec(nx, &work->sx[idx], 0);
+    // printf("]';\n");
+    // printf("u{%d} = [ ...\n", idx+1);
+    // blasfeo_print_tran_dvec(nu, &work->su[idx], 0);
+    // printf("]';\n");
+    // printf("c{%d} = %f;\n", idx+1, cmod);
+
+    // printf("q{%d} = [ ... \n", idx+1);
+    // blasfeo_print_tran_dvec(nx, &work->sqmod[idx], 0);
+    // printf("]';\n");
+
+    // printf("r{%d} = [ ... \n", idx+1);
+    // blasfeo_print_tran_dvec(nu, &work->srmod[idx], 0);
+    // printf("]';\n");
 
     // z <= beta * y + alpha * A * x, A symmetric and only lower triangular part of A is accessed
     blasfeo_dsymv_l(nx, nx, 1.0, &qp_in->Q[idx], 0, 0, &work->sx[idx], 0, 0.0,

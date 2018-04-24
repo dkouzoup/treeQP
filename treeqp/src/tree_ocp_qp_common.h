@@ -53,18 +53,21 @@ typedef struct treeqp_info_t_
 // internal memory to eliminate x0 from QP
 typedef struct qp_internal_t_
 {
-    int *is_initialized;        // flag to denote whether (A0, b0) pair is initialized
+    int *is_A_initialized;      // flag to denote whether (A0, b0) pairs are initialized (tree[0].nkids pairs in total)
+    int is_C_initialized;       // flag to denote whether (C0, dmin0, dmax0) triple is initialized
+    int is_S_initialized;       // flag to denote whether (S0, r0) pair is initialized
 
-    struct blasfeo_dvec x0;     // space to pack x0
+    struct blasfeo_dvec x0;     // memory to pack x0 from column major
 
     struct blasfeo_dmat *A0;    // matrices A of all children of root
     struct blasfeo_dvec *b0;    // vectors b of all children of root
 
-    struct blasfeo_dmat C0;     // TODO: is_initialized for this too
+    struct blasfeo_dmat C0;
     struct blasfeo_dvec dmax0;
     struct blasfeo_dvec dmin0;
 
-    // TODO(dimitris): contribution from S term missing!
+    struct blasfeo_dmat S0;
+    struct blasfeo_dvec r0;
 
 } qp_internal_t;
 

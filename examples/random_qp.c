@@ -76,7 +76,25 @@ int main() {
     #endif
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
 
+    #if 0
+    double x0[] = {1., 1.,};
+    tree_ocp_qp_in_set_x0_colmaj(&qp_in, x0);
+    #endif
+
     tree_ocp_qp_in_print(&qp_in);
+
+    // set up QP solution
+    tree_ocp_qp_out qp_out;
+
+    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
+    void *qp_out_memory = malloc(qp_out_size);
+    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
+
+    #if 0
+    // eliminate x0 variable
+    tree_ocp_qp_in_eliminate_x0(&qp_in);
+    tree_ocp_qp_out_eliminate_x0(&qp_out);
+    #endif
 
     // set up QP solver
 #ifndef USE_HPMPC
@@ -117,13 +135,6 @@ int main() {
     treeqp_hpmpc_create(&qp_in, &opts, &work, qp_solver_memory);
 #endif
 
-    // set up QP solution
-    tree_ocp_qp_out qp_out;
-
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
-    void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
-
     // solve QP
 #if PROFILE > 0
     initialize_timers( );
@@ -141,7 +152,6 @@ int main() {
     print_timers(qp_out.info.iter);
     #endif
 
-    // TODO(dimitris): print_ocp_qp_out function
     int indx = 0;
     int indu = 0;
     for (int ii = 0; ii < qp_in.N; ii++)
