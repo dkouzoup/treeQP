@@ -69,6 +69,8 @@ typedef struct treeqp_sdunes_workspace_
     int Nr;  // robust horizon
     int md;  // number of realizations
 
+    int reverseCholesky;  // depends on checkLastActiveSet option (only on/on, off/off implemented)
+
     int **nodeIdx;  // tree index of scenario nodes [Ns*(Nh+1)]
     int **boundsRemoved;  // flag to check if bounds of subsystem are removed
 

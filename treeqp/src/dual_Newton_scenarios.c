@@ -54,8 +54,6 @@
 #include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
-#define REV_CHOL
-
 #define NEW_FVAL
 #define SPLIT_NODES
 
@@ -437,33 +435,35 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
                 blasfeo_ddiaad(nx, 1.0, &work->sQinvCal[ii][kk], 0, &work->sLambdaD[ii][kk], 0, 0);
 
                 if (kk > 0) {
-                    #ifdef REV_CHOL
-                    // NOTE(dimitris): calculate LambdaL[k]' instead (aka upper triangular block)
+                    if (work->reverseCholesky)
+                    {
+                        // NOTE(dimitris): calculate LambdaL[k]' instead (aka upper triangular block)
 
-                    // LambdaL[k]' = A[k]'
-                    blasfeo_dgetr(nx, nx, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
+                        // LambdaL[k]' = A[k]'
+                        blasfeo_dgetr(nx, nx, &sA[idx-1], 0, 0, &work->sLambdaL[ii][kk-1], 0, 0);
 
-                    // LambdaL[k]' = -QinvCal[k]*A[k]'
-                    blasfeo_dgemm_dn(nx, nx, -1.0, &work->sQinvCal[ii][kk-1], 0,
-                        &work->sLambdaL[ii][kk-1], 0, 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                        &work->sLambdaL[ii][kk-1], 0, 0);
+                        // LambdaL[k]' = -QinvCal[k]*A[k]'
+                        blasfeo_dgemm_dn(nx, nx, -1.0, &work->sQinvCal[ii][kk-1], 0,
+                            &work->sLambdaL[ii][kk-1], 0, 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                            &work->sLambdaL[ii][kk-1], 0, 0);
 
-                    // LambdaD[k] = LambdaD[k] - A[k]*LambdaL[k]' = LambdaD[k] + A[k]*QinvCal[k]*A[k]'
-                    blasfeo_dgemm_nn(nx, nx, nx, -1.0, &sA[idx-1], 0, 0,
-                        &work->sLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
-                        &work->sLambdaD[ii][kk], 0, 0);
+                        // LambdaD[k] = LambdaD[k] - A[k]*LambdaL[k]' = LambdaD[k] + A[k]*QinvCal[k]*A[k]'
+                        blasfeo_dgemm_nn(nx, nx, nx, -1.0, &sA[idx-1], 0, 0,
+                            &work->sLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
+                            &work->sLambdaD[ii][kk], 0, 0);
+                        }
+                    else
+                    {
+                        // LambdaL[k] = -A[k] * QinvCal[k]
+                        blasfeo_dgemm_nd(nx, nx, -1.0, &sA[idx-1], 0, 0,
+                            &work->sQinvCal[ii][kk-1], 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                            &work->sLambdaL[ii][kk-1], 0, 0);
 
-                    #else
-                    // LambdaL[k] = -A[k] * QinvCal[k]
-                    blasfeo_dgemm_nd(nx, nx, -1.0, &sA[idx-1], 0, 0,
-                        &work->sQinvCal[ii][kk-1], 0, 0.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                        &work->sLambdaL[ii][kk-1], 0, 0);
-
-                    // LambdaD[k] = LambdaD[k] - LambdaL[k] * A[k]'
-                    blasfeo_dgemm_nt(nx, nx, nx, -1.0, &work->sLambdaL[ii][kk-1], 0, 0,
-                        &sA[idx-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
-                        &work->sLambdaD[ii][kk], 0, 0);
-                    #endif
+                        // LambdaD[k] = LambdaD[k] - LambdaL[k] * A[k]'
+                        blasfeo_dgemm_nt(nx, nx, nx, -1.0, &work->sLambdaL[ii][kk-1], 0, 0,
+                            &sA[idx-1], 0, 0, 1.0, &work->sLambdaD[ii][kk], 0, 0,
+                            &work->sLambdaD[ii][kk], 0, 0);
+                    }
                 }
                 if (opts->checkLastActiveSet)
                 {
@@ -607,79 +607,76 @@ static void factorize_Lambda(int Ns, int Nh, treeqp_sdunes_opts_t *opts, treeqp_
     #pragma omp parallel for private(kk)
     #endif
     for (ii = 0; ii < Ns; ii++) {
-        #ifdef REV_CHOL
-        for (kk = Nh-1; kk > 0; kk--) {
-            if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]))
-            {
+        if (work->reverseCholesky)
+        {
+            for (kk = Nh-1; kk > 0; kk--) {
+                if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]))
+                {
+                    // Cholesky factorization (possibly regularized)
+                    treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+                    opts->regType, opts->regTol, opts->regValue);
+
+                    // Substitution
+                    // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
+                    blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                        &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
+                }
+
+                #ifdef SAVE_DATA
+                blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
+                // TODO(dimitris): fix debugging in matlab for reverse Cholesky
+                blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk-1], 0, 0, &CholLambdaL[indL], nx);
+                indD += nx*nx; indL += nx*nx;
+                #endif
+
+                if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]+1))
+                {
+                    // Update (LambdaD[i][k+-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
+                    blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-1], 0, 0,
+                        &work->sCholLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk-1], 0, 0,
+                        &work->sLambdaD[ii][kk-1], 0, 0);
+                }
+            }
+            if (0 <= idxStart[ii]) {
+                treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
+                    opts->regType, opts->regTol, opts->regValue);
+            }
+
+            #ifdef SAVE_DATA
+            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][0], 0, 0, &CholLambdaD[indD], nx);
+            indD += nx*nx;
+            #endif
+        }
+        else
+        {
+            for (kk = 0; kk < Nh-1 ; kk++) {
                 // Cholesky factorization (possibly regularized)
                 treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
-                opts->regType, opts->regTol, opts->regValue);
+                    opts->regType, opts->regTol, opts->regValue);
 
                 // Substitution
-                // NOTE(dimitris): LambdaL is already transposed (aka upper part of Lambda)
                 blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
-                    &work->sLambdaL[ii][kk-1], 0, 0, &work->sCholLambdaL[ii][kk-1], 0, 0);
+                    &work->sLambdaL[ii][kk], 0, 0, &work->sCholLambdaL[ii][kk], 0, 0);
+
+                #ifdef SAVE_DATA
+                blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
+                blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk], 0, 0, &CholLambdaL[indL], nx);
+                indD += nx*nx; indL += nx*nx;
+                #endif
+
+                // Update (LambdaD[i][k-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
+                blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
+                    &work->sCholLambdaL[ii][kk], 0, 0, 1.0, &work->sLambdaD[ii][kk+1], 0, 0,
+                    &work->sLambdaD[ii][kk+1], 0, 0);
             }
-
-            #ifdef SAVE_DATA
-            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
-            // TODO(dimitris): fix debugging in matlab for reverse Cholesky
-            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk-1], 0, 0, &CholLambdaL[indL], nx);
-            indD += nx*nx; indL += nx*nx;
-            #endif
-
-            if ((opts->checkLastActiveSet == 0) || (kk <= idxStart[ii]+1))
-            {
-                // Update (LambdaD[i][k+-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
-                blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-1], 0, 0,
-                    &work->sCholLambdaL[ii][kk-1], 0, 0, 1.0, &work->sLambdaD[ii][kk-1], 0, 0,
-                    &work->sLambdaD[ii][kk-1], 0, 0);
-            }
-        }
-        #ifdef REV_CHOL
-        if (0 <= idxStart[ii]) {
-        #endif
-        treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][0], &work->sCholLambdaD[ii][0],
-            opts->regType, opts->regTol, opts->regValue);
-        #ifdef REV_CHOL
-        }
-        #endif
-
-        #ifdef SAVE_DATA
-        blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][0], 0, 0, &CholLambdaD[indD], nx);
-        indD += nx*nx;
-        #endif
-
-        #else  /* REV_CHOL */
-        for (kk = 0; kk < Nh-1 ; kk++) {
-            // Cholesky factorization (possibly regularized)
-            treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][kk], &work->sCholLambdaD[ii][kk],
+            treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
                 opts->regType, opts->regTol, opts->regValue);
 
-            // Substitution
-            blasfeo_dtrsm_rltn(nx, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
-                &work->sLambdaL[ii][kk], 0, 0, &work->sCholLambdaL[ii][kk], 0, 0);
-
             #ifdef SAVE_DATA
-            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][kk], 0, 0, &CholLambdaD[indD], nx);
-            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaL[ii][kk], 0, 0, &CholLambdaL[indL], nx);
-            indD += nx*nx; indL += nx*nx;
+            blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
+            indD += nx*nx;
             #endif
-
-            // Update (LambdaD[i][k-1] -= CholLambdaL[i][k] * CholLambdaL[i][k]')
-            blasfeo_dsyrk_ln(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
-                &work->sCholLambdaL[ii][kk], 0, 0, 1.0, &work->sLambdaD[ii][kk+1], 0, 0,
-                &work->sLambdaD[ii][kk+1], 0, 0);
         }
-        treeqp_dpotrf_l_with_reg_opts(&work->sLambdaD[ii][Nh-1], &work->sCholLambdaD[ii][Nh-1],
-            opts->regType, opts->regTol, opts->regValue);
-
-        #ifdef SAVE_DATA
-        blasfeo_unpack_dmat(nx, nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &CholLambdaD[indD], nx);
-        indD += nx*nx;
-        #endif
-
-        #endif  /* REV_CHOL */
     }
     #ifdef SAVE_DATA
     write_double_vector_to_txt(CholLambdaD, Ns*Nh*nx*nx, "examples/spring_mass_utils/CholLambdaD.txt");
@@ -708,47 +705,67 @@ void form_K(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
     #endif
     for (ii = 0; ii < Ns; ii++) {
         // ----- form U[i]'
-        for (jj = 0; jj < Nr; jj++) {
+        for (jj = 0; jj < Nr; jj++)
+        {
             // transpose Zbar[k]
             blasfeo_dgetr(nx, nu, &work->sZbar[ii][jj], 0, 0, &sTmpMats[ii], 0, 0);
-            #ifdef REV_CHOL
-            for (kk = jj; kk >= 0; kk--) {
-            #else
-            for (kk = jj; kk < Nh; kk++) {
-            #endif
-                // matrix substitution
-                // D <= B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
-                #ifdef LA_HIGH_PERFORMANCE
-                // NOTE(dimitris): writing directly on sub-block NIY for BLASFEO_HP
-                blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
-                    &sTmpMats[ii], 0, 0, &sTmpMats[ii], 0, 0);
-                blasfeo_dgecp(nu, nx, &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
-                #else
-                blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
-                    &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
-                #endif
 
-                // update
-                #ifdef REV_CHOL
-                if (kk > 0) {
-                    blasfeo_dgemm_nt(nu, nx, nx, -1.0, &sUt[ii], jj*nu, kk*nx,
-                        &work->sCholLambdaL[ii][kk-1], 0, 0, 0.0, &sTmpMats[ii], 0, 0,
-                        &sTmpMats[ii], 0, 0);
+            if (work->reverseCholesky)
+            {
+                for (kk = jj; kk >= 0; kk--)
+                {
+
+                    // matrix substitution
+                    // D <= B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
+                    #ifdef LA_HIGH_PERFORMANCE
+                    // NOTE(dimitris): writing directly on sub-block NIY for BLASFEO_HP
+                    blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                        &sTmpMats[ii], 0, 0, &sTmpMats[ii], 0, 0);
+                    blasfeo_dgecp(nu, nx, &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                    #else
+                    blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                        &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                    #endif
+
+                    // update
+                    if (kk > 0)
+                    {
+                        blasfeo_dgemm_nt(nu, nx, nx, -1.0, &sUt[ii], jj*nu, kk*nx,
+                            &work->sCholLambdaL[ii][kk-1], 0, 0, 0.0, &sTmpMats[ii], 0, 0,
+                            &sTmpMats[ii], 0, 0);
+                    }
                 }
-                #else
-                if (kk < Nh-1) {
-                    blasfeo_dgemm_nt(nu, nx, nx, -1.0, &sUt[ii], jj*nu, kk*nx,
-                        &work->sCholLambdaL[ii][kk], 0, 0, 0.0, &sTmpMats[ii], 0, 0,
-                        &sTmpMats[ii], 0, 0);
+            }
+            else
+            {
+                for (kk = jj; kk < Nh; kk++)
+                {
+                    // matrix substitution
+                    // D <= B * A^{-T} , with A lower triangular employing explicit inverse of diagonal
+                    #ifdef LA_HIGH_PERFORMANCE
+                    // NOTE(dimitris): writing directly on sub-block NIY for BLASFEO_HP
+                    blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                        &sTmpMats[ii], 0, 0, &sTmpMats[ii], 0, 0);
+                    blasfeo_dgecp(nu, nx, &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                    #else
+                    blasfeo_dtrsm_rltn(nu, nx, 1.0, &work->sCholLambdaD[ii][kk], 0, 0,
+                        &sTmpMats[ii], 0, 0, &sUt[ii], jj*nu, kk*nx);
+                    #endif
+
+                    // update
+                    if (kk < Nh-1) {
+                        blasfeo_dgemm_nt(nu, nx, nx, -1.0, &sUt[ii], jj*nu, kk*nx,
+                            &work->sCholLambdaL[ii][kk], 0, 0, 0.0, &sTmpMats[ii], 0, 0,
+                            &sTmpMats[ii], 0, 0);
+                    }
                 }
-                #endif
             }
         }
 
         // ----- form upper right part of K[i]
 
         // symmetric matrix multiplication
-        // TODO(dimitris): probably doing this with structure exploitation is cheaper if REV_CHOL=1
+        // TODO(dimitris): probably doing this with structure exploitation is cheaper if reverseCholesky = 1
         blasfeo_dsyrk_ln(sUt[ii].m, sUt[ii].n, -1.0, &sUt[ii], 0, 0, &sUt[ii], 0, 0, 0.0,
             &sK[ii], 0, 0, &sK[ii], 0, 0);
 
@@ -869,69 +886,72 @@ void form_RHS_non_anticipaticity(int Ns, int Nh, int Nr, int md, treeqp_sdunes_w
     #pragma omp parallel for private(kk)
     #endif
     for (ii = 0; ii < Ns; ii++) {
-        #ifdef REV_CHOL
-        // tmp = res[Nh]
-        blasfeo_dveccp(nx, &work->sresk[ii][Nh-1] , 0, &sTmpVecs[ii], 0);
+        if (work->reverseCholesky)
+        {
+            // tmp = res[Nh]
+            blasfeo_dveccp(nx, &work->sresk[ii][Nh-1] , 0, &sTmpVecs[ii], 0);
 
-        // backward substitution
-        for (kk = Nh; kk > 1; kk--) {
-            // resMod[k] = inv(CholLambdaD[k-1]) * tmp
-            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
-                &sTmpVecs[ii], 0, &work->sreskMod[ii][kk-1], 0);
+            // backward substitution
+            for (kk = Nh; kk > 1; kk--) {
+                // resMod[k] = inv(CholLambdaD[k-1]) * tmp
+                blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
+                    &sTmpVecs[ii], 0, &work->sreskMod[ii][kk-1], 0);
 
-            // update
-            // tmp = res[k-1] - CholLambdaL[k-1] * resMod[k]
-            blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
-                &work->sreskMod[ii][kk-1], 0, 1.0, &work->sresk[ii][kk-2], 0, &sTmpVecs[ii], 0);
+                // update
+                // tmp = res[k-1] - CholLambdaL[k-1] * resMod[k]
+                blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
+                    &work->sreskMod[ii][kk-1], 0, 1.0, &work->sresk[ii][kk-2], 0, &sTmpVecs[ii], 0);
+            }
+            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][0], 0, 0, &sTmpVecs[ii],
+                0, &work->sreskMod[ii][0], 0);
+
+            // forward substitution
+            for (kk = 0; kk < Nh-1; kk++) {
+                // resMod[k+1] = inv(CholLambdaD[k]') * resMod[k+1]
+                blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
+                    &work->sreskMod[ii][kk], 0, &work->sreskMod[ii][kk], 0);
+
+                // resMod[k+2] = resMod[k+2] - CholLambdaL[k+1]' * resMod[k+1]
+                blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
+                    &work->sreskMod[ii][kk], 0, 1.0, &work->sreskMod[ii][kk+1], 0,
+                    &work->sreskMod[ii][kk+1], 0);
+            }
+            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
+                &work->sreskMod[ii][Nh-1], 0, &work->sreskMod[ii][Nh-1], 0);
         }
-        blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][0], 0, 0, &sTmpVecs[ii],
-            0, &work->sreskMod[ii][0], 0);
+        else
+        {
+            // tmp = res[1]
+            blasfeo_dveccp(nx, &work->sresk[ii][0] , 0, &sTmpVecs[ii], 0);
 
-        // forward substitution
-        for (kk = 0; kk < Nh-1; kk++) {
-            // resMod[k+1] = inv(CholLambdaD[k]') * resMod[k+1]
-            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
-                &work->sreskMod[ii][kk], 0, &work->sreskMod[ii][kk], 0);
+            // forward substitution
+            for (kk = 0; kk < Nh-1; kk++) {
+                // resMod[k+1] = inv(CholLambdaD[k]) * tmp
+                blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk], 0, 0, &sTmpVecs[ii],
+                    0, &work->sreskMod[ii][kk], 0);
 
-            // resMod[k+2] = resMod[k+2] - CholLambdaL[k+1]' * resMod[k+1]
-            blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
-                &work->sreskMod[ii][kk], 0, 1.0, &work->sreskMod[ii][kk+1], 0,
-                &work->sreskMod[ii][kk+1], 0);
+                // update
+                // tmp = res[k+2] - CholLambdaL[k+1] * resMod[k+1]
+                blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
+                    &work->sreskMod[ii][kk], 0, 1.0, &work->sresk[ii][kk+1], 0, &sTmpVecs[ii], 0);
+            }
+            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &sTmpVecs[ii],
+                0, &work->sreskMod[ii][Nh-1], 0);
+
+            // backward substitution
+            for (kk = Nh; kk > 1; kk--) {
+                // resMod[k] = inv(CholLambdaD[k-1]') * resMod[k]
+                blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
+                    &work->sreskMod[ii][kk-1], 0, &work->sreskMod[ii][kk-1], 0);
+
+                // resMod[k-1] = resMod[k-1] - CholLambdaL[k-1]' * resMod[k]
+                blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
+                    &work->sreskMod[ii][kk-1], 0, 1.0, &work->sreskMod[ii][kk-2], 0,
+                    &work->sreskMod[ii][kk-2], 0);
+            }
+            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][0], 0, 0,
+                &work->sreskMod[ii][0], 0, &work->sreskMod[ii][0], 0);
         }
-        blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
-            &work->sreskMod[ii][Nh-1], 0, &work->sreskMod[ii][Nh-1], 0);
-        #else
-        // tmp = res[1]
-        blasfeo_dveccp(nx, &work->sresk[ii][0] , 0, &sTmpVecs[ii], 0);
-
-        // forward substitution
-        for (kk = 0; kk < Nh-1; kk++) {
-            // resMod[k+1] = inv(CholLambdaD[k]) * tmp
-            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk], 0, 0, &sTmpVecs[ii],
-                0, &work->sreskMod[ii][kk], 0);
-
-            // update
-            // tmp = res[k+2] - CholLambdaL[k+1] * resMod[k+1]
-            blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
-                &work->sreskMod[ii][kk], 0, 1.0, &work->sresk[ii][kk+1], 0, &sTmpVecs[ii], 0);
-        }
-        blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0, &sTmpVecs[ii],
-            0, &work->sreskMod[ii][Nh-1], 0);
-
-        // backward substitution
-        for (kk = Nh; kk > 1; kk--) {
-            // resMod[k] = inv(CholLambdaD[k-1]') * resMod[k]
-            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
-                &work->sreskMod[ii][kk-1], 0, &work->sreskMod[ii][kk-1], 0);
-
-            // resMod[k-1] = resMod[k-1] - CholLambdaL[k-1]' * resMod[k]
-            blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
-                &work->sreskMod[ii][kk-1], 0, 1.0, &work->sreskMod[ii][kk-2], 0,
-                &work->sreskMod[ii][kk-2], 0);
-        }
-        blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][0], 0, 0,
-            &work->sreskMod[ii][0], 0, &work->sreskMod[ii][0], 0);
-        #endif
     }
 
     // for ii == 0
@@ -1102,63 +1122,66 @@ void calculate_delta_mu(int Ns, int Nh, int Nr, treeqp_sdunes_workspace *work) {
 
         // ------ forward-backward substitution to calculate mu
 
-        #ifdef REV_CHOL
-        // backward substitution
-        for (kk = Nh; kk > 1; kk--) {
-            // Deltamu[k] = inv(CholLambdaD[k-1]) * res[k]
-            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
-                &work->sreskMod[ii][kk-1], 0, &work->sDeltamu[ii][kk-1], 0);
+        if (work->reverseCholesky)
+        {
+            // backward substitution
+            for (kk = Nh; kk > 1; kk--) {
+                // Deltamu[k] = inv(CholLambdaD[k-1]) * res[k]
+                blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
+                    &work->sreskMod[ii][kk-1], 0, &work->sDeltamu[ii][kk-1], 0);
 
-            // update
-            blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
-                &work->sDeltamu[ii][kk-1], 0, 1.0, &work->sreskMod[ii][kk-2], 0,
-                &work->sreskMod[ii][kk-2], 0);
+                // update
+                blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
+                    &work->sDeltamu[ii][kk-1], 0, 1.0, &work->sreskMod[ii][kk-2], 0,
+                    &work->sreskMod[ii][kk-2], 0);
+            }
+            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][0], 0, 0, &work->sreskMod[ii][0],
+                0, &work->sDeltamu[ii][0], 0);
+
+            // forward substitution
+            for (kk = 0; kk < Nh-1; kk++) {
+                // Deltamu[k+1] = inv(CholLambdaD[k]') * Deltamu[k+1]
+                blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
+                    &work->sDeltamu[ii][kk], 0, &work->sDeltamu[ii][kk], 0);
+
+                // update
+                blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
+                    &work->sDeltamu[ii][kk], 0, 1.0, &work->sDeltamu[ii][kk+1], 0,
+                    &work->sDeltamu[ii][kk+1], 0);
+            }
+            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
+                &work->sDeltamu[ii][Nh-1], 0, &work->sDeltamu[ii][Nh-1], 0);
         }
-        blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][0], 0, 0, &work->sreskMod[ii][0],
-            0, &work->sDeltamu[ii][0], 0);
+        else
+        {
+            // forward substitution
+            for (kk = 0; kk < Nh-1; kk++) {
+                // Deltamu[k+1] = inv(CholLambdaD[k]) * res[k+1]
+                blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
+                    &work->sreskMod[ii][kk], 0, &work->sDeltamu[ii][kk], 0);
 
-        // forward substitution
-        for (kk = 0; kk < Nh-1; kk++) {
-            // Deltamu[k+1] = inv(CholLambdaD[k]') * Deltamu[k+1]
-            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
-                &work->sDeltamu[ii][kk], 0, &work->sDeltamu[ii][kk], 0);
+                // update
+                blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
+                    &work->sDeltamu[ii][kk], 0, 1.0, &work->sreskMod[ii][kk+1], 0,
+                    &work->sreskMod[ii][kk+1], 0);
+            }
+            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
+                &work->sreskMod[ii][Nh-1], 0, &work->sDeltamu[ii][Nh-1], 0);
 
-            // update
-            blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
-                &work->sDeltamu[ii][kk], 0, 1.0, &work->sDeltamu[ii][kk+1], 0,
-                &work->sDeltamu[ii][kk+1], 0);
+            // backward substitution
+            for (kk = Nh; kk > 1; kk--) {
+                // Deltamu[k] = inv(CholLambdaD[k-1]') * Deltamu[k]
+                blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
+                    &work->sDeltamu[ii][kk-1], 0, &work->sDeltamu[ii][kk-1], 0);
+
+                // Deltamu[k-1] = Deltamu[k-1] - CholLambdaL[k-1] * Deltamu[k]
+                blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
+                    &work->sDeltamu[ii][kk-1], 0, 1.0, &work->sDeltamu[ii][kk-2], 0,
+                    &work->sDeltamu[ii][kk-2], 0);
+            }
+            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][0], 0, 0,
+                &work->sDeltamu[ii][0], 0, &work->sDeltamu[ii][0], 0);
         }
-        blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
-            &work->sDeltamu[ii][Nh-1], 0, &work->sDeltamu[ii][Nh-1], 0);
-        #else
-        // forward substitution
-        for (kk = 0; kk < Nh-1; kk++) {
-            // Deltamu[k+1] = inv(CholLambdaD[k]) * res[k+1]
-            blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][kk], 0, 0,
-                &work->sreskMod[ii][kk], 0, &work->sDeltamu[ii][kk], 0);
-
-            // update
-            blasfeo_dgemv_n(nx, nx, -1.0, &work->sCholLambdaL[ii][kk], 0, 0,
-                &work->sDeltamu[ii][kk], 0, 1.0, &work->sreskMod[ii][kk+1], 0,
-                &work->sreskMod[ii][kk+1], 0);
-        }
-        blasfeo_dtrsv_lnn(nx, &work->sCholLambdaD[ii][Nh-1], 0, 0,
-            &work->sreskMod[ii][Nh-1], 0, &work->sDeltamu[ii][Nh-1], 0);
-
-        // backward substitution
-        for (kk = Nh; kk > 1; kk--) {
-            // Deltamu[k] = inv(CholLambdaD[k-1]') * Deltamu[k]
-            blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][kk-1], 0, 0,
-                &work->sDeltamu[ii][kk-1], 0, &work->sDeltamu[ii][kk-1], 0);
-
-            // Deltamu[k-1] = Deltamu[k-1] - CholLambdaL[k-1] * Deltamu[k]
-            blasfeo_dgemv_t(nx, nx, -1.0, &work->sCholLambdaL[ii][kk-2], 0, 0,
-                &work->sDeltamu[ii][kk-1], 0, 1.0, &work->sDeltamu[ii][kk-2], 0,
-                &work->sDeltamu[ii][kk-2], 0);
-        }
-        blasfeo_dtrsv_ltn(nx, &work->sCholLambdaD[ii][0], 0, 0,
-            &work->sDeltamu[ii][0], 0, &work->sDeltamu[ii][0], 0);
-        #endif  /* REV_CHOL */
 
         // printf("SCENARIO %d, MULTIPLIERS:\n", ii+1);
         // for (kk = 0; kk < Nh; kk++) {
@@ -1807,13 +1830,6 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) - c_ptr);
     // exit(1);
-
-    #ifndef REV_CHOL
-    if (opts->checkLastActiveSet == 1)
-    {
-        printf("Error! check_last_active_set option only supported in combination with reverse Cholesky!\n");
-    }
-    #endif
 }
 
 
@@ -1879,6 +1895,8 @@ int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
     double init_time = treeqp_toc(&timer);
     // printf("init. time = %f ms\n", 1e3*init_time);
+
+    work->reverseCholesky = opts->checkLastActiveSet;
 
     // ------ dual Newton iterations
     // NOTE(dimitris): at first iteration some matrices are initialized for opts->checkLastActiveSet
