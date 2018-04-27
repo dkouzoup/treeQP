@@ -24,6 +24,8 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+// #include <xmmintrin.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +56,9 @@
 
 
 int main() {
+    // NOTE(dimitris): to detect NaNs on a mac (together with xmmintrin.h)
+    // _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
+
     return_t status;
 
     int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, NU);

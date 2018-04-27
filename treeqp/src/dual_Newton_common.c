@@ -24,6 +24,8 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdio.h>
+
 #include "treeqp/src/dual_Newton_common.h"
 
 #include "treeqp/utils/types.h"
@@ -33,6 +35,20 @@
 #include "blasfeo/include/blasfeo_d_aux.h"
 #include "blasfeo/include/blasfeo_d_blas.h"
 
+
+// TODO: move to print.h or utils.h not to include stdio.h here
+void print_regularization_status(regType_t reg_type, reg_result_t reg_res)
+{
+    switch (reg_res)
+    {
+        case TREEQP_NO_REGULARIZATION_ADDED:
+            printf("No regularization added\n");
+
+        case TREEQP_REGULARIZATION_ADDED:
+            printf("Regularization added\n");
+    }
+    // TODO: print also whether regularization could be added, based on reg_type
+}
 
 
 // Cholesky factorization with regularization options
@@ -76,6 +92,7 @@ reg_result_t treeqp_dpotrf_l_with_reg_opts(struct blasfeo_dmat *M, struct blasfe
             }
         }
     }
+    // print_regularization_status(reg_type, res);
     return res;
 }
 

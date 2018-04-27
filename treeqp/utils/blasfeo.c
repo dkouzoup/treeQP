@@ -125,7 +125,29 @@ double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
 
 
 
-// TODO(dimitris): weird name, probably edited by change_name.sh?
+answer_t is_strmat_symmetric(struct blasfeo_dmat *M)
+{
+    double tol = 1e-8;
+    answer_t ans = YES;
+    assert(M->m == M->n);
+
+    for (int ii = 0; ii < M->m; ii++)
+    {
+        for (int jj = 0; jj < ii; jj++)
+        {
+            // printf("error(%d, %d) = %f\n", ii, jj, BLASFEO_DMATEL(M, ii, jj) - BLASFEO_DMATEL(M, jj, ii));
+            if (BLASFEO_DMATEL(M, ii, jj) - BLASFEO_DMATEL(M, jj, ii) > tol)
+            {
+                ans = NO;
+            }
+
+        }
+    }
+    return ans;
+}
+
+
+
 answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
 {
     answer_t ans = YES;
