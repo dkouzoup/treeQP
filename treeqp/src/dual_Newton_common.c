@@ -43,7 +43,7 @@ void print_regularization_status(regType_t reg_type, reg_result_t reg_res)
     {
         case TREEQP_NO_REGULARIZATION_ADDED:
             printf("No regularization added\n");
-
+            break;
         case TREEQP_REGULARIZATION_ADDED:
             printf("Regularization added\n");
     }
