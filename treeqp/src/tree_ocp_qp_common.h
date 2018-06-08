@@ -53,7 +53,8 @@ typedef struct treeqp_info_t_
 // internal memory to eliminate x0 from QP
 typedef struct qp_internal_t_
 {
-    int *is_A_initialized;      // flag to denote whether (A0, b0) pairs are initialized (tree[0].nkids pairs in total)
+    int *is_A_initialized;      // flag to denote whether A0 are initialized (tree[0].nkids matrices in total)
+    int *is_b_initialized;      // flag to denote whether b0 are initialized
     int is_C_initialized;       // flag to denote whether (C0, dmin0, dmax0) triple is initialized
     int is_S_initialized;       // flag to denote whether (S0, r0) pair is initialized
 
@@ -165,12 +166,23 @@ double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_ou
 
 
 // set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]
-void tree_ocp_qp_in_set_edge_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in, int indx);
+void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B, const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
+
+
+// set the objective of the node [indx]
+// TODO(dimitris): split to functions as above
 void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
 
 void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
 
+
+// set the bounds of the node [indx]
 void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_ocp_qp_in *qp_in, int indx);
 
 void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in, int indx);

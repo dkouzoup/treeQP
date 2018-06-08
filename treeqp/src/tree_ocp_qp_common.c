@@ -60,6 +60,7 @@ int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node
     bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // dmin, dmax
 
     bytes += tree[0].nkids*sizeof(int);  // internal_memory.is_A_initialized
+    bytes += tree[0].nkids*sizeof(int);  // internal_memory.is_b_initialized
     bytes += tree[0].nkids*sizeof(struct blasfeo_dmat);  // internal_memory.A0
     bytes += tree[0].nkids*sizeof(struct blasfeo_dvec);  // internal_memory.b0
 
@@ -140,6 +141,8 @@ void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree,
 
     qp_in->internal_memory.is_A_initialized = (int *) c_ptr;
     c_ptr += tree[0].nkids*sizeof(int);
+    qp_in->internal_memory.is_b_initialized = (int *) c_ptr;
+    c_ptr += tree[0].nkids*sizeof(int);
 
     // copy dimensions to allocated memory
     for (int ii = 0; ii < Nn; ii++)
@@ -155,6 +158,7 @@ void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree,
             qp_in->nc[ii] = nc[ii];
         }
         qp_in->internal_memory.is_A_initialized[ii] = 0;
+        qp_in->internal_memory.is_b_initialized[ii] = 0;
     }
 
     qp_in->internal_memory.is_C_initialized = 0;
@@ -427,12 +431,18 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
         if (qp_in->internal_memory.is_A_initialized[ii] == 0)
         {
             blasfeo_dgecp(sA->m, sA->n, sA, 0, 0, sA0, 0, 0);
-            blasfeo_dveccp(sb->m, sb, 0, sb0, 0);
 
             qp_in->internal_memory.is_A_initialized[ii] = 1;
 
             assert(sA0->m == sA->m);
             assert(sA0->n == sA->n);
+        }
+        if (qp_in->internal_memory.is_b_initialized[ii] == 0)
+        {
+            blasfeo_dveccp(sb->m, sb, 0, sb0, 0);
+
+            qp_in->internal_memory.is_b_initialized[ii] = 1;
+
             assert(sb0->m == sb->m);
         }
         sA->n = 0;
@@ -972,8 +982,46 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double 
 
 
 
-void tree_ocp_qp_in_set_edge_dynamics_colmajor(double *A, double *B, double *b,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+    struct node * const tree = qp_in->tree;
+
+    int nxp = qp_in->nx[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    struct blasfeo_dmat *sA = &qp_in->A[indx];
+
+    blasfeo_pack_dmat(nx, nxp, (double *)A, nx, sA, 0, 0);
+
+    assert(sA->m == nx);
+    assert(sA->n == nxp);
+
+    if (tree[node_indx].dad == 0)
+    {
+        if (nxp != 0)  // cannot initialize internal_memory if x0 is already eliminated
+        {
+            struct blasfeo_dmat *sA0 = &qp_in->internal_memory.A0[indx];
+
+            nxp = sA0->n;
+
+            blasfeo_pack_dmat(nx, nxp, (double *)A, nx, sA0, 0, 0);
+            qp_in->internal_memory.is_A_initialized[indx] = 1;
+
+            assert(sA0->m == nx);
+            assert(sA0->n == nxp);
+        }
+    }
+}
+
+
+
+void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -982,44 +1030,65 @@ void tree_ocp_qp_in_set_edge_dynamics_colmajor(double *A, double *B, double *b,
 
     int node_indx = indx + 1;
 
-    struct node *tree = qp_in->tree;
+    struct node * const tree = qp_in->tree;
+
+    int nup = qp_in->nu[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    struct blasfeo_dmat *sB = &qp_in->B[indx];
+    struct blasfeo_dvec *sb = &qp_in->b[indx];
+
+    blasfeo_pack_dmat(nx, nup, (double *)B, nx, sB, 0, 0);
+
+    assert(sB->m == nx);
+    assert(sB->n == nup);
+}
+
+
+
+void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+
+    struct node * const tree = qp_in->tree;
 
     int nxp = qp_in->nx[tree[node_indx].dad];
     int nup = qp_in->nu[tree[node_indx].dad];
     int nx = qp_in->nx[node_indx];
 
-    struct blasfeo_dmat *sA = &qp_in->A[indx];
-    struct blasfeo_dmat *sB = &qp_in->B[indx];
     struct blasfeo_dvec *sb = &qp_in->b[indx];
 
-    blasfeo_pack_dmat(nx, nxp, A, nx, sA, 0, 0);
-    blasfeo_pack_dmat(nx, nup, B, nx, sB, 0, 0);
-    blasfeo_pack_dvec(nx, b, sb, 0);
+    blasfeo_pack_dvec(nx, (double *)b, sb, 0);
 
-    assert(sA->m == nx);
-    assert(sA->n == nxp);
-    assert(sB->m == nx);
-    assert(sB->n == nup);
     assert(sb->m == nx);
 
     if (tree[node_indx].dad == 0)
     {
         if (nxp != 0)  // cannot initialize internal_memory if x0 is already eliminated
         {
-            struct blasfeo_dmat *sA0 = &qp_in->internal_memory.A0[indx];
             struct blasfeo_dvec *sb0 = &qp_in->internal_memory.b0[indx];
 
-            nxp = sA0->n;
+            blasfeo_pack_dvec(nx, (double *)b, sb0, 0);
+            qp_in->internal_memory.is_b_initialized[indx] = 1;
 
-            blasfeo_pack_dmat(nx, nxp, A, nx, sA0, 0, 0);
-            blasfeo_pack_dvec(nx, b, sb0, 0);
-            qp_in->internal_memory.is_A_initialized[indx] = 1;
-
-            assert(sA0->m == nx);
-            assert(sA0->n == nxp);
             assert(sb0->m == nx);
         }
     }
+}
+
+
+
+void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
+    const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    tree_ocp_qp_in_set_edge_A_colmajor(A, qp_in, indx);
+    tree_ocp_qp_in_set_edge_B_colmajor(B, qp_in, indx);
+    tree_ocp_qp_in_set_edge_b_colmajor(b, qp_in, indx);
 }
 
 
@@ -1590,6 +1659,7 @@ void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx
             sb0 = &qp_in->internal_memory.b0[ii-1];
 
             assert(qp_in->internal_memory.is_A_initialized[ii-1] == 1);
+            assert(qp_in->internal_memory.is_b_initialized[ii-1] == 1);
 
             blasfeo_dgemv_n(sA0->m, nx0, 1.0, sA0, 0, 0, sx0, 0, 1.0, sb0, 0, &qp_in->b[ii-1], 0);
 
