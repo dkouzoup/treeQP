@@ -34,17 +34,23 @@ extern "C" {
 
 #include "treeqp/utils/types.h"
 
+// Math functions
+
 #define MAX(X, Y) (X > Y ? X:Y)
 #define MIN(X, Y) (X < Y ? X:Y)
 #define ABS(X) ((X) < 0 ?-(X):X)
 
 int ipow(int base, int exp);
 
-// Reading/writing txt files
-return_t read_int_vector_from_txt(int *vec, int n, const char *filename);
-return_t read_double_vector_from_txt(double *vec, int n, const char *filename);
-return_t write_double_vector_to_txt(double *vec, int n, const char *filename);
-return_t write_int_vector_to_txt(int *vec, int n, const char *filename);
+// Reading from / writing to txt files
+
+return_t read_int_vector_from_txt(const int * const vec, const int n, const char *filename);
+
+return_t read_double_vector_from_txt(const double * const vec, const int n, const char *filename);
+
+return_t write_double_vector_to_txt(const double * const vec, const int n, const char *filename);
+
+return_t write_int_vector_to_txt(const int * const vec, const int n, const char *filename);
 
 #ifdef __cplusplus
 }  /* extern "C" */

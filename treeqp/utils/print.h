@@ -33,8 +33,12 @@ extern "C" {
 #endif
 
 #include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 
+
+
+void print_node(const struct node * const tree);
 
 void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in);
 

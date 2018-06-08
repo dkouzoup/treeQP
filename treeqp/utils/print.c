@@ -38,6 +38,29 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 
+
+
+void print_node(const struct node * const tree)
+{
+    printf("\n");
+    printf("idx    = \t%d\n", tree[0].idx);
+    printf("dad    = \t%d\n", tree[0].dad);
+    printf("nkids  = \t%d\n", tree[0].nkids);
+    printf("kids   = \t");
+    for (int ii = 0; ii < tree[0].nkids; ii++)
+    {
+        printf("%d\t", tree[0].kids[ii]);
+    }
+    printf("\n");
+    printf("stage  = \t%d\n", tree[0].stage);
+    printf("real   = \t%d\n", tree[0].real);
+    printf("idxkid = \t%d\n", tree[0].idxkid);
+    printf("\n");
+    return;
+}
+
+
+
 void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
 {
     int N = qp_in->N;
