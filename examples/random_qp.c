@@ -34,6 +34,7 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/profiling.h"
+#include "treeqp/utils/print.h"
 #include "treeqp/utils/blasfeo.h"
 
 #include <blasfeo_target.h>

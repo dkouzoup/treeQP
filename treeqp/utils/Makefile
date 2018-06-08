@@ -5,6 +5,7 @@ OBJS =
 OBJS += blasfeo.o
 OBJS += memory.o
 OBJS += profiling.o
+OBJS += print.o
 OBJS += timing.o
 OBJS += tree.o
 OBJS += utils.o

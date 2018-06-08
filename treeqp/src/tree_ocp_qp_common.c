@@ -38,7 +38,7 @@
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 #include <blasfeo_d_aux.h>
-#include <blasfeo_d_aux_ext_dep.h>
+#include <blasfeo_d_aux_ext_dep.h>  // blasfeo_allocate_dvec
 #include <blasfeo_d_blas.h>
 
 
@@ -718,7 +718,7 @@ double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_ou
 
 
 
-int total_number_of_states(tree_ocp_qp_in *qp_in)
+int total_number_of_states(const tree_ocp_qp_in * const qp_in)
 {
     int nx = 0;
 
@@ -729,7 +729,7 @@ int total_number_of_states(tree_ocp_qp_in *qp_in)
 
 
 
-int max_number_of_states(tree_ocp_qp_in *qp_in)
+int max_number_of_states(const tree_ocp_qp_in * const qp_in)
 {
     int nx_max = 0;
 
@@ -740,7 +740,7 @@ int max_number_of_states(tree_ocp_qp_in *qp_in)
 
 
 
-int total_number_of_controls(tree_ocp_qp_in *qp_in)
+int total_number_of_controls(const tree_ocp_qp_in * const qp_in)
 {
     int nu = 0;
 
@@ -751,7 +751,7 @@ int total_number_of_controls(tree_ocp_qp_in *qp_in)
 
 
 
-int max_number_of_controls(tree_ocp_qp_in *qp_in)
+int max_number_of_controls(const tree_ocp_qp_in * const qp_in)
 {
     int nu_max = 0;
 
@@ -762,14 +762,14 @@ int max_number_of_controls(tree_ocp_qp_in *qp_in)
 
 
 
-int total_number_of_primal_variables(tree_ocp_qp_in *qp_in)
+int total_number_of_primal_variables(const tree_ocp_qp_in * const qp_in)
 {
     return total_number_of_controls(qp_in) + total_number_of_states(qp_in);
 }
 
 
 
-int total_number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
+int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in)
 {
     int ne = 0;
 
@@ -779,7 +779,7 @@ int total_number_of_dynamic_constraints(tree_ocp_qp_in *qp_in)
 
 
 
-int total_number_of_general_constraints(tree_ocp_qp_in *qp_in)
+int total_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
 {
     int ng = 0;
 
@@ -789,190 +789,13 @@ int total_number_of_general_constraints(tree_ocp_qp_in *qp_in)
 
 
 
-int max_number_of_general_constraints(tree_ocp_qp_in *qp_in)
+int max_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
 {
     int ng_max = 0;
 
     for (int ii = 0; ii < qp_in->N; ii++) ng_max = MAX(ng_max, qp_in->nc[ii]);
 
     return ng_max;
-}
-
-
-
-void tree_ocp_qp_in_print_dims(tree_ocp_qp_in *qp_in)
-{
-    int N = qp_in->N;
-    int *nx = qp_in->nx;
-    int *nu = qp_in->nu;
-    int *nc = qp_in->nc;
-
-    // printf("k\tnx\tnu\tnb\tnbx\tnbu\tng\tns\n");
-    printf("k\tnx\tnu\tnc\n");
-
-    for (int ii = 0; ii < 10; ii++)
-    {
-        printf("%d\t%d\t%d\t%d\n", ii, nx[ii], nu[ii], nc[ii]);
-    }
-}
-
-
-
-void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in)
-{
-    int Nn = qp_in->N;
-    double min, max;
-    int idxdad;
-
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        printf("* Node %d/%d (nx = %d, nu = %d) ---------------------------------\n\n",
-            ii, Nn-1, qp_in->nx[ii],  qp_in->nu[ii]);
-
-        // print bounds on x
-        for (int jj = 0; jj < qp_in->nx[ii]; jj++)
-        {
-            min = BLASFEO_DVECEL(&qp_in->xmin[ii], jj);
-            if (min >= -TREEQP_INF)
-            {
-                printf("%5.2f  ", min);
-            }
-            else
-            {
-                printf("-INF   ");
-            }
-            printf("<=  x_%d  <=  ", jj);
-            max = BLASFEO_DVECEL(&qp_in->xmax[ii], jj);
-            if (max <= TREEQP_INF)
-            {
-                printf("%5.2f\n", max);
-            } else
-            {
-                printf("  INF\n");
-            }
-        }
-        printf("\n");
-
-        // print bounds on u
-        for (int jj = 0; jj < qp_in->nu[ii]; jj++)
-        {
-            min = BLASFEO_DVECEL(&qp_in->umin[ii], jj);
-            if (min >= -TREEQP_INF)
-            {
-                printf("%5.2f  ", min);
-            }
-            else
-            {
-                printf("-INF   ");
-            }
-            printf("<=  u_%d  <=  ", jj);
-            max = BLASFEO_DVECEL(&qp_in->umax[ii], jj);
-            if (max <= TREEQP_INF)
-            {
-                printf("%5.2f\n", max);
-            }
-            else
-            {
-                printf("  INF\n");
-            }
-        }
-        printf("\n\n");
-
-        printf("C[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nc[ii], qp_in->nx[ii], &qp_in->C[ii], 0, 0);
-        printf("D[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nc[ii], qp_in->nu[ii], &qp_in->D[ii], 0, 0);
-        for (int jj = 0; jj < qp_in->nc[ii]; jj++)
-        {
-            min = BLASFEO_DVECEL(&qp_in->dmin[ii], jj);
-            if (min >= -TREEQP_INF)
-            {
-                printf("%5.2f  ", min);
-            }
-            else
-            {
-                printf("-INF   ");
-            }
-            printf("<=  C[%d, :]*x + D[%d, :]*u  <=  ", jj, jj);
-            max = BLASFEO_DVECEL(&qp_in->dmax[ii], jj);
-            if (max <= TREEQP_INF)
-            {
-                printf("%5.2f\n", max);
-            }
-            else
-            {
-                printf("  INF\n");
-            }
-        }
-        printf("\n\n");
-
-        printf("Q[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[ii], &qp_in->Q[ii], 0, 0);
-
-        printf("R[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nu[ii], &qp_in->R[ii], 0, 0);
-
-        printf("S[%d] = \n", ii);
-        blasfeo_print_dmat(qp_in->nu[ii], qp_in->nx[ii], &qp_in->S[ii], 0, 0);
-
-        printf("q[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_in->nx[ii], &qp_in->q[ii], 0);
-        printf("r[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_in->nu[ii], &qp_in->r[ii], 0);
-
-        // printf("real = %d\n\n", qp_in->tree[ii].real);
-        if (ii > 0)
-        {
-            // TODO(dimitris): check that .m/.n of structs coincide with nx/nu
-            idxdad = qp_in->tree[ii].dad;
-            printf("A[%d] = \n", ii-1);
-            blasfeo_print_dmat(qp_in->nx[ii], qp_in->nx[idxdad], &qp_in->A[ii-1], 0, 0);
-            printf("B[%d] = \n", ii-1);
-            blasfeo_print_dmat(qp_in->nx[ii], qp_in->nu[idxdad], &qp_in->B[ii-1], 0, 0);
-            printf("b[%d] = \n", ii-1);
-            blasfeo_print_tran_dvec(qp_in->nx[ii], &qp_in->b[ii-1], 0);
-        }
-    }
-}
-
-
-
-// TODO(dimitris): move prints to utils
-void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out)
-{
-    int nx, nu, nc;
-
-    printf("\nProblem solved in %d iterations (%f ms)\n\n",
-        qp_out->info.iter, qp_out->info.solver_time+qp_out->info.interface_time);
-
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        nx = qp_out->x[ii].m;
-        nu = qp_out->u[ii].m;
-        nc = qp_out->mu_d[ii].m;
-
-        printf("* Node %d/%d (nx = %d, nu = %d) ---------------------------------\n\n",
-            ii, Nn-1, nx,  nu);
-
-        printf("x[%d] = \n", ii);
-        blasfeo_print_tran_dvec(nx, &qp_out->x[ii], 0);
-
-        printf("u[%d] = \n", ii);
-        blasfeo_print_tran_dvec(nu, &qp_out->u[ii], 0);
-
-        // NOTE(dimitris): always zero at root node
-        printf("lam[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_out->lam[ii].m, &qp_out->lam[ii], 0);
-
-        printf("mu_x[%d] = \n", ii);
-        blasfeo_print_tran_dvec(nx, &qp_out->mu_x[ii], 0);
-
-        printf("mu_u[%d] = \n", ii);
-        blasfeo_print_tran_dvec(nu, &qp_out->mu_u[ii], 0);
-
-        printf("mu_d[%d] = \n", ii);
-        blasfeo_print_tran_dvec(nc, &qp_out->mu_d[ii], 0);
-    }
 }
 
 
@@ -1796,42 +1619,4 @@ void tree_ocp_qp_in_set_x0_colmaj(tree_ocp_qp_in *qp_in, double *x0)
 
     blasfeo_pack_dvec(sx0->m, x0, sx0, 0);
     tree_ocp_qp_in_set_x0_strvec(qp_in, sx0);
-}
-
-
-
-void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath)
-{
-    int Nn = qp_in->N;
-    int dimx = total_number_of_states(qp_in);
-    int dimu = total_number_of_controls(qp_in);
-    int iter = qp_out->info.iter;
-
-    // TODO(dimitris): also write multipliers
-    struct blasfeo_dvec *sx = qp_out->x;
-    struct blasfeo_dvec *su = qp_out->u;
-
-    double *x = malloc(dimx*sizeof(double));
-    double *u = malloc(dimu*sizeof(double));
-
-    int indx = 0, indu = 0;
-
-    for (int kk = 0; kk < Nn; kk++)
-    {
-        blasfeo_unpack_dvec(sx[kk].m, &sx[kk], 0, &x[indx]);
-        indx += sx[kk].m;
-        blasfeo_unpack_dvec(su[kk].m, &su[kk], 0, &u[indu]);
-        indu += su[kk].m;
-    }
-
-    char fname[100];
-    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "xopt");
-    write_double_vector_to_txt(x, dimx, fname);
-    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "uopt");
-    write_double_vector_to_txt(u, dimu, fname);
-    snprintf(fname, sizeof(fname), "%s/%s.txt", fpath, "iter");
-    write_int_vector_to_txt(&iter, 1, fname);
-
-    free(x);
-    free(u);
 }

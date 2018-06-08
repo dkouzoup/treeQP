@@ -32,11 +32,11 @@
 extern "C" {
 #endif
 
-#include "treeqp/utils/types.h"
 
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 
+#include "treeqp/utils/types.h"
 
 
 // info returned by solver
@@ -128,21 +128,21 @@ typedef struct tree_ocp_qp_out_
 
 // TODO(dimitris): follow same order of functions in .c file
 
-int total_number_of_states(tree_ocp_qp_in *qp_in);
+int total_number_of_states(const tree_ocp_qp_in * const qp_in);
 
-int max_number_of_states(tree_ocp_qp_in *qp_in);
+int max_number_of_states(const tree_ocp_qp_in * const qp_in);
 
-int total_number_of_controls(tree_ocp_qp_in *qp_in);
+int total_number_of_controls(const tree_ocp_qp_in * const qp_in);
 
-int max_number_of_controls(tree_ocp_qp_in *qp_in);
+int max_number_of_controls(const tree_ocp_qp_in * const qp_in);
 
-int total_number_of_general_constraints(tree_ocp_qp_in *qp_in);
+int total_number_of_general_constraints(const tree_ocp_qp_in * const qp_in);
 
-int max_number_of_general_constraints(tree_ocp_qp_in *qp_in);
+int max_number_of_general_constraints(const tree_ocp_qp_in * const qp_in);
 
-int total_number_of_primal_variables(tree_ocp_qp_in *qp_in);
+int total_number_of_primal_variables(const tree_ocp_qp_in * const qp_in);
 
-int total_number_of_dynamic_constraints(tree_ocp_qp_in *qp_in);
+int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in);
 
 
 
@@ -162,17 +162,6 @@ void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out);
 void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res);
 
 double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
-
-
-// TODO(dimitris): move to utils
-void tree_ocp_qp_in_print_dims(tree_ocp_qp_in *qp_in);
-
-void tree_ocp_qp_in_print(tree_ocp_qp_in *qp_in);
-
-void tree_ocp_qp_out_print(int Nn, tree_ocp_qp_out *qp_out);
-
-void tree_ocp_qp_out_write_to_txt(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, const char *fpath);
-
 
 
 // set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]

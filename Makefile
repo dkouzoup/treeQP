@@ -38,6 +38,7 @@ OBJS += treeqp/src/hpipm_tree.o
 OBJS += treeqp/utils/blasfeo.o
 OBJS += treeqp/utils/memory.o
 OBJS += treeqp/utils/profiling.o
+OBJS += treeqp/utils/print.o
 OBJS += treeqp/utils/timing.o
 OBJS += treeqp/utils/tree.o
 OBJS+= treeqp/utils/utils.o
