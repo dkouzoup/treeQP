@@ -37,8 +37,8 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 
-#include "blasfeo/include/blasfeo_target.h"
-#include "blasfeo/include/blasfeo_common.h"
+#include <blasfeo_target.h>
+#include <blasfeo_common.h>
 
 
 

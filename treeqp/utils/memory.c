@@ -31,9 +31,9 @@
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/types.h"
 
-#include "blasfeo/include/blasfeo_d_aux.h"
-#include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
-#include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
+#include <blasfeo_d_aux.h>
+#include <blasfeo_d_aux_ext_dep.h>
+#include <blasfeo_v_aux_ext_dep.h>
 
 // NOTE(dimitris): uncomment line below to use dynamic memory allocation for debugging purposes
 // #define _USE_VALGRIND_

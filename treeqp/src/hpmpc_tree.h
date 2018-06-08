@@ -35,8 +35,8 @@ extern "C" {
 #include "treeqp/src/tree_ocp_qp_common.h"
 #include "treeqp/utils/types.h"
 
-#include "blasfeo/include/blasfeo_target.h"
-#include "blasfeo/include/blasfeo_common.h"
+#include <blasfeo_target.h>
+#include <blasfeo_common.h>
 
 
 // memory to store temporary calculations when calculating solver size

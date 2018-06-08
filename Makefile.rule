@@ -20,6 +20,17 @@ endif
 # Installation directory
 TOP = $(shell pwd)
 
+# BLASFEO path
+BLASFEO_PATH = $(TOP)/external/blasfeo
+#BLASFEO_PATH = $(TOP)/../blasfeo
+#BLASFEO_PATH = /opt/blasfeo
+
+# flag to directly use BLASFEO install dir instead of compiling it within treeQP
+# !!! USE WITH CAUTION !!!
+# BLASFEO_VERSION & BLASFEO_TARGET options below are not used if flag is enabled
+# treeQP should be deep_cleaned and recompiled if installed BLASFEO changes
+SKIP_BLASFEO_COMPILATION = OFF
+
 # BLASFEO version
 BLASFEO_VERSION = HIGH_PERFORMANCE
 #BLASFEO_VERSION = REFERENCE
@@ -109,8 +120,9 @@ CFLAGS+=-DPRINT_LEVEL=$(PRINT_LEVEL)
 CFLAGS += -I$(TOP)
 CFLAGS += -I$(TOP)/external
 CFLAGS += -I$(TOP)/external/qpoases/include
-CFLAGS += -I$(TOP)/external/blasfeo/include
+CFLAGS += -I$(BLASFEO_PATH)/include
 
 # Lib dirs
 LDFLAGS =
+LDFLAGS += -L$(BLASFEO_PATH)/lib
 LDFLAGS += -L$(TOP)/lib

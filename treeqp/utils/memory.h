@@ -35,8 +35,8 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 
-#include "blasfeo/include/blasfeo_target.h"
-#include "blasfeo/include/blasfeo_common.h"
+#include <blasfeo_target.h>
+#include <blasfeo_common.h>
 
 void make_int_multiple_of(int num, int *size);
 int align_char_to(int num, char **c_ptr);

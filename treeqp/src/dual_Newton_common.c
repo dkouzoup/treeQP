@@ -30,10 +30,10 @@
 
 #include "treeqp/utils/types.h"
 
-#include "blasfeo/include/blasfeo_target.h"
-#include "blasfeo/include/blasfeo_common.h"
-#include "blasfeo/include/blasfeo_d_aux.h"
-#include "blasfeo/include/blasfeo_d_blas.h"
+#include <blasfeo_target.h>
+#include <blasfeo_common.h>
+#include <blasfeo_d_aux.h>
+#include <blasfeo_d_blas.h>
 
 
 // TODO: move to print.h or utils.h not to include stdio.h here

@@ -31,9 +31,9 @@
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/types.h"
 
-#include "blasfeo/include/blasfeo_d_aux.h"
-#include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
-#include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
+#include <blasfeo_d_aux.h>
+#include <blasfeo_d_aux_ext_dep.h>
+#include <blasfeo_v_aux_ext_dep.h>
 
 
 void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v)

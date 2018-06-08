@@ -42,7 +42,14 @@ OBJS += treeqp/utils/timing.o
 OBJS += treeqp/utils/tree.o
 OBJS+= treeqp/utils/utils.o
 
-DEPS = blasfeo_static hpmpc_static hpipm_static qpoases_static
+ifeq ($(SKIP_BLASFEO_COMPILATION), ON)
+BLASFEO_DEP =
+else
+BLASFEO_DEP = blasfeo_static
+endif
+
+DEPS =
+DEPS += $(BLASFEO_DEP) hpmpc_static hpipm_static qpoases_static
 
 treeqp_static: $(DEPS)
 	( cd treeqp/src; $(MAKE) obj TOP=$(TOP) )
@@ -55,21 +62,21 @@ treeqp_static: $(DEPS)
 	@echo
 
 blasfeo_static:
-	( cd external/blasfeo; $(MAKE) static_library CC=$(CC) LA=$(BLASFEO_VERSION) TARGET=$(BLASFEO_TARGET) )
+	( cd $(BLASFEO_PATH); $(MAKE) static_library CC=$(CC) LA=$(BLASFEO_VERSION) TARGET=$(BLASFEO_TARGET) )
 	#mkdir -p include/blasfeo
 	mkdir -p lib
 	#cp external/blasfeo/include/*.h include/blasfeo
-	cp external/blasfeo/lib/libblasfeo.a lib
+	cp $(BLASFEO_PATH)/lib/libblasfeo.a lib
 
-hpmpc_static: blasfeo_static
-	( cd external/hpmpc; $(MAKE) static_library CC=$(CC) TARGET=$(HPMPC_TARGET) BLASFEO_PATH=$(TOP)/external/blasfeo )
+hpmpc_static: $(BLASFEO_DEP)
+	( cd external/hpmpc; $(MAKE) static_library CC=$(CC) TARGET=$(HPMPC_TARGET) BLASFEO_PATH=$(BLASFEO_PATH) )
 	#mkdir -p include/hpmpc
 	mkdir -p lib
 	#cp external/hpmpc/include/*.h include/hpmpc
 	cp external/hpmpc/libhpmpc.a lib
 
-hpipm_static: blasfeo_static
-	( cd external/hpipm; $(MAKE) static_library CC=$(CC) TARGET=$(HPIPM_TARGET) BLASFEO_PATH=$(TOP)/external/blasfeo )
+hpipm_static: $(BLASFEO_DEP)
+	( cd external/hpipm; $(MAKE) static_library CC=$(CC) TARGET=$(HPIPM_TARGET) BLASFEO_PATH=$(BLASFEO_PATH) )
 	#mkdir -p include/hpipm
 	mkdir -p lib
 	#cp external/hpipm/include/*.h include/hpipm
@@ -112,8 +119,19 @@ clean:
 	( cd examples; $(MAKE) clean )
 	rm -f lib/libtreeqp.a
 
-deep_clean: clean
-	( cd external/blasfeo; $(MAKE) deep_clean )
+ifeq ($(SKIP_BLASFEO_COMPILATION), ON)
+
+clean_blasfeo:
+	# BLASFEO, must be deep_cleaned manually!
+
+else
+
+clean_blasfeo:
+	( cd $(BLASFEO_PATH); $(MAKE) deep_clean )
+
+endif
+
+deep_clean: clean clean_blasfeo
 	( cd external/hpmpc; $(MAKE) clean )
 	( cd external/hpipm; $(MAKE) clean )
 	( cd external/qpoases; $(MAKE) clean )
