@@ -42,6 +42,7 @@ extern "C" {
 // info returned by solver
 typedef struct treeqp_info_t_
 {
+    int Nn;
     int iter;
     double solver_time;
     double interface_time;
@@ -164,6 +165,7 @@ void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *q
 
 double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
 
+// --------------- SETTERS ---------------
 
 // set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]
 void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in * const qp_in, const int indx);
@@ -215,6 +217,15 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double 
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
     double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
+
+
+
+// --------------- GETTERS ---------------
+
+void tree_ocp_qp_out_get_node_x_colmajor(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_u_colmajor(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
+
 
 #ifdef __cplusplus
 }  /* extern "C" */

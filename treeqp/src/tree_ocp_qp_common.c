@@ -346,6 +346,8 @@ void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *
         init_strvec(nc_, &qp_out->mu_d[kk], &c_ptr);
     }
 
+    qp_out->info.Nn = Nn;
+
     assert((char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) - c_ptr);
@@ -1689,4 +1691,36 @@ void tree_ocp_qp_in_set_x0_colmaj(tree_ocp_qp_in *qp_in, double *x0)
 
     blasfeo_pack_dvec(sx0->m, x0, sx0, 0);
     tree_ocp_qp_in_set_x0_strvec(qp_in, sx0);
+}
+
+
+
+void tree_ocp_qp_out_get_node_x_colmajor(double * x, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;  // TODO(dimitris): use the fact that Nn is stored here in other functions too
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_out->x[indx].m;
+
+    struct blasfeo_dvec *sx = &qp_out->x[indx];
+
+    blasfeo_unpack_dvec(nx, sx, 0, x);
+}
+
+
+
+void tree_ocp_qp_out_get_node_u_colmajor(double * u, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_out->u[indx].m;
+
+    struct blasfeo_dvec *su = &qp_out->u[indx];
+
+    blasfeo_unpack_dvec(nu, su, 0, u);
 }
