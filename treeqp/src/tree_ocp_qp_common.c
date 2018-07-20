@@ -1427,68 +1427,143 @@ void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, do
 
 
 
-void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nc;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sC = &qp_in->C[indx];
+
+    blasfeo_pack_dmat(nc, nx, (double *)C, lda_mod, sC, 0, 0);
+
+    assert(sC->m == nc);
+    assert(sC->n == nx);
+
+    if (indx == 0 && nx > 0)
+    {
+        struct blasfeo_dmat *sC0 = &qp_in->internal_memory.C0;
+
+        blasfeo_dgecp(nc, nx, sC, 0, 0, sC0, 0, 0);
+        qp_in->internal_memory.is_C_initialized = 1;
+
+        assert(sC0->m == nc);
+        assert(sC0->n == nx);
+    }
+}
+
+
+
+void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nc;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sD = &qp_in->D[indx];
+
+    blasfeo_pack_dmat(nc, nu, (double *)D, lda_mod, sD, 0, 0);
+
+    assert(sD->m == nc);
+    assert(sD->n == nu);
+
+}
+
+
+
+void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
     assert(indx >= 0);
     assert(indx < Nn);
 
-    int nx = qp_in->nx[indx];
-    int nu = qp_in->nu[indx];
     int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
 
-    struct blasfeo_dmat *sC = &qp_in->C[indx];
-    struct blasfeo_dmat *sD = &qp_in->D[indx];
     struct blasfeo_dvec *sdmin = &qp_in->dmin[indx];
-    struct blasfeo_dvec *sdmax = &qp_in->dmax[indx];
 
-    if (nc == 0)
-    {
-        if (nx > 0) assert(sC->m == 0);
-        if (nu > 0) assert(sD->m == 0);
-        return;
-    }
-
-    if (nx > 0)
-    {
-        blasfeo_pack_dmat(nc, nx, C, nc, sC, 0, 0);
-        assert(sC->m == nc);
-        assert(sC->n == nx);
-    }
-
-    if (nu > 0)
-    {
-        blasfeo_pack_dmat(nc, nu, D, nc, sD, 0, 0);
-        assert(sD->m == nc);
-        assert(sD->n == nu);
-    }
-
-    blasfeo_pack_dvec(nc, dmin, sdmin, 0);
-    blasfeo_pack_dvec(nc, dmax, sdmax, 0);
+    blasfeo_pack_dvec(nc, (double *)dmin, sdmin, 0);
 
     assert(sdmin->m == nc);
-    assert(sdmax->m == nc);
 
-    if (indx == 0 && nx > 0)  // internal memory
+    if (indx == 0 && nx > 0)
     {
-        struct blasfeo_dmat *sC0 = &qp_in->internal_memory.C0;
         struct blasfeo_dvec *sdmin0 = &qp_in->internal_memory.dmin0;
-        struct blasfeo_dvec *sdmax0 = &qp_in->internal_memory.dmax0;
 
-        blasfeo_dgecp(nc, nx, sC, 0, 0, sC0, 0, 0);
-
-        qp_in->internal_memory.is_C_initialized = 1;
         qp_in->internal_memory.is_dmin_initialized = 1;
-        qp_in->internal_memory.is_dmax_initialized = 1;
-
-        assert(sC0->m == nc);
-        assert(sC0->n == nx);
 
         blasfeo_dveccp(nc, sdmin, 0, sdmin0, 0);
-        blasfeo_dveccp(nc, sdmax, 0, sdmax0, 0);
+        assert(sdmin0->m == nc);
     }
+}
+
+
+
+void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sdmax = &qp_in->dmax[indx];
+
+    blasfeo_pack_dvec(nc, (double *)dmax, sdmax, 0);
+
+    assert(sdmax->m == nc);
+
+    if (indx == 0 && nx > 0)
+    {
+        struct blasfeo_dvec *sdmax0 = &qp_in->internal_memory.dmax0;
+
+        qp_in->internal_memory.is_dmax_initialized = 1;
+
+        blasfeo_dveccp(nc, sdmax, 0, sdmax0, 0);
+        assert(sdmax0->m == nc);
+    }
+}
+
+
+
+void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    tree_ocp_qp_in_set_node_C_colmajor(C, -1, qp_in, indx);
+    tree_ocp_qp_in_set_node_D_colmajor(D, -1, qp_in, indx);
+    tree_ocp_qp_in_set_node_dmin(dmin, qp_in, indx);
+    tree_ocp_qp_in_set_node_dmax(dmax, qp_in, indx);
 
     // TODO(dimitris): assert lower bounds <= upper bounds
 }
