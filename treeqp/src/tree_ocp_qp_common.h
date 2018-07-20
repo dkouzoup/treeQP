@@ -172,13 +172,23 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, t
 
 void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
-void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
+void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B, const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 
 
 // set the objective of the node [indx]
-// TODO(dimitris): split to functions as above
+void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp_in, const int indx);
+
+
 void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
 
 void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);

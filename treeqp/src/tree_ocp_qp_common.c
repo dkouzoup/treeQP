@@ -993,6 +993,7 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, t
     assert(indx < Nn-1);
 
     int node_indx = indx + 1;
+
     struct node * const tree = qp_in->tree;
 
     int nxp = qp_in->nx[tree[node_indx].dad];
@@ -1058,7 +1059,6 @@ void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, t
     }
 
     struct blasfeo_dmat *sB = &qp_in->B[indx];
-    struct blasfeo_dvec *sb = &qp_in->b[indx];
 
     blasfeo_pack_dmat(nx, nup, (double *)B, lda_mod, sB, 0, 0);
 
@@ -1068,7 +1068,7 @@ void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, t
 
 
 
-void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1113,7 +1113,83 @@ void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const dou
 
     tree_ocp_qp_in_set_edge_A_colmajor(A, lda, qp_in, indx);
     tree_ocp_qp_in_set_edge_B_colmajor(B, lda, qp_in, indx);
-    tree_ocp_qp_in_set_edge_b_colmajor(b, qp_in, indx);
+    tree_ocp_qp_in_set_edge_b(b, qp_in, indx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sQ = &qp_in->Q[indx];
+
+    blasfeo_pack_dmat(nx, nx, (double *)Q, lda_mod, sQ, 0, 0);
+
+    assert(sQ->m == nx);
+    assert(sQ->n == nx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nu;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sR = &qp_in->R[indx];
+
+    blasfeo_pack_dmat(nu, nu, (double *)R, lda_mod, sR, 0, 0);
+
+    assert(sR->m == nu);
+    assert(sR->n == nu);
+}
+
+
+
+void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sq = &qp_in->q[indx];
+
+    blasfeo_pack_dvec(nx, (double *)q, sq, 0);
+
+    assert(sq->m == nx);
 }
 
 
@@ -1129,29 +1205,33 @@ void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S,
     int nx = qp_in->nx[indx];
     int nu = qp_in->nu[indx];
 
-    struct blasfeo_dmat *sQ = &qp_in->Q[indx];
-    struct blasfeo_dmat *sR = &qp_in->R[indx];
+    // struct blasfeo_dmat *sQ = &qp_in->Q[indx];
+    // struct blasfeo_dmat *sR = &qp_in->R[indx];
     struct blasfeo_dmat *sS = &qp_in->S[indx];
-    struct blasfeo_dvec *sq = &qp_in->q[indx];
+    // struct blasfeo_dvec *sq = &qp_in->q[indx];
     struct blasfeo_dvec *sr = &qp_in->r[indx];
 
-    if (nx > 0)
-    {
-        blasfeo_pack_dmat(nx, nx, Q, nx, sQ, 0, 0);
-        blasfeo_pack_dvec(nx, q, sq, 0);
+    tree_ocp_qp_in_set_node_Q_colmajor(Q, nx, qp_in, indx);
+    tree_ocp_qp_in_set_node_R_colmajor(R, nu, qp_in, indx);
+    tree_ocp_qp_in_set_node_q(q, qp_in, indx);
 
-        assert(sQ->m == nx);
-        assert(sQ->n == nx);
-        assert(sq->m == nx);
-    }
+    // if (nx > 0)
+    // {
+        // blasfeo_pack_dmat(nx, nx, Q, nx, sQ, 0, 0);
+        // blasfeo_pack_dvec(nx, q, sq, 0);
+
+        // assert(sQ->m == nx);
+        // assert(sQ->n == nx);
+        // assert(sq->m == nx);
+    // }
 
     if (nu > 0)
     {
-        blasfeo_pack_dmat(nu, nu, R, nu, sR, 0, 0);
+        // blasfeo_pack_dmat(nu, nu, R, nu, sR, 0, 0);
         blasfeo_pack_dvec(nu, r, sr, 0);
 
-        assert(sR->m == nu);
-        assert(sR->n == nu);
+        // assert(sR->m == nu);
+        // assert(sR->n == nu);
         assert(sr->m == nu);
     }
 
