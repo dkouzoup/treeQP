@@ -168,9 +168,9 @@ double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_ou
 // --------------- SETTERS ---------------
 
 // set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]
-void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in * const qp_in, const int indx);
+void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
-void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, tree_ocp_qp_in * const qp_in, const int indx);
+void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
 void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 

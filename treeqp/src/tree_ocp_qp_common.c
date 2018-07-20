@@ -984,9 +984,10 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double 
 
 
 
-void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
+    int lda_mod;
 
     assert(indx >= 0);
     assert(indx < Nn-1);
@@ -997,9 +998,18 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in *
     int nxp = qp_in->nx[tree[node_indx].dad];
     int nx = qp_in->nx[node_indx];
 
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
     struct blasfeo_dmat *sA = &qp_in->A[indx];
 
-    blasfeo_pack_dmat(nx, nxp, (double *)A, nx, sA, 0, 0);
+    blasfeo_pack_dmat(nx, nxp, (double *)A, lda_mod, sA, 0, 0);
 
     assert(sA->m == nx);
     assert(sA->n == nxp);
@@ -1012,7 +1022,7 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in *
 
             nxp = sA0->n;
 
-            blasfeo_pack_dmat(nx, nxp, (double *)A, nx, sA0, 0, 0);
+            blasfeo_pack_dmat(nx, nxp, (double *)A, lda_mod, sA0, 0, 0);
             qp_in->internal_memory.is_A_initialized[indx] = 1;
 
             assert(sA0->m == nx);
@@ -1023,9 +1033,10 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, tree_ocp_qp_in *
 
 
 
-void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
+    int lda_mod;
 
     assert(indx >= 0);
     assert(indx < Nn-1);
@@ -1037,10 +1048,19 @@ void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, tree_ocp_qp_in *
     int nup = qp_in->nu[tree[node_indx].dad];
     int nx = qp_in->nx[node_indx];
 
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
     struct blasfeo_dmat *sB = &qp_in->B[indx];
     struct blasfeo_dvec *sb = &qp_in->b[indx];
 
-    blasfeo_pack_dmat(nx, nup, (double *)B, nx, sB, 0, 0);
+    blasfeo_pack_dmat(nx, nup, (double *)B, lda_mod, sB, 0, 0);
 
     assert(sB->m == nx);
     assert(sB->n == nup);
@@ -1088,8 +1108,11 @@ void tree_ocp_qp_in_set_edge_b_colmajor(const double * const b, tree_ocp_qp_in *
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
     const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_set_edge_A_colmajor(A, qp_in, indx);
-    tree_ocp_qp_in_set_edge_B_colmajor(B, qp_in, indx);
+    int node_indx = indx + 1;
+    const int lda = qp_in->nx[node_indx];
+
+    tree_ocp_qp_in_set_edge_A_colmajor(A, lda, qp_in, indx);
+    tree_ocp_qp_in_set_edge_B_colmajor(B, lda, qp_in, indx);
     tree_ocp_qp_in_set_edge_b_colmajor(b, qp_in, indx);
 }
 
