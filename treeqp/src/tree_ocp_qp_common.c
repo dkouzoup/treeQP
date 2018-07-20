@@ -163,6 +163,7 @@ void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree,
 
     qp_in->internal_memory.is_C_initialized = 0;
     qp_in->internal_memory.is_S_initialized = 0;
+    qp_in->internal_memory.is_r_initialized = 0;
 
     qp_in->A = (struct blasfeo_dmat *) c_ptr;
     c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
@@ -414,9 +415,14 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
         assert(sS0->n == sS->n);
 
         qp_in->internal_memory.is_S_initialized = 1;
+    }
 
+    if (qp_in->internal_memory.is_r_initialized == 0)
+    {
         blasfeo_dveccp(sr->m, sr, 0, sr0, 0);
         assert(sr0->m == sr->m);
+
+        qp_in->internal_memory.is_r_initialized = 1;
     }
 
     sS->pA = NULL;
@@ -1015,20 +1021,17 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, t
     assert(sA->m == nx);
     assert(sA->n == nxp);
 
-    if (tree[node_indx].dad == 0)
+    if (tree[node_indx].dad == 0 && nxp > 0)  // cannot initialize internal_memory if x0 is eliminated
     {
-        if (nxp != 0)  // cannot initialize internal_memory if x0 is already eliminated
-        {
-            struct blasfeo_dmat *sA0 = &qp_in->internal_memory.A0[indx];
+        struct blasfeo_dmat *sA0 = &qp_in->internal_memory.A0[indx];
 
-            nxp = sA0->n;
+        nxp = sA0->n;
 
-            blasfeo_pack_dmat(nx, nxp, (double *)A, lda_mod, sA0, 0, 0);
-            qp_in->internal_memory.is_A_initialized[indx] = 1;
+        blasfeo_dgecp(nx, nxp, sA, 0, 0, sA0, 0, 0);
+        qp_in->internal_memory.is_A_initialized[indx] = 1;
 
-            assert(sA0->m == nx);
-            assert(sA0->n == nxp);
-        }
+        assert(sA0->m == nx);
+        assert(sA0->n == nxp);
     }
 }
 
@@ -1089,17 +1092,14 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 
     assert(sb->m == nx);
 
-    if (tree[node_indx].dad == 0)
+    if (tree[node_indx].dad == 0 && nxp > 0)
     {
-        if (nxp != 0)  // cannot initialize internal_memory if x0 is already eliminated
-        {
-            struct blasfeo_dvec *sb0 = &qp_in->internal_memory.b0[indx];
+        struct blasfeo_dvec *sb0 = &qp_in->internal_memory.b0[indx];
 
-            blasfeo_pack_dvec(nx, (double *)b, sb0, 0);
-            qp_in->internal_memory.is_b_initialized[indx] = 1;
+        blasfeo_dveccp(nx, sb, 0, sb0, 0);
+        qp_in->internal_memory.is_b_initialized[indx] = 1;
 
-            assert(sb0->m == nx);
-        }
+        assert(sb0->m == nx);
     }
 }
 
@@ -1108,11 +1108,8 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
     const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
 {
-    int node_indx = indx + 1;
-    const int lda = qp_in->nx[node_indx];
-
-    tree_ocp_qp_in_set_edge_A_colmajor(A, lda, qp_in, indx);
-    tree_ocp_qp_in_set_edge_B_colmajor(B, lda, qp_in, indx);
+    tree_ocp_qp_in_set_edge_A_colmajor(A, -1, qp_in, indx);
+    tree_ocp_qp_in_set_edge_B_colmajor(B, -1, qp_in, indx);
     tree_ocp_qp_in_set_edge_b(b, qp_in, indx);
 }
 
@@ -1120,6 +1117,8 @@ void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const dou
 
 void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
+    // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
+
     int Nn = qp_in->N;
     int lda_mod;
 
@@ -1176,6 +1175,47 @@ void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, t
 
 
 
+void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nu;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sS = &qp_in->S[indx];
+
+    blasfeo_pack_dmat(nx, nx, (double *)S, lda_mod, sS, 0, 0);
+
+    assert(sS->m == nu);
+    assert(sS->n == nx);
+
+    if (indx == 0 && nx > 0)
+    {
+        struct blasfeo_dmat *sS0 = &qp_in->internal_memory.S0;
+
+        blasfeo_dgecp(nu, nx, sS, 0, 0, sS0, 0, 0);
+        qp_in->internal_memory.is_S_initialized = 1;
+
+        assert(sS0->m == nu);
+        assert(sS0->n == nx);
+    }
+}
+
+
+
 void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1194,72 +1234,43 @@ void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
     assert(indx >= 0);
     assert(indx < Nn);
 
-    int nx = qp_in->nx[indx];
     int nu = qp_in->nu[indx];
+    int nx = qp_in->nx[indx];
 
-    // struct blasfeo_dmat *sQ = &qp_in->Q[indx];
-    // struct blasfeo_dmat *sR = &qp_in->R[indx];
-    struct blasfeo_dmat *sS = &qp_in->S[indx];
-    // struct blasfeo_dvec *sq = &qp_in->q[indx];
     struct blasfeo_dvec *sr = &qp_in->r[indx];
 
-    tree_ocp_qp_in_set_node_Q_colmajor(Q, nx, qp_in, indx);
-    tree_ocp_qp_in_set_node_R_colmajor(R, nu, qp_in, indx);
-    tree_ocp_qp_in_set_node_q(q, qp_in, indx);
+    blasfeo_pack_dvec(nu, (double *)r, sr, 0);
 
-    // if (nx > 0)
-    // {
-        // blasfeo_pack_dmat(nx, nx, Q, nx, sQ, 0, 0);
-        // blasfeo_pack_dvec(nx, q, sq, 0);
+    assert(sr->m == nu);
 
-        // assert(sQ->m == nx);
-        // assert(sQ->n == nx);
-        // assert(sq->m == nx);
-    // }
-
-    if (nu > 0)
+    if (indx == 0 && nx > 0)
     {
-        // blasfeo_pack_dmat(nu, nu, R, nu, sR, 0, 0);
-        blasfeo_pack_dvec(nu, r, sr, 0);
-
-        // assert(sR->m == nu);
-        // assert(sR->n == nu);
-        assert(sr->m == nu);
-    }
-
-    if (nx > 0 && nu > 0)
-    {
-        blasfeo_pack_dmat(nu, nx, S, nu, sS, 0, 0);
-
-        assert(sS->m == nu);
-        assert(sS->n == nx);
-    }
-
-    if (indx == 0 && nx > 0)  // internal memory
-    {
-        struct blasfeo_dmat *sS0 = &qp_in->internal_memory.S0;
         struct blasfeo_dvec *sr0 = &qp_in->internal_memory.r0;
 
-        blasfeo_dgecp(nu, nx, sS, 0, 0, sS0, 0, 0);
-
-        qp_in->internal_memory.is_S_initialized = 1;
-
-        assert(sS0->m == nu);
-        assert(sS0->n == nx);
+        qp_in->internal_memory.is_r_initialized = 1;
 
         blasfeo_dveccp(nu, sr, 0, sr0, 0);
         assert(sr0->m == nu);
     }
+}
 
-    // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
+
+
+void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    tree_ocp_qp_in_set_node_Q_colmajor(Q, -1, qp_in, indx);
+    tree_ocp_qp_in_set_node_R_colmajor(R, -1, qp_in, indx);
+    tree_ocp_qp_in_set_node_S_colmajor(S, -1, qp_in, indx);
+    tree_ocp_qp_in_set_node_q(q, qp_in, indx);
+    tree_ocp_qp_in_set_node_r(r, qp_in, indx);
 }
 
 
@@ -1781,6 +1792,7 @@ void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx
         }
 
         assert(qp_in->internal_memory.is_S_initialized == 1);
+        assert(qp_in->internal_memory.is_r_initialized == 1);
 
         blasfeo_dgemv_n(nu0, nx0, 1.0, sS0, 0, 0, sx0, 0, 1.0, sr0, 0, &qp_in->r[0], 0);
     }

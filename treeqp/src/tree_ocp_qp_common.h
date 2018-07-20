@@ -57,7 +57,8 @@ typedef struct qp_internal_t_
     int *is_A_initialized;      // flag to denote whether A0 are initialized (tree[0].nkids matrices in total)
     int *is_b_initialized;      // flag to denote whether b0 are initialized
     int is_C_initialized;       // flag to denote whether (C0, dmin0, dmax0) triple is initialized
-    int is_S_initialized;       // flag to denote whether (S0, r0) pair is initialized
+    int is_S_initialized;       // flag to denote whether S0 is initialized
+    int is_r_initialized;       // flat to denote whether r0 is initialized
 
     struct blasfeo_dvec x0;     // memory to pack x0 from column major
 
