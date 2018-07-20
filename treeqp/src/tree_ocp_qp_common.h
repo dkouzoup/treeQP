@@ -252,10 +252,17 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double 
 
 // --------------- GETTERS ---------------
 
-void tree_ocp_qp_out_get_node_x_colmajor(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_get_node_x(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
 
-void tree_ocp_qp_out_get_node_u_colmajor(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_get_node_u(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
 
+void tree_ocp_qp_out_get_edge_lam(double * lam, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_x(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_u(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_d(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
 
 #ifdef __cplusplus
 }  /* extern "C" */

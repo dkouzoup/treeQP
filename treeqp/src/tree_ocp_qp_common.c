@@ -1948,7 +1948,7 @@ void tree_ocp_qp_in_set_x0_colmaj(tree_ocp_qp_in *qp_in, double *x0)
 
 
 
-void tree_ocp_qp_out_get_node_x_colmajor(double * x, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_ocp_qp_out_get_node_x(double * x, const tree_ocp_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;  // TODO(dimitris): use the fact that Nn is stored here in other functions too
 
@@ -1964,7 +1964,7 @@ void tree_ocp_qp_out_get_node_x_colmajor(double * x, const tree_ocp_qp_out * con
 
 
 
-void tree_ocp_qp_out_get_node_u_colmajor(double * u, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_ocp_qp_out_get_node_u(double * u, const tree_ocp_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -1976,4 +1976,68 @@ void tree_ocp_qp_out_get_node_u_colmajor(double * u, const tree_ocp_qp_out * con
     struct blasfeo_dvec *su = &qp_out->u[indx];
 
     blasfeo_unpack_dvec(nu, su, 0, u);
+}
+
+
+
+void tree_ocp_qp_out_get_edge_lam(double * lam, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int nx = qp_out->lam[indx].m;
+
+    struct blasfeo_dvec *slam = &qp_out->lam[indx];
+
+    blasfeo_unpack_dvec(nx, slam, 0, lam);
+}
+
+
+
+void tree_ocp_qp_out_get_node_mu_u(double * mu_u, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_out->u[indx].m;
+
+    struct blasfeo_dvec *smu_u = &qp_out->mu_u[indx];
+
+    blasfeo_unpack_dvec(nu, smu_u, 0, mu_u);
+}
+
+
+
+void tree_ocp_qp_out_get_node_mu_x(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_out->x[indx].m;
+
+    struct blasfeo_dvec *smu_x = &qp_out->mu_x[indx];
+
+    blasfeo_unpack_dvec(nx, smu_x, 0, mu_x);
+}
+
+
+
+void tree_ocp_qp_out_get_node_mu_d(double * mu_d, const tree_ocp_qp_out * const qp_out, const int indx)
+{
+    int Nn = qp_out->info.Nn;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_out->mu_d[indx].m;
+
+    struct blasfeo_dvec *smu_d = &qp_out->mu_d[indx];
+
+    blasfeo_unpack_dvec(nc, smu_d, 0, mu_d);
 }
