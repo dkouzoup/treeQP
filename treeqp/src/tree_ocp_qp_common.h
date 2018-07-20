@@ -168,7 +168,7 @@ double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_ou
 
 // --------------- SETTERS ---------------
 
-// set the dynamics of the edge connecting nodes [indx+1] and [p(indx+1)]
+// set the dynamics of edge connecting nodes [indx+1] and [p(indx+1)]
 void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
 void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
@@ -178,7 +178,7 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B, const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 
 
-// set the objective of the node [indx]
+// set the objective of node [indx]
 void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
 void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
@@ -189,15 +189,24 @@ void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp
 
 void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp_in, const int indx);
 
-
 void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
 
 void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in, int indx);
 
 
-// set the bounds of the node [indx]
+// set the bounds of node [indx]
+void tree_ocp_qp_in_set_node_xmin(const double * const xmin, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_umin(const double * const umin, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_ocp_qp_in *qp_in, int indx);
 
+
+// set the general constraints of node [indx]
 void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in, int indx);
 
 

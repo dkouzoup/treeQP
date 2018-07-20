@@ -1332,8 +1332,7 @@ void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, d
 
 
 
-void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_set_node_xmin(const double * const xmin, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1341,28 +1340,78 @@ void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, do
     assert(indx < Nn);
 
     int nx = qp_in->nx[indx];
-    int nu = qp_in->nu[indx];
 
     struct blasfeo_dvec *sxmin = &qp_in->xmin[indx];
+
+    blasfeo_pack_dvec(nx, (double *)xmin, sxmin, 0);
+
+    assert(sxmin->m == nx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
     struct blasfeo_dvec *sxmax = &qp_in->xmax[indx];
+
+    blasfeo_pack_dvec(nx, (double *)xmax, sxmax, 0);
+
+    assert(sxmax->m == nx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_umin(const double * const umin, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
     struct blasfeo_dvec *sumin = &qp_in->umin[indx];
+
+    blasfeo_pack_dvec(nu, (double *)umin, sumin, 0);
+
+    assert(sumin->m == nu);
+}
+
+
+
+void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
     struct blasfeo_dvec *sumax = &qp_in->umax[indx];
 
-    if (nx > 0)
-    {
-        blasfeo_pack_dvec(nx, xmin, sxmin, 0);
-        blasfeo_pack_dvec(nx, xmax, sxmax, 0);
-        assert(sxmin->m == nx);
-        assert(sxmax->m == nx);
-    }
+    blasfeo_pack_dvec(nu, (double *)umax, sumax, 0);
 
-    if (nu > 0)
-    {
-        blasfeo_pack_dvec(nu, umin, sumin, 0);
-        blasfeo_pack_dvec(nu, umax, sumax, 0);
-        assert(sumin->m == nu);
-        assert(sumax->m == nu);
-    }
+    assert(sumax->m == nu);
+}
+
+
+
+void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax,
+    tree_ocp_qp_in *qp_in, int indx)
+{
+    tree_ocp_qp_in_set_node_xmin(xmin, qp_in, indx);
+    tree_ocp_qp_in_set_node_xmax(xmax, qp_in, indx);
+    tree_ocp_qp_in_set_node_umin(umin, qp_in, indx);
+    tree_ocp_qp_in_set_node_umax(umax, qp_in, indx);
+
     // TODO(dimitris): assert lower bounds <= upper bounds
 }
 
