@@ -56,7 +56,9 @@ typedef struct qp_internal_t_
 {
     int *is_A_initialized;      // flag to denote whether A0 are initialized (tree[0].nkids matrices in total)
     int *is_b_initialized;      // flag to denote whether b0 are initialized
-    int is_C_initialized;       // flag to denote whether (C0, dmin0, dmax0) triple is initialized
+    int is_C_initialized;       // flag to denote whether C0 is initialized
+    int is_dmin_initialized;    // flag to denote whether dmin is initialized
+    int is_dmax_initialized;    // flag to denote whether dmax is initialized
     int is_S_initialized;       // flag to denote whether S0 is initialized
     int is_r_initialized;       // flat to denote whether r0 is initialized
 
@@ -207,6 +209,14 @@ void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, do
 
 
 // set the general constraints of node [indx]
+void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in, int indx);
 
 

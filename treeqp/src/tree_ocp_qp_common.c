@@ -162,6 +162,8 @@ void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree,
     }
 
     qp_in->internal_memory.is_C_initialized = 0;
+    qp_in->internal_memory.is_dmin_initialized = 0;
+    qp_in->internal_memory.is_dmax_initialized = 0;
     qp_in->internal_memory.is_S_initialized = 0;
     qp_in->internal_memory.is_r_initialized = 0;
 
@@ -399,9 +401,17 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
 
         qp_in->internal_memory.is_C_initialized = 1;
 
+    }
+
+    if (qp_in->internal_memory.is_dmin_initialized == 0 && nc0 > 0)
+    {
         blasfeo_dveccp(sdmin->m, sdmin, 0, sdmin0, 0);
-        blasfeo_dveccp(sdmax->m, sdmax, 0, sdmax0, 0);
         assert(sdmin0->m == sdmin->m);
+    }
+
+    if (qp_in->internal_memory.is_dmax_initialized == 0 && nc0 > 0)
+    {
+        blasfeo_dveccp(sdmax->m, sdmax, 0, sdmax0, 0);
         assert(sdmax0->m == sdmax->m);
     }
 
@@ -1470,6 +1480,8 @@ void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *d
         blasfeo_dgecp(nc, nx, sC, 0, 0, sC0, 0, 0);
 
         qp_in->internal_memory.is_C_initialized = 1;
+        qp_in->internal_memory.is_dmin_initialized = 1;
+        qp_in->internal_memory.is_dmax_initialized = 1;
 
         assert(sC0->m == nc);
         assert(sC0->n == nx);
@@ -1834,6 +1846,8 @@ void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx
         if (nc0 > 0)
         {
             assert(qp_in->internal_memory.is_C_initialized == 1);
+            assert(qp_in->internal_memory.is_dmin_initialized == 1);
+            assert(qp_in->internal_memory.is_dmax_initialized == 1);
 
             blasfeo_dgemv_n(nc0, nx0, -1.0, sC0, 0, 0, sx0, 0, 1.0, sdmin0, 0, &qp_in->dmin[0], 0);
 
