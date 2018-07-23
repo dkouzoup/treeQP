@@ -346,6 +346,13 @@ static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspa
     // printf("idx = %d\n", idx);
     // blasfeo_print_tran_dvec(nx, &work->sx[idx], 0);
     // blasfeo_print_tran_dvec(nu, &work->su[idx], 0);
+
+    // TODO(dimitris): address this error properly instead of exiting here
+    if (QPB->infeasible || QPB->unbounded)
+    {
+        printf("Infeasible or unbounded stage QP detected by qpOASES\n");
+        exit(1);
+    }
 }
 
 
