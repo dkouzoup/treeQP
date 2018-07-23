@@ -71,7 +71,7 @@ void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
     // printf("k\tnx\tnu\tnb\tnbx\tnbu\tng\tns\n");
     printf("k\tnx\tnu\tnc\n");
 
-    for (int ii = 0; ii < 10; ii++)
+    for (int ii = 0; ii < N; ii++)
     {
         printf("%d\t%d\t%d\t%d\n", ii, nx[ii], nu[ii], nc[ii]);
     }
