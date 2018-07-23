@@ -140,6 +140,7 @@ int main( ) {
 
     for (int jj = 0; jj < NREP; jj++)
     {
+        // TODO(dimitris): set dual init. in qp_out
         treeqp_tdunes_set_dual_initialization(lambda, &work);
 
         #if PROFILE > 0
