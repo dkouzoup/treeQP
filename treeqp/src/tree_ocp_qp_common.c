@@ -1047,6 +1047,37 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, t
 
 
 
+void tree_ocp_qp_in_get_edge_A_colmajor(double * const A, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+
+    struct node * const tree = qp_in->tree;
+
+    int nxp = qp_in->nx[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sA = &qp_in->A[indx];
+
+    blasfeo_unpack_dmat(nx, nxp, sA, 0, 0, A, lda_mod);
+}
+
+
+
 void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
