@@ -262,22 +262,34 @@ void tree_ocp_qp_in_set_node_general_constraints(const double * const C, const d
 
 void tree_ocp_qp_in_get_node_general_constraints(double * const C, double * const D, double * const dmin, double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx);
 
-// TODO(dimitris): implement setters and replace dual_initialization function
+// TODO(dimitris): use setters to replace dual_initialization function
 
-// get primal solution of node [indx]
-void tree_ocp_qp_out_get_node_x(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
+// set/get primal solution of node [indx]
+void tree_ocp_qp_out_set_node_x(const double * const x, tree_ocp_qp_out * const qp_out, const int indx);
 
-void tree_ocp_qp_out_get_node_u(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_get_node_x(double * const x, const tree_ocp_qp_out * const qp_out, const int indx);
 
-// get dual solution of edge connecting nodes [indx+1] and [p(indx+1)]
-void tree_ocp_qp_out_get_edge_lam(double * lam, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_set_node_u(const double * const u, tree_ocp_qp_out * const qp_out, const int indx);
 
-// get dual solution of node [indx]
-void tree_ocp_qp_out_get_node_mu_x(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_get_node_u(double * const u, const tree_ocp_qp_out * const qp_out, const int indx);
 
-void tree_ocp_qp_out_get_node_mu_u(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+// set/get dual solution of edge connecting nodes [indx+1] and [p(indx+1)]
+void tree_ocp_qp_out_set_edge_lam(const double * const lam, tree_ocp_qp_out * const qp_out, const int indx);
 
-void tree_ocp_qp_out_get_node_mu_d(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+void tree_ocp_qp_out_get_edge_lam(double * const lam, const tree_ocp_qp_out * const qp_out, const int indx);
+
+// set/get dual solution of node [indx]
+void tree_ocp_qp_out_set_node_mu_x(const double * const mu_x, tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_x(double * const mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_set_node_mu_u(const double * const mu_x, tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_u(double * const mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_set_node_mu_d(const double * const mu_x, tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_d(double * const mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
 
 
 
