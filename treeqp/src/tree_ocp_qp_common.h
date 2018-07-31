@@ -46,7 +46,7 @@ typedef struct treeqp_info_t_
     int iter;
     double solver_time;
     double interface_time;
-    // TODO(dimitris): add total time
+    // TODO(dimitris): add total time and iteration logs
 } treeqp_info_t;
 
 
@@ -177,9 +177,15 @@ void tree_ocp_qp_in_get_edge_A_colmajor(double * const A, const int lda, const t
 
 void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_get_edge_B_colmajor(double * const B, const int lda, const tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_get_edge_b(double * const b, tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B, const double * const b, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_get_edge_dynamics_colmajor(double * const A, double * const B, double * const b, tree_ocp_qp_in * const qp_in, const int indx);
 
 
 // set/get objective of node [indx]

@@ -1112,6 +1112,37 @@ void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, t
 
 
 
+void tree_ocp_qp_in_get_edge_B_colmajor(double * const B, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+
+    struct node * const tree = qp_in->tree;
+
+    int nup = qp_in->nu[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sB = &qp_in->B[indx];
+
+    blasfeo_unpack_dmat(nx, nup, sB, 0, 0, B, lda_mod);
+}
+
+
+
 void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1146,12 +1177,44 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 
 
 
+void tree_ocp_qp_in_get_edge_b(double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn-1);
+
+    int node_indx = indx + 1;
+
+    struct node * const tree = qp_in->tree;
+
+    int nxp = qp_in->nx[tree[node_indx].dad];
+    int nup = qp_in->nu[tree[node_indx].dad];
+    int nx = qp_in->nx[node_indx];
+
+    struct blasfeo_dvec *sb = &qp_in->b[indx];
+
+    blasfeo_unpack_dvec(nx, sb, 0, b);
+}
+
+
+
 void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
     const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
 {
     tree_ocp_qp_in_set_edge_A_colmajor(A, -1, qp_in, indx);
     tree_ocp_qp_in_set_edge_B_colmajor(B, -1, qp_in, indx);
     tree_ocp_qp_in_set_edge_b(b, qp_in, indx);
+}
+
+
+
+void tree_ocp_qp_in_get_edge_dynamics_colmajor(double * const A, double * const B,
+    double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+{
+    tree_ocp_qp_in_get_edge_A_colmajor(A, -1, qp_in, indx);
+    tree_ocp_qp_in_get_edge_B_colmajor(B, -1, qp_in, indx);
+    tree_ocp_qp_in_get_edge_b(b, qp_in, indx);
 }
 
 
