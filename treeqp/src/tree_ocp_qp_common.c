@@ -1177,7 +1177,7 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_get_edge_b(double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_ocp_qp_in_get_edge_b(double * const b, const tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1210,7 +1210,7 @@ void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const dou
 
 
 void tree_ocp_qp_in_get_edge_dynamics_colmajor(double * const A, double * const B,
-    double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+    double * const b, const tree_ocp_qp_in * const qp_in, const int indx)
 {
     tree_ocp_qp_in_get_edge_A_colmajor(A, -1, qp_in, indx);
     tree_ocp_qp_in_get_edge_B_colmajor(B, -1, qp_in, indx);
@@ -1250,6 +1250,32 @@ void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, t
 
 
 
+void tree_ocp_qp_in_get_node_Q_colmajor(double * const Q, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nx;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sQ = &qp_in->Q[indx];
+
+    blasfeo_unpack_dmat(nx, nx, sQ, 0, 0, Q, lda_mod);
+}
+
+
+
 void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1275,6 +1301,32 @@ void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, t
 
     assert(sR->m == nu);
     assert(sR->n == nu);
+}
+
+
+
+void tree_ocp_qp_in_get_node_R_colmajor(double * const R, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nu;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sR = &qp_in->R[indx];
+
+    blasfeo_unpack_dmat(nu, nu, sR, 0, 0, R, lda_mod);
 }
 
 
@@ -1320,6 +1372,33 @@ void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, t
 
 
 
+void tree_ocp_qp_in_get_node_S_colmajor(double * const S, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nu;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sS = &qp_in->S[indx];
+
+    blasfeo_unpack_dmat(nx, nx, sS, 0, 0, S, lda_mod);
+}
+
+
+
 void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1334,6 +1413,22 @@ void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp
     blasfeo_pack_dvec(nx, (double *)q, sq, 0);
 
     assert(sq->m == nx);
+}
+
+
+
+void tree_ocp_qp_in_get_node_q(double * const q, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sq = &qp_in->q[indx];
+
+    blasfeo_unpack_dvec(nx, sq, 0, q);
 }
 
 
@@ -1367,8 +1462,25 @@ void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_get_node_r(double * const r, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sr = &qp_in->r[indx];
+
+    blasfeo_unpack_dvec(nu, sr, 0, r);
+}
+
+
+
+void tree_ocp_qp_in_set_node_objective_colmajor(const double * const Q, const double * const R, const double * const S,
+    const double * const q, const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
 {
     tree_ocp_qp_in_set_node_Q_colmajor(Q, -1, qp_in, indx);
     tree_ocp_qp_in_set_node_R_colmajor(R, -1, qp_in, indx);
@@ -1379,8 +1491,20 @@ void tree_ocp_qp_in_set_node_objective_colmajor(double *Q, double *R, double *S,
 
 
 
-void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, double *r,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_get_node_objective_colmajor(double * const Q, double * const R, double * const S,
+    double * const q, double * const r, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    tree_ocp_qp_in_get_node_Q_colmajor(Q, -1, qp_in, indx);
+    tree_ocp_qp_in_get_node_R_colmajor(R, -1, qp_in, indx);
+    tree_ocp_qp_in_get_node_S_colmajor(S, -1, qp_in, indx);
+    tree_ocp_qp_in_get_node_q(q, qp_in, indx);
+    tree_ocp_qp_in_get_node_r(r, qp_in, indx);
+}
+
+
+
+void tree_ocp_qp_in_set_node_objective_diag(const double * const Qd, const double * const Rd,
+    const double * const q, const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1408,10 +1532,10 @@ void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, d
     if (nx > 0)
     {
         blasfeo_dgese(nx, nx, 0.0, sQ, 0, 0);
-        blasfeo_pack_dvec(nx, Qd, sq, 0);
+        blasfeo_pack_dvec(nx, (double *)Qd, sq, 0);
         blasfeo_ddiain(nx, 1.0, sq, 0, sQ, 0, 0);
 
-        blasfeo_pack_dvec(nx, q, sq, 0);
+        blasfeo_pack_dvec(nx, (double *)q, sq, 0);
 
         assert(sQ->m == nx);
         assert(sQ->n == nx);
@@ -1422,10 +1546,10 @@ void tree_ocp_qp_in_set_node_objective_diag(double *Qd, double *Rd, double *q, d
     if (nu > 0)
     {
         blasfeo_dgese(nu, nu, 0.0, sR, 0, 0);
-        blasfeo_pack_dvec(nu, Rd, sr, 0);
+        blasfeo_pack_dvec(nu, (double *)Rd, sr, 0);
         blasfeo_ddiain(nu, 1.0, sr, 0, sR, 0, 0);
 
-        blasfeo_pack_dvec(nu, r, sr, 0);
+        blasfeo_pack_dvec(nu, (double *)r, sr, 0);
 
         assert(sR->m == nu);
         assert(sR->n == nu);
@@ -1454,6 +1578,22 @@ void tree_ocp_qp_in_set_node_xmin(const double * const xmin, tree_ocp_qp_in * co
 
 
 
+void tree_ocp_qp_in_get_node_xmin(double * const xmin, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sxmin = &qp_in->xmin[indx];
+
+    blasfeo_unpack_dvec(nx, sxmin, 0, xmin);
+}
+
+
+
 void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1468,6 +1608,22 @@ void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * co
     blasfeo_pack_dvec(nx, (double *)xmax, sxmax, 0);
 
     assert(sxmax->m == nx);
+}
+
+
+
+void tree_ocp_qp_in_get_node_xmax(double * const xmax, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sxmax = &qp_in->xmax[indx];
+
+    blasfeo_unpack_dvec(nx, sxmax, 0, xmax);
 }
 
 
@@ -1490,6 +1646,22 @@ void tree_ocp_qp_in_set_node_umin(const double * const umin, tree_ocp_qp_in * co
 
 
 
+void tree_ocp_qp_in_get_node_umin(double * const umin, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
+    struct blasfeo_dvec *sumin = &qp_in->umin[indx];
+
+    blasfeo_unpack_dvec(nu, sumin, 0, umin);
+}
+
+
+
 void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1508,8 +1680,24 @@ void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_bounds(double *xmin, double *xmax, double *umin, double *umax,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_get_node_umax(double * const umax, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nu = qp_in->nu[indx];
+
+    struct blasfeo_dvec *sumax = &qp_in->umax[indx];
+
+    blasfeo_unpack_dvec(nu, sumax, 0, umax);
+}
+
+
+
+void tree_ocp_qp_in_set_node_bounds(const double * const xmin, const double * const xmax,
+    const double * const umin, const double * const umax, tree_ocp_qp_in * const qp_in, const int indx)
 {
     tree_ocp_qp_in_set_node_xmin(xmin, qp_in, indx);
     tree_ocp_qp_in_set_node_xmax(xmax, qp_in, indx);
