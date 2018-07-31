@@ -1709,6 +1709,17 @@ void tree_ocp_qp_in_set_node_bounds(const double * const xmin, const double * co
 
 
 
+void tree_ocp_qp_in_get_node_bounds(double * const xmin, double * const xmax,
+    double * const umin, double * const umax, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    tree_ocp_qp_in_get_node_xmin(xmin, qp_in, indx);
+    tree_ocp_qp_in_get_node_xmax(xmax, qp_in, indx);
+    tree_ocp_qp_in_get_node_umin(umin, qp_in, indx);
+    tree_ocp_qp_in_get_node_umax(umax, qp_in, indx);
+}
+
+
+
 void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1750,6 +1761,33 @@ void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, t
 
 
 
+void tree_ocp_qp_in_get_node_C_colmajor(double * const C, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nc;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sC = &qp_in->C[indx];
+
+    blasfeo_unpack_dmat(nc, nx, sC, 0, 0, C, lda_mod);
+}
+
+
+
 void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1777,6 +1815,33 @@ void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, t
     assert(sD->m == nc);
     assert(sD->n == nu);
 
+}
+
+
+
+void tree_ocp_qp_in_get_node_D_colmajor(double * const D, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+    int lda_mod;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nu = qp_in->nu[indx];
+
+    if (lda <= 0)  // infer lda
+    {
+        lda_mod = nc;
+    }
+    else  // use lda from user (for padded matrices or submatrices)
+    {
+        lda_mod = lda;
+    }
+
+    struct blasfeo_dmat *sD = &qp_in->D[indx];
+
+    blasfeo_unpack_dmat(nc, nu, sD, 0, 0, D, lda_mod);
 }
 
 
@@ -1810,6 +1875,23 @@ void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * co
 
 
 
+void tree_ocp_qp_in_get_node_dmin(double * const dmin, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sdmin = &qp_in->dmin[indx];
+
+    blasfeo_unpack_dvec(nc, sdmin, 0, dmin);
+}
+
+
+
 void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
@@ -1839,8 +1921,25 @@ void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax,
-    tree_ocp_qp_in *qp_in, int indx)
+void tree_ocp_qp_in_get_node_dmax(double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    int Nn = qp_in->N;
+
+    assert(indx >= 0);
+    assert(indx < Nn);
+
+    int nc = qp_in->nc[indx];
+    int nx = qp_in->nx[indx];
+
+    struct blasfeo_dvec *sdmax = &qp_in->dmax[indx];
+
+    blasfeo_unpack_dvec(nc, sdmax, 0, dmax);
+}
+
+
+
+void tree_ocp_qp_in_set_node_general_constraints(const double * const C, const double * const D,
+    const double * const dmin, const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx)
 {
     tree_ocp_qp_in_set_node_C_colmajor(C, -1, qp_in, indx);
     tree_ocp_qp_in_set_node_D_colmajor(D, -1, qp_in, indx);
@@ -1848,6 +1947,17 @@ void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *d
     tree_ocp_qp_in_set_node_dmax(dmax, qp_in, indx);
 
     // TODO(dimitris): assert lower bounds <= upper bounds
+}
+
+
+
+void tree_ocp_qp_in_get_node_general_constraints(double * const C, double * const D,
+    double * const dmin, double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx)
+{
+    tree_ocp_qp_in_get_node_C_colmajor(C, -1, qp_in, indx);
+    tree_ocp_qp_in_get_node_D_colmajor(D, -1, qp_in, indx);
+    tree_ocp_qp_in_get_node_dmin(dmin, qp_in, indx);
+    tree_ocp_qp_in_get_node_dmax(dmax, qp_in, indx);
 }
 
 

@@ -238,17 +238,47 @@ void tree_ocp_qp_in_get_node_umax(double * const umax, const tree_ocp_qp_in * co
 
 void tree_ocp_qp_in_set_node_bounds(const double * const xmin, const double * const xmax, const double * const umin, const double * const umax, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_get_node_bounds(double * const xmin, double * const xmax, double * const umin, double * const umax, const tree_ocp_qp_in * const qp_in, const int indx);
+
 
 // set/get general constraints of node [indx]
 void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_get_node_C_colmajor(double * const C, const int lda, const tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_get_node_D_colmajor(double * const D, const int lda, const tree_ocp_qp_in * const qp_in, const int indx);
 
 void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * const qp_in, const int indx);
 
+void tree_ocp_qp_in_get_node_dmin(double * const dmin, const tree_ocp_qp_in * const qp_in, const int indx);
+
 void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx);
 
-void tree_ocp_qp_in_set_node_general_constraints(double *C, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in, int indx);
+void tree_ocp_qp_in_get_node_dmax(double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_set_node_general_constraints(const double * const C, const double * const D, const double * const dmin, const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx);
+
+void tree_ocp_qp_in_get_node_general_constraints(double * const C, double * const D, double * const dmin, double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx);
+
+// TODO(dimitris): implement setters and replace dual_initialization function
+
+// get primal solution of node [indx]
+void tree_ocp_qp_out_get_node_x(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_u(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
+
+// get dual solution of edge connecting nodes [indx+1] and [p(indx+1)]
+void tree_ocp_qp_out_get_edge_lam(double * lam, const tree_ocp_qp_out * const qp_out, const int indx);
+
+// get dual solution of node [indx]
+void tree_ocp_qp_out_get_node_mu_x(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_u(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
+void tree_ocp_qp_out_get_node_mu_d(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
+
 
 
 // A, B, b contain all matrices/vectors of appropriate dimensions concatenated in one vector
@@ -278,24 +308,6 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double 
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
     double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
-
-
-// TODO(dimitris): implement setters and remove dual_initialization function
-
-// get primal solution of node [indx]
-void tree_ocp_qp_out_get_node_x(double * x, const tree_ocp_qp_out * const qp_out, const int indx);
-
-void tree_ocp_qp_out_get_node_u(double * u, const tree_ocp_qp_out * const qp_out, const int indx);
-
-// get dual solution of edge connecting nodes [indx+1] and [p(indx+1)]
-void tree_ocp_qp_out_get_edge_lam(double * lam, const tree_ocp_qp_out * const qp_out, const int indx);
-
-void tree_ocp_qp_out_get_node_mu_x(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
-
-// get dual solution of node [indx]
-void tree_ocp_qp_out_get_node_mu_u(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
-
-void tree_ocp_qp_out_get_node_mu_d(double * mu_x, const tree_ocp_qp_out * const qp_out, const int indx);
 
 #ifdef __cplusplus
 }  /* extern "C" */
