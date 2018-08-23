@@ -53,7 +53,7 @@ typedef enum {
 
 // Exit codes
 typedef enum {
-    TREEQP_OK = 0,
+    TREEQP_OK = -1,
 
     // exit status of QP solver
     TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND,
