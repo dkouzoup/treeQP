@@ -215,7 +215,7 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
 
 
 
-void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
+return_t stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_qpoases_data *qpoases_data =
@@ -297,21 +297,19 @@ void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad
             qpoases_data->ub,  qpoases_data->lc, qpoases_data->uc, &nWSR, &cputime);
     }
 
-    if (status != 0)
+    if (status == 0)
     {
-        printf("\n[TREEQP]: Error! Initialization of stage QP %d failed (status flag %d).\n\n", idx, status);
-        // d_print_mat(nx+nu, nx+nu, qpoases_data->H, nx+nu);
-        // d_print_mat(1, nx+nu, qpoases_data->g, 1);
-        // d_print_mat(1, nx+nu, qpoases_data->lb, 1);
-        // d_print_mat(1, nx+nu, qpoases_data->ub, 1);
-        exit(1);
+        return TREEQP_OK;
     }
-    assert(status == 0 && "initialization of qpOASES failed!");
+    else
+    {
+        return TREEQP_DN_STAGE_QP_INIT_FAILED;
+    }
 }
 
 
 
-static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
+static int QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
@@ -325,6 +323,8 @@ static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspa
     int nWSR = qpoases_data->opts.max_nwsr;
     double cputime = qpoases_data->opts.max_cputime;
 
+    int status;
+
     // g_new = - [xmod; umod]
     blasfeo_unpack_dvec(nx, &work->sqmod[idx], 0, &qpoases_data->g[0]);
     blasfeo_unpack_dvec(nu, &work->srmod[idx], 0, &qpoases_data->g[nx]);
@@ -332,13 +332,13 @@ static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspa
 
     if (nc == 0)
     {
-	    QProblemB_hotstart(QPB, qpoases_data->g, qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
+	    status = QProblemB_hotstart(QPB, qpoases_data->g, qpoases_data->lb, qpoases_data->ub, &nWSR, &cputime);
         blasfeo_pack_dvec(nx, &QPB->x[0], &work->sx[idx], 0);
         blasfeo_pack_dvec(nu, &QPB->x[nx], &work->su[idx], 0);
     }
     else
     {
-	    QProblem_hotstart(QP, qpoases_data->g, qpoases_data->lb, qpoases_data->ub,
+	    status = QProblem_hotstart(QP, qpoases_data->g, qpoases_data->lb, qpoases_data->ub,
             qpoases_data->lc, qpoases_data->uc, &nWSR, &cputime);
         blasfeo_pack_dvec(nx, &QP->x[0], &work->sx[idx], 0);
         blasfeo_pack_dvec(nu, &QP->x[nx], &work->su[idx], 0);
@@ -347,17 +347,17 @@ static void QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspa
     // blasfeo_print_tran_dvec(nx, &work->sx[idx], 0);
     // blasfeo_print_tran_dvec(nu, &work->su[idx], 0);
 
-    // TODO(dimitris): address this error properly instead of exiting here
-    if (QPB->infeasible || QPB->unbounded)
-    {
-        printf("Infeasible or unbounded stage QP detected by qpOASES\n");
-        exit(1);
-    }
+    // if (QPB->infeasible || QPB->unbounded)
+    // {
+    //     printf("\n[TREEQP]: Error! qpOASES failed to solve stage QP (status = %d)\n\n", status);
+    //     exit(1);
+    // }
+    return status;
 }
 
 
 
-void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
@@ -366,17 +366,34 @@ void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_
     // treeqp_tdunes_qpoases_data *qpoases_data =
     //     (treeqp_tdunes_qpoases_data *)work->stage_qp_data[idx];
 
-    QProblem_solve(qp_in, idx, work);
+    int status = QProblem_solve(qp_in, idx, work);
     QProblem_build_elimination_matrix(qp_in, idx, work);
 
+    if (status == 0)
+    {
+        return TREEQP_OK;
+    }
+    else
+    {
+        return TREEQP_DN_STAGE_QP_SOLVE_FAILED;
+    }
 }
 
 
 
-void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
-    QProblem_solve(qp_in, idx, work);
+    int status = QProblem_solve(qp_in, idx, work);
+
+    if (status == 0)
+    {
+        return TREEQP_OK;
+    }
+    else
+    {
+        return TREEQP_DN_STAGE_QP_SOLVE_FAILED;
+    }
 }
 
 

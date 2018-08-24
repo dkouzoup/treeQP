@@ -146,7 +146,7 @@ void stage_qp_clipping_assign_data(int nx, int nu, int nc, void *stage_qp_data, 
 
 
 
-void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
+return_t stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -179,11 +179,13 @@ void stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_da
         blasfeo_dgecp(nx, sA->n, sA, 0, 0, sAB, 0, 0);
         blasfeo_dgecp(nx, sB->n, sB, 0, 0, sAB, 0, sA->n);
     }
+
+    return TREEQP_OK;
 }
 
 
 
-void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -220,11 +222,13 @@ void stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work
 
     // RinvCal[kk] = Rinv[kk] .* (1 - abs(uas[kk]))
     blasfeo_dvecze(nu, suas, 0, clipping_data->sRinv, 0, clipping_data->sRinvCal, 0);
+
+    return TREEQP_OK;
 }
 
 
 
-void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -251,6 +255,8 @@ void stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
     blasfeo_dvecmuldot(nu, clipping_data->sRinv, 0, srmod, 0, &work->su[idx], 0);
     // u[k] = median(umin, u[k], umax)
     blasfeo_dveccl(nu, sumin, 0, &work->su[idx], 0, sumax, 0, &work->su[idx], 0);
+
+    return TREEQP_OK;
 }
 
 

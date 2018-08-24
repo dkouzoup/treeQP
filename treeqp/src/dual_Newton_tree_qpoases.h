@@ -74,11 +74,11 @@ void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, c
 
 void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr);
 
-void stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
+return_t stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
 
-void stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_);
+return_t stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_);
+return_t stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_);
 
 void stage_qp_qpoases_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
 

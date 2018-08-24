@@ -48,9 +48,9 @@ typedef struct stage_qp_fcn_ptrs_
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data)(int nx, int nu, int nc, void *data, char **c_double_ptr);
-    void (*init)(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
-    void (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
-    void (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    return_t (*init)(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
+    return_t (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
+    return_t (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
     void (*set_CmPnCmT)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
     void (*add_EPmE)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
     void (*add_CmPnCkT)(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);

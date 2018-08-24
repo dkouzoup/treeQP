@@ -210,7 +210,7 @@ static int maximum_hessian_block_dimension(tree_ocp_qp_in *qp_in)
 
 
 
-static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work)
+static return_t solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work)
 {
     int idxkid, idxdad, idxpos;
     int Nn = qp_in->N;
@@ -229,6 +229,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
 
     struct blasfeo_dvec *sqmod = work->sqmod;
     struct blasfeo_dvec *srmod = work->srmod;
+
+    return_t status;
 
     #ifdef SAVE_DATA
     int indh = 0;
@@ -290,7 +292,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
         // (b) qpoases:     - solve stage QP
         //                  - TODO(dimitris): what else?
 
-        work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
+        status = work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
+        if (status != TREEQP_OK) return status;
     }
 
     #ifdef SAVE_DATA
@@ -313,6 +316,8 @@ static void solve_stage_problems(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace 
     free(xit);
     free(uit);
     #endif
+
+    return TREEQP_OK;
 }
 
 
@@ -786,10 +791,13 @@ static double gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
 }
 
 
-static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work)
+static return_t evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_workspace *work, double *fval)
 {
     int idxkid, idxpos, idxdad;
-    double fval = 0;
+
+    return_t status;
+
+    *fval = 0;
 
     int Nn = work->Nn;
     int Np = work->Np;
@@ -864,15 +872,16 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
         }
 
         // --- solve QP
-        work->stage_qp_ptrs[kk].solve(qp_in, kk, work);
+        status = work->stage_qp_ptrs[kk].solve(qp_in, kk, work);
+        if (status != TREEQP_OK) return status;
 
         // --- calculate dual function term
         work->stage_qp_ptrs[kk].eval_dual_term(qp_in, kk, work);
     }
 
-    for (int kk = 0; kk < Nn; kk++) fval += fvals[kk];
+    for (int kk = 0; kk < Nn; kk++) *fval += fvals[kk];
 
-    return fval;
+    return TREEQP_OK;
 }
 
 
@@ -881,6 +890,8 @@ static return_t line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, t
 {
     int Nn = qp_in->N;
     int Np = work->Np;
+
+    return_t status;
 
     struct node *tree = (struct node *)qp_in->tree;
 
@@ -898,17 +909,15 @@ static return_t line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, t
     double tauPrev = 0;
 
     dot_product = gradient_trans_times_direction(work);
-    fval0 = evaluate_dual_function(qp_in, work);
+    status = evaluate_dual_function(qp_in, work, &fval0);
+    if (status != TREEQP_OK) return status;
+
     // printf("dot_product = %f\n", dot_product);
     // printf("dual_function[0] = %f\n", fval0);
 
-    if (dot_product < 1e-10)
+    if (dot_product > 1e-10 || !((dot_product > 1e-10) || (dot_product < 1e-10))) // covers also NaN
     {
-        // ok
-    }
-    else // covers also NaN
-    {
-        return TREEQP_DN_NOT_DESCENT_DIRECTION;  // typically either badly scaled dual Hessian, or nan
+        return TREEQP_DN_NOT_DESCENT_DIRECTION;  // typically badly scaled dual Hessian, or insufficient regularization
     }
 
     int lsIter;
@@ -926,7 +935,9 @@ static return_t line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, t
         }
 
         // evaluate dual function
-        fval = evaluate_dual_function(qp_in, work);
+        status = evaluate_dual_function(qp_in, work, &fval);
+        if (status != TREEQP_OK) return status;
+
         // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
@@ -1076,12 +1087,13 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         // TODO(dimitris): Clean this up! At root, opts->qp_solver[-1] gives segfault
         if (kk > 0)
         {
-            work->stage_qp_ptrs[kk].init(qp_in, kk, opts->qp_solver[tree[kk].dad], work);
+            status = work->stage_qp_ptrs[kk].init(qp_in, kk, opts->qp_solver[tree[kk].dad], work);
         }
         else
         {
-            work->stage_qp_ptrs[kk].init(qp_in, kk, TREEQP_CLIPPING_SOLVER, work);
+            status = work->stage_qp_ptrs[kk].init(qp_in, kk, TREEQP_CLIPPING_SOLVER, work);
         }
+        if (status != TREEQP_OK) return status;
 
         if (opts->checkLastActiveSet)
         {
@@ -1104,7 +1116,9 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        solve_stage_problems(qp_in, work);
+        status = solve_stage_problems(qp_in, work);
+        if (status != TREEQP_OK) return status;
+
         #if PROFILE > 2
         stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
