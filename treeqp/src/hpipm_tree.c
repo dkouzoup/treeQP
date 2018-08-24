@@ -303,7 +303,7 @@ void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
 
 
 
-int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts,
+return_t treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts,
     treeqp_hpipm_workspace *work)
 {
     struct node *tree = qp_in->tree;

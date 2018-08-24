@@ -1834,7 +1834,7 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 }
 
 
-int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
 
     int NewtonIter, lsIter;

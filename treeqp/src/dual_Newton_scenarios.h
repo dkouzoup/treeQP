@@ -146,7 +146,7 @@ int treeqp_sdunes_calculate_dual_dimension(int Nr, int md, int nu);
 
 void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdunes_workspace *work);
 
-int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work);
+return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work);
 
 
 // TODO(dimitris): move out of here

@@ -153,7 +153,7 @@ void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, tre
 
 void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work);
 
-int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
+return_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
 
 
 // TODO(dimitris): move to utils!

@@ -1054,7 +1054,7 @@ static return_t treeqp_tdunes_validate_opts(treeqp_tdunes_opts_t *opts)
 
 
 
-int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+return_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     return_t status;
