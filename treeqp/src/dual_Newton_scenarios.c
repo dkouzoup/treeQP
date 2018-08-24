@@ -1480,6 +1480,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
             }
         }
     } else {
+        // TODO(dimitris): implement validate_opts as in tdunes
         printf("[TREEQP] Unknown termination condition!\n");
         exit(1);
     }

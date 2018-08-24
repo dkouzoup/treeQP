@@ -401,7 +401,8 @@ static double calculate_error_in_residuals(termination_t condition, treeqp_tdune
             }
         }
     } else {
-        printf("[TREEQP] Unknown termination condition!\n");
+        // NOTE(dimitris): this should never occur as we check options at the beginning
+        printf("[TREEQP] Options struct corrupted!\n");
         exit(1);
     }
     // printf("error=%2.3e\n",error);
@@ -876,7 +877,7 @@ static double evaluate_dual_function(tree_ocp_qp_in *qp_in, treeqp_tdunes_worksp
 
 
 
-static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
+static return_t line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     int Nn = qp_in->N;
     int Np = work->Np;
@@ -900,7 +901,15 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp
     fval0 = evaluate_dual_function(qp_in, work);
     // printf("dot_product = %f\n", dot_product);
     // printf("dual_function[0] = %f\n", fval0);
-    assert(dot_product < 1e-10 && "Not a descent direction! (Either bad scaled dual Hessian, or nan)");
+
+    if (dot_product < 1e-10)
+    {
+        // ok
+    }
+    else // covers also NaN
+    {
+        return TREEQP_DN_NOT_DESCENT_DIRECTION;  // typically either badly scaled dual Hessian, or nan
+    }
 
     int lsIter;
 
@@ -946,7 +955,9 @@ static int line_search(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp
 
     // printf(" dual_function = %f\n", fval);
 
-    return lsIter;
+    work->lsIter = lsIter;
+
+    return TREEQP_OK;
 }
 
 
@@ -1005,10 +1016,38 @@ void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node 
 
 
 
+// TODO(dimitris): extend this
+static return_t treeqp_tdunes_validate_opts(treeqp_tdunes_opts_t *opts)
+{
+    if ((opts->termCondition != TREEQP_SUMSQUAREDERRORS) &&
+        (opts->termCondition != TREEQP_TWONORM) &&
+        (opts->termCondition != TREEQP_INFNORM))
+    {
+        return TREEQP_INVALID_OPTION;
+    }
+
+    if ((opts->regType != TREEQP_NO_REGULARIZATION) &&
+        (opts->regType != TREEQP_ALWAYS_LEVENBERG_MARQUARDT) &&
+        (opts->regType != TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT))
+    {
+        return TREEQP_INVALID_OPTION;
+    }
+
+    if (opts->regValue < 0)
+    {
+        return TREEQP_INVALID_OPTION;
+    }
+
+    return TREEQP_OK;
+}
+
+
+
 int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
-    int status;
+    return_t status;
+
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
@@ -1028,6 +1067,9 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     // ------ initialization
     treeqp_tic(&interface_tmr);
+
+    status = treeqp_tdunes_validate_opts(opts);
+    if (status != TREEQP_OK) return status;
 
     for (int kk = 0; kk < Nn; kk++)
     {
@@ -1097,17 +1139,20 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         treeqp_tic(&tmr);
         #endif
-        lsIter = line_search(qp_in, opts, work);
+
+        status = line_search(qp_in, opts, work);
+        if (status != TREEQP_OK) return status;
+
         #if PROFILE > 2
         line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         #if PRINT_LEVEL > 1
-        printf("iteration #%d: %d ls iterations\n", NewtonIter, lsIter);
+        printf("iteration #%d: %d ls iterations\n", NewtonIter, work->lsIter);
         #endif
         #if PROFILE > 1
         iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
-        ls_iters[NewtonIter] = lsIter;
+        ls_iters[NewtonIter] = work->lsIter;
         #endif
     }
 

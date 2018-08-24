@@ -55,20 +55,23 @@ typedef enum {
 typedef enum {
 
     // exit status of QP solvers (common)
+
     TREEQP_OPTIMAL_SOLUTION_FOUND,
     TREEQP_MAXIMUM_ITERATIONS_REACHED,
 
     // exit status of QP solvers (specific)
-    TREEQP_DN_NOT_ASCENT_DIRECTION,
-    TREEQP_QPOASES_STAGE_QP_FAILED,
+
+    TREEQP_DN_NOT_DESCENT_DIRECTION,  // typically NaN due to insufficient regularization
+    TREEQP_DN_STAGE_QP_INIT_FAILED,  // when using qpOASES
+    TREEQP_DN_STAGE_QP_SOLVE_FAILED,  // when using qpOASES
     TREEQP_IP_MIN_STEP,
     TREEQP_IP_UNKNOWN_FLAG,
 
-    // reading/writing to txt files
-    TREEQP_ERROR_OPENING_FILE,
-
     // misc
+
     TREEQP_OK,
+    TREEQP_INVALID_OPTION,
+    TREEQP_ERROR_OPENING_FILE,
     TREEQP_UNKNOWN_ERROR,
 
 } return_t;

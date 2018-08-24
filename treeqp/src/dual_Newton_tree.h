@@ -87,6 +87,8 @@ typedef struct treeqp_tdunes_workspace_
     int Nn;
     int Np;
 
+    int lsIter;
+
     int *npar;  // 1 x Nh: number of parallel factorizations per stage
     int *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
 
