@@ -76,14 +76,14 @@ int main() {
     double *mu = malloc(Ns*Nh*NX*sizeof(double));
     double *lambda = malloc(nl*sizeof(double));
     status = read_double_vector_from_txt(mu, Ns*Nh*NX, "examples/spring_mass_utils/mu0_scen.txt");
-    if (status != 0) return -1;
+    if (status != TREEQP_OK) return -1;
     status = read_double_vector_from_txt(lambda, nl, "examples/spring_mass_utils/lambda0_scen.txt");
-    if (status != 0) return -1;
+    if (status != TREEQP_OK) return -1;
 
     // read constraint on x0 from txt file
     double x0[NX];
     status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
-    if (status != 0) return -1;
+    if (status != TREEQP_OK) return -1;
 
     // setup scenario tree
     struct node *tree = malloc(Nn*sizeof(struct node));
@@ -163,7 +163,6 @@ int main() {
         update_min_timers(jj);
         #endif
     }
-
     write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0

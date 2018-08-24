@@ -78,9 +78,9 @@ int main( )
     double *mu_sdunes = malloc(Ns*Nh*NX*sizeof(double));
     double *lambda_sdunes = malloc(nl_sdunes*sizeof(double));
     status = read_double_vector_from_txt(mu_sdunes, Ns*Nh*NX, "examples/spring_mass_utils/mu0_scen.txt");
-    if (status != 0) return -1;
+    if (status != TREEQP_OK) return -1;
     status = read_double_vector_from_txt(lambda_sdunes, nl_sdunes, "examples/spring_mass_utils/lambda0_scen.txt");
-    if (status != 0) return -1;
+    if (status != TREEQP_OK) return -1;
 
 
     // read constraint on x0 from txt file
@@ -385,7 +385,7 @@ int main( )
     for (int jj = 0; jj < NREP; jj++)
     {
         hpmpc_status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
-        if (hpmpc_status != 0)
+        if (hpmpc_status != TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
             printf("HPMPC failed with status %d! <--------------------------------------------------\n", hpmpc_status);
             // exit(-1);
@@ -421,7 +421,7 @@ int main( )
     for (int jj = 0; jj < NREP; jj++)
     {
         hpipm_status = treeqp_hpipm_solve(&qp_in, &qp_out, &hpipm_opts, &hpipm_work);
-        if (hpipm_status != 0)
+        if (hpipm_status != TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
             printf("HPIPM failed with status %d! <--------------------------------------------------\n", hpipm_status);
             // exit(-1);
