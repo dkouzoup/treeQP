@@ -53,16 +53,24 @@ typedef enum {
 
 // Exit codes
 typedef enum {
-    TREEQP_OK = -1,
 
-    // exit status of QP solver
-    TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND,
-    TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED,
+    // exit status of QP solvers (common)
+    TREEQP_OPTIMAL_SOLUTION_FOUND,
+    TREEQP_MAXIMUM_ITERATIONS_REACHED,
+
+    // exit status of QP solvers (specific)
+    TREEQP_DN_NOT_ASCENT_DIRECTION,
+    TREEQP_QPOASES_STAGE_QP_FAILED,
+    TREEQP_IP_MIN_STEP,
+    TREEQP_IP_UNKNOWN_FLAG,
 
     // reading/writing to txt files
-    TREEQP_ERR_ERROR_OPENING_FILE,
+    TREEQP_ERROR_OPENING_FILE,
 
-    TREEQP_ERR_UNKNOWN_ERROR,
+    // misc
+    TREEQP_OK,
+    TREEQP_UNKNOWN_ERROR,
+
 } return_t;
 
 

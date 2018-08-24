@@ -315,7 +315,7 @@ int main( )
 
         tdunes_status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
 
-        if (tdunes_status != TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
+        if (tdunes_status != TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
             printf("TDUNES failed with status %d! <--------------------------------------------------\n", tdunes_status);
             // exit(-1);
@@ -352,7 +352,7 @@ int main( )
         treeqp_sdunes_set_dual_initialization(lambda_sdunes, mu_sdunes, &sdunes_work);
 
         sdunes_status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
-        if (sdunes_status != TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
+        if (sdunes_status != TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
             printf("SDUNES failed with status %d! <--------------------------------------------------\n", sdunes_status);
             // exit(-1);

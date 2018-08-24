@@ -509,7 +509,7 @@ static return_t build_dual_problem(tree_ocp_qp_in *qp_in, int *idxFactorStart,
     error = calculate_error_in_residuals(opts->termCondition, work);
     if (error < opts->stationarityTolerance)
     {
-        return TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
+        return TREEQP_OPTIMAL_SOLUTION_FOUND;
     }
     #ifdef PARALLEL
     #pragma omp parallel for private(idxdad, idxpos, idxsib, idxii, ns, asDadChanged)
@@ -1075,7 +1075,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #if PROFILE > 2
         build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
-        if (status == TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND)
+        if (status == TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
             #if PRINT_LEVEL > 1
             printf("optimal solution found\n", 1);
@@ -1134,7 +1134,7 @@ int treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
     if (qp_out->info.iter == opts->maxIter)
-        status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
+        status = TREEQP_MAXIMUM_ITERATIONS_REACHED;
 
     return status;  // TODO(dimitris): return correct status
 }

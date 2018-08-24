@@ -533,5 +533,24 @@ int treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hp
 
     qp_out->info.interface_time += treeqp_toc(&interface_tmr);
     qp_out->info.iter = work->hpipm_memory.iter;
+
+    // cast status from int to return_t
+    if (status == 0)
+    {
+        status = TREEQP_OPTIMAL_SOLUTION_FOUND;
+    }
+    else if (status == 1)
+    {
+        status = TREEQP_MAXIMUM_ITERATIONS_REACHED;
+    }
+    else if (status == 2)
+    {
+        status = TREEQP_IP_MIN_STEP;
+    }
+    else
+    {
+        status = TREEQP_IP_UNKNOWN_FLAG;
+    }
+
     return status;
 }

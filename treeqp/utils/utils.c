@@ -56,7 +56,7 @@ return_t read_int_vector_from_txt(const int * const vec, const int n, const char
     if (myFile == NULL)
     {
         printf("Error Reading File (%s)\n", filename);
-        return TREEQP_ERR_ERROR_OPENING_FILE;
+        return TREEQP_ERROR_OPENING_FILE;
     }
 
     for (int ii = 0; ii < n; ii++)
@@ -80,7 +80,7 @@ return_t read_double_vector_from_txt(const double * const vec, const int n, cons
     if (myFile == NULL)
     {
         printf("Error Reading File (%s)\n", filename);
-        return TREEQP_ERR_ERROR_OPENING_FILE;
+        return TREEQP_ERROR_OPENING_FILE;
     }
 
     for (int ii = 0; ii < n; ii++)
@@ -104,7 +104,7 @@ return_t write_double_vector_to_txt(const double * const vec, const int n, const
     if (myFile == NULL)
     {
         printf("Error opening file (%s)\n", filename);
-        return TREEQP_ERR_ERROR_OPENING_FILE;
+        return TREEQP_ERROR_OPENING_FILE;
     }
 
     for (int ii = 0; ii < n; ii++)
@@ -128,7 +128,7 @@ return_t write_int_vector_to_txt(const int * const vec, const int n, const char 
     if (myFile == NULL)
     {
         printf("Error opening file (%s)\n", filename);
-        return TREEQP_ERR_ERROR_OPENING_FILE;
+        return TREEQP_ERROR_OPENING_FILE;
     }
 
     for (int ii = 0; ii < n; ii++) {

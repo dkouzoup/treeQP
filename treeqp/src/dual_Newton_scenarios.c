@@ -1841,7 +1841,7 @@ int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     int Nn = qp_in->N;
     int nu = qp_in->nu[0];
     int nx = qp_in->nx[1];
-    return_t status = TREEQP_ERR_UNKNOWN_ERROR;
+    return_t status = TREEQP_UNKNOWN_ERROR;
 
     int Nh = work->Nh;
     int Ns = work->Ns;
@@ -1939,7 +1939,7 @@ int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         if (error < opts->stationarityTolerance)
         {
             // printf("optimal solution found (error = %5.2e)\n", error);
-            status = TREEQP_SUCC_OPTIMAL_SOLUTION_FOUND;
+            status = TREEQP_OPTIMAL_SOLUTION_FOUND;
             break;
         }
 
@@ -2050,7 +2050,7 @@ int treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     qp_out->info.iter = NewtonIter;
 
     if (qp_out->info.iter == opts->maxIter)
-        status = TREEQP_ERR_MAXIMUM_ITERATIONS_REACHED;
+        status = TREEQP_MAXIMUM_ITERATIONS_REACHED;
 
     return status;
 }

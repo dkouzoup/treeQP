@@ -202,8 +202,8 @@ void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out)
 {
     int nx, nu, nc;
 
-    printf("\nProblem solved in %d iterations (%f ms)\n\n",
-        qp_out->info.iter, qp_out->info.solver_time+qp_out->info.interface_time);
+    printf("\nSolver performed %d iterations in %f ms\n\n",
+        qp_out->info.iter, 1e3*(qp_out->info.solver_time+qp_out->info.interface_time));
 
     for (int ii = 0; ii < Nn; ii++)
     {
