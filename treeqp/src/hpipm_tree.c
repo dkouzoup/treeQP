@@ -86,6 +86,7 @@ void treeqp_hpipm_opts_set_default(treeqp_hpipm_opts_t *opts)
 	opts->tol = 1e-12;
 	opts->alpha_min = 1e-8;
 	opts->warm_start = 0;
+    opts->mode = SPEED;
 }
 
 
@@ -224,7 +225,7 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts
 
     // TODO(dimitris): pass dims insteam in HPIPM
 
-	bytes += d_memsize_tree_ocp_qp_ipm(&qp, &arg);  // hpipm_memory
+	bytes += d_memsize_tree_ocp_qp_ipm(&dim, &arg);  // hpipm_memory
 
     bytes += 1*64;
 
@@ -283,7 +284,7 @@ void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
 
     // set up args
     d_create_tree_ocp_qp_ipm_arg(NULL, &work->arg, c_ptr);
-	d_set_default_tree_ocp_qp_ipm_arg(&work->arg);
+	d_set_default_tree_ocp_qp_ipm_arg(opts->mode, &work->arg);
     cast_options(opts, &work->arg);
     c_ptr += work->arg.memsize;
 
@@ -292,7 +293,7 @@ void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
     c_ptr += work->hpipm_qp_out.memsize;
 
     // set up hpipm memory
-    d_create_tree_ocp_qp_ipm(&work->hpipm_qp_in, &work->arg, &work->hpipm_memory, c_ptr);
+    d_create_tree_ocp_qp_ipm(&work->hpipm_qp_dim, &work->arg, &work->hpipm_memory, c_ptr);
     c_ptr += work->hpipm_memory.memsize;
 
     assert((char *)ptr + treeqp_hpipm_calculate_size(qp_in, opts) >= c_ptr);

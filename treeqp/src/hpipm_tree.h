@@ -66,6 +66,7 @@ typedef struct treeqp_hpipm_opts_t_
 	double alpha_min;			 // minimum step size (status = 2 if reached)
 	int warm_start;				 // read initial guess from x and u
 	scrap_memory_hpipm_t scrap;  // scrap memory needed in treeqp_hpmpc_calculate_size
+	enum hpipm_mode mode;	     // options: SPEED_ABS, SPEED, BALANCE, ROBUST, ...
 } treeqp_hpipm_opts_t;
 
 
