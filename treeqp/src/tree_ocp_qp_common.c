@@ -1394,7 +1394,7 @@ void tree_ocp_qp_in_get_node_S_colmajor(double * const S, const int lda, const t
 
     struct blasfeo_dmat *sS = &qp_in->S[indx];
 
-    blasfeo_unpack_dmat(nx, nx, sS, 0, 0, S, lda_mod);
+    blasfeo_unpack_dmat(nu, nx, sS, 0, 0, S, lda_mod);
 }
 
 
