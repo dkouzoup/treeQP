@@ -163,13 +163,13 @@ int main() {
         printf("x = \n");
         blasfeo_print_exp_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
         printf("xopt = \n");
-        d_print_e_mat(1, qp_in.nx[ii], &xopt[indx], 1);
+        d_print_exp_mat(1, qp_in.nx[ii], &xopt[indx], 1);
         indx += qp_in.nx[ii];
 
         printf("u=\n");
         blasfeo_print_exp_tran_dvec(qp_in.nu[ii], &qp_out.u[ii], 0);
         printf("uopt = \n");
-        d_print_e_mat(1, qp_in.nu[ii], &uopt[indu], 1);
+        d_print_exp_mat(1, qp_in.nu[ii], &uopt[indu], 1);
         indu += qp_in.nu[ii];
     }
     printf("ITERS = %d\n", qp_out.info.iter);
