@@ -1353,7 +1353,7 @@ void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, t
 
     struct blasfeo_dmat *sS = &qp_in->S[indx];
 
-    blasfeo_pack_dmat(nx, nx, (double *)S, lda_mod, sS, 0, 0);
+    blasfeo_pack_dmat(nu, nx, (double *)S, lda_mod, sS, 0, 0);
 
     assert(sS->m == nu);
     assert(sS->n == nx);
