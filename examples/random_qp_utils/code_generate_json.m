@@ -1,10 +1,12 @@
+function code_generate_json( agents, fname )
 
+if ~strcmp(fname(end-4:end), '.json')
+    fname = [fname '.json'];
+end
 
 N = length(agents); % number of nodes
 
 treeqp = struct('edges', [], 'nodes', []);
-
-agents
 
 for ii = 1:N
     treeqp.nodes{ii}.Q = agents(ii).Q;
@@ -19,7 +21,7 @@ end
 
 
 for ii = 2:N
-   
+    
     treeqp.edges{ii-1}.A = agents(ii).A;
     treeqp.edges{ii-1}.B = agents(ii).B;
     treeqp.edges{ii-1}.b = agents(ii).b;
@@ -31,6 +33,8 @@ end
 
 content = jsonencode(treeqp);
 
-jsonfile = fopen('treeqp.json', 'w');
+jsonfile = fopen(fname, 'w');
 fprintf(jsonfile, content);
 fclose(jsonfile);
+
+end

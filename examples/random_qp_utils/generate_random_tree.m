@@ -64,9 +64,9 @@ for ii = 1:length(ns)
         agents(ii).S    = zeros(nu(ii), nx(ii));
     else
         agents(ii).Q    = rand(nx(ii)) + diag(10*abs(rand(nx(ii),1)));
-        agents(ii).Q    = (agents(ii).Q + agents(ii).Q')./2
+        agents(ii).Q    = (agents(ii).Q + agents(ii).Q')./2;
         agents(ii).R    = rand(nu(ii)) + diag(2*abs(rand(nu(ii),1)));
-        agents(ii).R    = (agents(ii).R + agents(ii).R')./2
+        agents(ii).R    = (agents(ii).R + agents(ii).R')./2;
         agents(ii).S    = rand(nu(ii), nx(ii));
     end
 

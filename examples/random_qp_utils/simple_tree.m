@@ -71,4 +71,5 @@ end
 
 %% code generate data for c
 
-code_generate_tree(agents, 'data.c', CLIPPING)
+code_generate_tree(agents, 'data05.c', CLIPPING)
+code_generate_json(agents, 'data05.json')
