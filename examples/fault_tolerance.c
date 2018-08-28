@@ -501,7 +501,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         {
             //set up tree
             forest[ii] = malloc(data[ii].Nn*sizeof(struct node));
-            setup_tree(data[ii].Nn, data[ii].nc, forest[ii]);
+            setup_tree(data[ii].nc, forest[ii]);
 
             // set up QP data
             size = tree_ocp_qp_in_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, forest[ii]);
@@ -677,7 +677,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     {
         if (data[ii].Nn != -1)
         {
-            free_tree(data[ii].Nn, forest[ii]);
+            free_tree(forest[ii]);
             free(forest[ii]);
             free(qp_in_memories[ii]);
             free(solver_memories[ii]);

@@ -59,7 +59,7 @@ int main() {
     // 0 - 2 - 5
 
     struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_tree(Nn, ns, tree);
+    setup_tree(ns, tree);
     // for (int ii = 0; ii < Nn; ii++) print_node(&tree[ii]);
 
     // set up QP data
@@ -181,7 +181,7 @@ int main() {
     free(qp_out_memory);
     free(qp_in_memory);
 
-    free_tree(Nn, tree);
+    free_tree(tree);
     free(tree);
 
     print_blasfeo_target();

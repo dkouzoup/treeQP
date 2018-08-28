@@ -474,7 +474,7 @@ int main( )
     free(hpipm_memory);
     #endif
 
-    free_tree(Nn, tree);
+    free_tree(tree);
     free(tree);
 
     free(lambda_tdunes);

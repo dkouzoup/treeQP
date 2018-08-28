@@ -61,10 +61,12 @@ int get_robust_horizon(const int Nn, const struct node * const tree);
 
 void setup_multistage_tree(const int md, const int Nr, const int Nh, const int Nn, struct node * const tree);
 
-void setup_tree(const int Nn, const int * const nkids, struct node * const tree);
+void setup_tree(const int * const nkids, struct node * const tree);
 
-void free_tree(const int Nn, struct node * const tree);
+void free_tree(struct node * const tree);
 
+// TODO(dimitris): use this to eliminate Nn from input arguments in several (non time critical) functions
+int number_of_nodes_from_tree(const struct node * const tree);
 
 #ifdef __cplusplus
 }  /* extern "C" */

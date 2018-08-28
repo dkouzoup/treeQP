@@ -81,8 +81,46 @@ int get_robust_horizon(const int Nn, const struct node * const tree)
 
 
 
-void setup_tree(const int Nn, const int * const nkids, struct node *const tree)
+// NOTE(dimitris): courtasy of Misha
+static int number_of_nodes_from_nkids(const int * const nkids)
 {
+    int const * od = nkids;
+    int u = 0;
+    int v = 1;
+
+    while (u < v)
+    {
+        v += *od;
+        ++u;
+        ++od;
+    }
+    return u;
+}
+
+
+
+int number_of_nodes_from_tree(const struct node * const tree)
+{
+    int i = 0;
+    int u = 0;
+    int v = 1;
+
+    while (u < v)
+    {
+        v += tree[i].nkids;
+        ++u;
+        ++i;
+    }
+
+    return u;
+}
+
+
+
+void setup_tree(const int * const nkids, struct node * const tree)
+{
+    int Nn = number_of_nodes_from_nkids(nkids);
+
     // initialize nodes to 'unassigned'
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -228,8 +266,10 @@ void setup_multistage_tree(const int md, const int Nr, const int Nh, const int N
 
 
 
-void free_tree(const int Nn, struct node * const tree)
+void free_tree(struct node * const tree)
 {
+    int Nn = number_of_nodes_from_tree(tree);
+
     for (int ii = 0; ii < Nn; ii++)
     {
         if (tree[ii].nkids > 0)
