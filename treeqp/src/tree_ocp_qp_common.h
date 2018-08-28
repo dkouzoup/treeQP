@@ -151,22 +151,23 @@ int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in);
 
 
 
-int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node *tree);
+int tree_ocp_qp_in_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc, const struct node * const tree);
 
-void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree, tree_ocp_qp_in *qp_in, void *ptr);
+void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const nu, const int * const nc, struct node * const tree, tree_ocp_qp_in * const qp_in, void *ptr);
 
-int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc);
+int tree_ocp_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc);
 
-void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *qp_out, void *ptr);
+void tree_ocp_qp_out_create(const int Nn, const int * const nx, const int * const nu, const int * const nc, tree_ocp_qp_out * const qp_out, void *ptr);
 
 
-void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out);
+void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in * const qp_in);
 
-void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res);
+void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out * const qp_out);
 
-double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out);
+void tree_ocp_qp_out_calculate_KKT_res(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out, double *res);
+
+double tree_ocp_qp_out_max_KKT_res(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out);
 
 
 

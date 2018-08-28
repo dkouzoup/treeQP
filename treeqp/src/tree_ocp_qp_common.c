@@ -42,7 +42,8 @@
 #include <blasfeo_d_blas.h>
 
 
-int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node *tree)
+int tree_ocp_qp_in_calculate_size(const int Nn, const int * const nx, const int * const nu,
+    const int * const nc, const struct node * const tree)
 {
     int bytes = 0;
 
@@ -125,11 +126,13 @@ int tree_ocp_qp_in_calculate_size(int Nn, int *nx, int *nu, int *nc, struct node
 
 
 
-void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree, tree_ocp_qp_in *qp_in, void *ptr)
+void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const nu, const int * const nc,
+    struct node * const tree, tree_ocp_qp_in * const qp_in, void *ptr)
 {
     char *c_ptr = (char *) ptr;
 
     qp_in->N = Nn;
+    // TODO(dimitris): maybe also copy tree in qp_in to declare as const above?
     qp_in->tree = tree;
 
     qp_in->nx = (int *) c_ptr;
@@ -278,7 +281,7 @@ void tree_ocp_qp_in_create(int Nn, int *nx, int *nu, int *nc, struct node *tree,
 
 
 
-int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc)
+int tree_ocp_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc)
 {
     int bytes = 6*Nn*sizeof(struct blasfeo_dvec);  // x, u, lam, mu_x, mu_u, mu_d
 
@@ -308,7 +311,8 @@ int tree_ocp_qp_out_calculate_size(int Nn, int *nx, int *nu, int *nc)
 
 
 
-void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *qp_out, void *ptr)
+void tree_ocp_qp_out_create(const int Nn, const int * const nx, const int * const nu,
+    const int * const nc, tree_ocp_qp_out * const qp_out, void *ptr)
 {
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -359,7 +363,7 @@ void tree_ocp_qp_out_create(int Nn, int *nx, int *nu, int *nc, tree_ocp_qp_out *
 
 
 
-void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
+void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in * const qp_in)
 {
     int nx0 = qp_in->nx[0];
     int nc0 = qp_in->nc[0];
@@ -487,7 +491,7 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in *qp_in)
 
 
 
-void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out)
+void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out * const qp_out)
 {
     qp_out->x[0].pa = NULL;
     qp_out->x[0].m = 0;
@@ -498,7 +502,8 @@ void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out *qp_out)
 
 
 
-void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, double *res)
+void tree_ocp_qp_out_calculate_KKT_res(const tree_ocp_qp_in * const qp_in,
+    const tree_ocp_qp_out * const qp_out, double *res)
 {
     int Nn = qp_in->N;
     int nz = total_number_of_primal_variables(qp_in);
@@ -723,7 +728,7 @@ void tree_ocp_qp_out_calculate_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *q
 
 
 
-double tree_ocp_qp_out_max_KKT_res(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out)
+double tree_ocp_qp_out_max_KKT_res(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out)
 {
     int nz = total_number_of_primal_variables(qp_in);
     int ne = total_number_of_dynamic_constraints(qp_in);
