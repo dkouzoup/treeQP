@@ -273,6 +273,8 @@ void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const
     init_strvec(qp_in->nc[0], &qp_in->internal_memory.dmax0, &c_ptr);
     init_strvec(qp_in->nu[0], &qp_in->internal_memory.r0, &c_ptr);
 
+    tree_ocp_qp_in_set_inf_bounds(qp_in);
+
     assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
