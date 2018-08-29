@@ -153,12 +153,13 @@ int main() {
 
     #endif
 
-    print_timers(qp_out.info.iter);
+    // print_timers(qp_out.info.iter);
 
-    double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
-    printf("\nMaximum error in KKT residuals:\t%2.2e\n\n", kkt_err);
+    tree_ocp_qp_out_print(6, &qp_out);
 
-    printf("\nDone with status = %d\n\n", status);
+    printf("\nSolver status: %d\n", status);
+    printf("\nNumber of iterations: %d\n", qp_out.info.iter);
+    printf("\nMaximum error in KKT residuals: %2.2e\n\n", tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out));
 
     return 0;
 }

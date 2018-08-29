@@ -108,11 +108,31 @@ run_fault_tolerance_example: fault_tolerance_example
 examples: treeqp_static
 	( cd examples; $(MAKE) examples TOP=$(TOP) )
 
+unit_tests: treeqp_static
+	( cd examples; $(MAKE) unit_tests TOP=$(TOP) )
+
 run_examples: examples
 	./examples/random_qp.out
 	./examples/spring_mass_tdunes.out
 	./examples/spring_mass_sdunes.out
 	./examples/spring_mass.out
+	@echo
+	@echo " All examples were executed succesfully!"
+	@echo
+
+run_unit_tests: unit_tests
+	./examples/unit_test_0_tdunes.out
+	./examples/unit_test_0_hpmpc.out
+	./examples/unit_test_1_tdunes.out
+	./examples/unit_test_1_hpmpc.out
+	./examples/unit_test_2_tdunes.out
+	./examples/unit_test_2_hpmpc.out
+	./examples/unit_test_3_tdunes.out
+	./examples/unit_test_3_hpmpc.out
+	./examples/unit_test_4_tdunes.out
+	./examples/unit_test_4_hpmpc.out
+	./examples/unit_test_5_tdunes.out
+	./examples/unit_test_5_hpmpc.out
 
 clean:
 	( cd treeqp/src; $(MAKE) clean )

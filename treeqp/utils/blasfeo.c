@@ -89,11 +89,6 @@ double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
             err = MAX(ABS(BLASFEO_DMATEL(M1, ii, jj) - BLASFEO_DMATEL(M2, ii, jj)), err);
         }
     }
-    if (err > 0)
-    {
-        printf("[TREEQP]: Error! Matrices are different (error = %2.2e)\n", err);
-        exit(1);
-    }
     return err;
 }
 
@@ -113,12 +108,18 @@ double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
     {
         err = MAX(ABS(BLASFEO_DVECEL(V1, ii) - BLASFEO_DVECEL(V2, ii)), err);
     }
-    if (err > 0)
+    return err;
+}
+
+
+
+double check_error_strvec_double(struct blasfeo_dvec *V1, double *V2)
+{
+    double err = 0;
+
+    for (int ii = 0; ii < V1->m; ii++)
     {
-        printf("[TREEQP]: Error! Vectors are different (error = %2.2e)\n", err);
-        blasfeo_print_tran_dvec(V1->m, V1, 0);
-        blasfeo_print_tran_dvec(V2->m, V2, 0);
-        exit(1);
+        err = MAX(ABS(BLASFEO_DVECEL(V1, ii) - V2[ii]), err);
     }
     return err;
 }

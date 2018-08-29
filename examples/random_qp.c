@@ -44,11 +44,26 @@
 #include <blasfeo_d_aux_ext_dep.h>
 #include <blasfeo_d_blas.h>
 
+#if DATA == 0
+#include "examples/random_qp_utils/data00.c"
+#elif DATA == 1
+#include "examples/random_qp_utils/data01.c"
+#elif DATA == 2
+#include "examples/random_qp_utils/data02.c"
+#elif DATA == 3
+#include "examples/random_qp_utils/data03.c"
+#elif DATA == 4
+#include "examples/random_qp_utils/data04.c"
+#elif DATA == 5
+#include "examples/random_qp_utils/data05.c"
+#else
 #include "examples/random_qp_utils/data.c"
+#endif
 
 // #define USE_HPMPC
 
-int main() {
+int main()
+{
     // build a small, asymemtric tree
     //
     //         3
@@ -70,19 +85,21 @@ int main() {
     tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
-    #ifdef CLIPPING
+#ifdef CLIPPING
     tree_ocp_qp_in_set_ltv_objective_diag(Qd, Rd, q, r, &qp_in);
-    #else
+#else
     tree_ocp_qp_in_set_ltv_objective_colmajor(Q, R, S, q, r, &qp_in);
-    #endif
+#endif
     tree_ocp_qp_in_set_inf_bounds(&qp_in);
 
-    #if 0
+#if 0
     double x0[] = {1., 1.,};
     tree_ocp_qp_in_set_x0_colmaj(&qp_in, x0);
-    #endif
+#endif
 
+#ifndef DATA
     tree_ocp_qp_in_print(&qp_in);
+#endif
 
     // set up QP solution
     tree_ocp_qp_out qp_out;
@@ -91,11 +108,11 @@ int main() {
     void *qp_out_memory = malloc(qp_out_size);
     tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
-    #if 0
+#if 0
     // eliminate x0 variable
     tree_ocp_qp_in_eliminate_x0(&qp_in);
     tree_ocp_qp_out_eliminate_x0(&qp_out);
-    #endif
+#endif
 
     // set up QP solver
 #ifndef USE_HPMPC
@@ -134,7 +151,7 @@ int main() {
     int treeqp_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
     treeqp_hpmpc_create(&qp_in, &opts, &work, qp_solver_memory);
-#endif
+#endif  // USE_HPMPC
 
     // solve QP
 #if PROFILE > 0
@@ -149,33 +166,55 @@ int main() {
     update_min_timers(0);
 #endif
 
-    #if PROFILE > 0 && PRINT_LEVEL > 0
+#ifndef DATA
+#if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);
-    #endif
+#endif
+    tree_ocp_qp_out_print(Nn, &qp_out);
+    print_blasfeo_target();
+#endif
 
     int indx = 0;
     int indu = 0;
+    double err;
+    double max_err = 0;
+
     for (int ii = 0; ii < qp_in.N; ii++)
     {
-        printf("--------\n");
-        printf(" Node %d\n", ii);
-        printf("--------\n");
-        printf("x = \n");
-        blasfeo_print_exp_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
-        printf("xopt = \n");
-        d_print_exp_mat(1, qp_in.nx[ii], &xopt[indx], 1);
+        // printf("x = \n");
+        // blasfeo_print_exp_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+        // printf("xopt = \n");
+        // d_print_exp_mat(1, qp_in.nx[ii], &xopt[indx], 1);
+
+        err = check_error_strvec_double(&qp_out.x[ii], &xopt[indx]);
+        max_err = MAX(err, max_err);
         indx += qp_in.nx[ii];
 
-        printf("u=\n");
-        blasfeo_print_exp_tran_dvec(qp_in.nu[ii], &qp_out.u[ii], 0);
-        printf("uopt = \n");
-        d_print_exp_mat(1, qp_in.nu[ii], &uopt[indu], 1);
+        // printf("error = %e\n\n", err);
+
+        // printf("u=\n");
+        // blasfeo_print_exp_tran_dvec(qp_in.nu[ii], &qp_out.u[ii], 0);
+        // printf("uopt = \n");
+        // d_print_exp_mat(1, qp_in.nu[ii], &uopt[indu], 1);
+
+        err = check_error_strvec_double(&qp_out.u[ii], &uopt[indu]);
+        max_err = MAX(err, max_err);
         indu += qp_in.nu[ii];
+
+        // printf("error = %e\n\n", err);
     }
-    printf("ITERS = %d\n", qp_out.info.iter);
+
+#ifndef USE_HPMPC
+    printf("SOLVER:\ttdunes\n");
+#else
+    printf("SOLVER:\thpmpc\n");
+#endif
+
+    printf("ITERS:\t%d\n", qp_out.info.iter);
 
     double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
-    printf("\nMaximum error in KKT residuals:\t%2.2e\n\n", kkt_err);
+    printf("KKT:\t%2.2e\n", kkt_err);
+    printf("ERROR:\t%e\n\n", max_err);
 
     free(qp_solver_memory);
     free(qp_out_memory);
@@ -184,10 +223,9 @@ int main() {
     free_tree(tree);
     free(tree);
 
-    print_blasfeo_target();
-
-    assert(qp_out.info.iter == 1 || qp_out.info.iter == 0 && "Unconstrained QP did not converge in one iteration!");
     assert(kkt_err < 1e-12 && "maximum KKT residual too high!");
+    assert(max_err < 1e-12 && "deviation from given solution too high!");
+    assert(qp_out.info.iter == 1 || qp_out.info.iter == 0 && "Unconstrained QP did not converge in one iteration!");
 
     return 0;
 }

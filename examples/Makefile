@@ -40,6 +40,20 @@ FAULT_TOLERANCE_OBJS += fault_tolerance_utils/load_data.o
 
 LIBS = -ltreeqp -lhpmpc -lhpipm -lblasfeo -lqpoases -lm -ldl
 
+unit_tests:
+	$(CC) -o unit_test_0_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0
+	$(CC) -o unit_test_0_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0 -DUSE_HPMPC
+	$(CC) -o unit_test_1_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1
+	$(CC) -o unit_test_1_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1 -DUSE_HPMPC
+	$(CC) -o unit_test_2_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2
+	$(CC) -o unit_test_2_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2 -DUSE_HPMPC
+	$(CC) -o unit_test_3_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3
+	$(CC) -o unit_test_3_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3 -DUSE_HPMPC
+	$(CC) -o unit_test_4_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4
+	$(CC) -o unit_test_4_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4 -DUSE_HPMPC
+	$(CC) -o unit_test_5_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5
+	$(CC) -o unit_test_5_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5 -DUSE_HPMPC
+
 random_qp_example: random_qp.o
 	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
