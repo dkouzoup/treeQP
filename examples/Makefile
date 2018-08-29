@@ -32,6 +32,7 @@ OBJS += spring_mass_dual_newton_scenarios.o
 OBJS += spring_mass_dual_newton_tree.o
 OBJS += spring_mass.o
 OBJS += random_qp.o
+OBJS += thesis_example.o
 
 FAULT_TOLERANCE_OBJS =
 FAULT_TOLERANCE_OBJS += fault_tolerance.o
@@ -41,6 +42,9 @@ LIBS = -ltreeqp -lhpmpc -lhpipm -lblasfeo -lqpoases -lm -ldl
 
 random_qp_example: random_qp.o
 	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+thesis_example: thesis_example.o
+	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_tdunes_example: spring_mass_dual_newton_tree.o
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
@@ -61,6 +65,7 @@ fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 
 examples:
 	$(MAKE) random_qp_example
+	$(MAKE) thesis_example
 	$(MAKE) spring_mass_tdunes_example
 	$(MAKE) spring_mass_sdunes_example
 	$(MAKE) spring_mass_example
