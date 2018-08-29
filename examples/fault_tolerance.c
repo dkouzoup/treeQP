@@ -472,7 +472,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             opts_size = treeqp_hpmpc_opts_calculate_size(max_Nn);
             hpmpc_opts_mem = malloc(opts_size);
             treeqp_hpmpc_opts_create(max_Nn, &hpmpc_opts, hpmpc_opts_mem);
-            treeqp_hpmpc_opts_set_default(&hpmpc_opts);
+            treeqp_hpmpc_opts_set_default(max_Nn, &hpmpc_opts);
             break;
         default:
             printf("Unknown specified solver. Exiting . . .\n");
