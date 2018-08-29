@@ -127,7 +127,7 @@ int main() {
     int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
     void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
     treeqp_hpmpc_opts_create(Nn, &opts, hpmpc_opts_mem);
-    treeqp_hpmpc_opts_set_default(&opts);
+    treeqp_hpmpc_opts_set_default(Nn, &opts);
 
     treeqp_hpmpc_workspace work;
 
