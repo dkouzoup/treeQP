@@ -77,7 +77,7 @@ void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts)
 {
     opts->maxIter = 100;
     opts->termCondition = TREEQP_INFNORM;
-    opts->stationarityTolerance = 1.0e-12;
+    opts->stationarityTolerance = 1.0e-8;
 
     opts->checkLastActiveSet = 1;
 
