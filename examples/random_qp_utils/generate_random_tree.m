@@ -71,8 +71,8 @@ for ii = 1:length(ns)
     end
 
     H = [agents(ii).Q agents(ii).S'; agents(ii).S agents(ii).R];
-    if any(eig(H)) <= 0
-        error(['Hessian of node ' double2str(ii) ' not positive definite!']);
+    if any(eig(H) <= 0)
+        error(['Hessian of node ' num2str(ii) ' not positive definite!']);
     end
 
     agents(ii).q    = rand(nx(ii),1);

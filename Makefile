@@ -133,6 +133,9 @@ run_unit_tests: unit_tests
 	./examples/unit_test_4_hpmpc.out
 	./examples/unit_test_5_tdunes.out
 	./examples/unit_test_5_hpmpc.out
+	@echo
+	@echo " All unit tests were executed succesfully!"
+	@echo
 
 clean:
 	( cd treeqp/src; $(MAKE) clean )
