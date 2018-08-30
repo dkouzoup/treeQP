@@ -1,0 +1,9 @@
+
+
+env:
+  - CC="gcc-6"
+
+
+script:
+  - make examples -j 4
+  - make run_examples
