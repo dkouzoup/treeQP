@@ -64,15 +64,15 @@ for ii = 1:length(ns)
         agents(ii).S    = zeros(nu(ii), nx(ii));
     else
         agents(ii).Q    = rand(nx(ii)) + diag(10*abs(rand(nx(ii),1)));
-        agents(ii).Q    = (agents(ii).Q + agents(ii).Q')./2
+        agents(ii).Q    = (agents(ii).Q + agents(ii).Q')./2;
         agents(ii).R    = rand(nu(ii)) + diag(2*abs(rand(nu(ii),1)));
-        agents(ii).R    = (agents(ii).R + agents(ii).R')./2
+        agents(ii).R    = (agents(ii).R + agents(ii).R')./2;
         agents(ii).S    = rand(nu(ii), nx(ii));
     end
 
     H = [agents(ii).Q agents(ii).S'; agents(ii).S agents(ii).R];
-    if any(eig(H)) <= 0
-        error(['Hessian of node ' double2str(ii) ' not positive definite!']);
+    if any(eig(H) <= 0)
+        error(['Hessian of node ' num2str(ii) ' not positive definite!']);
     end
 
     agents(ii).q    = rand(nx(ii),1);

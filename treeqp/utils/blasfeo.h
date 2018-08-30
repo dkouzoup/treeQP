@@ -50,6 +50,8 @@ double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2);
 
 double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2);
 
+double check_error_strvec_double(struct blasfeo_dvec *V1, double *V2);
+
 
 
 answer_t is_strmat_symmetric(struct blasfeo_dmat *M);

@@ -8,13 +8,10 @@ CLIPPING = false;
 
 %% define dimensions
 
-% ns = [2 2 1 0 0 0];  % number of successors (children) of each node
-% nx = [2 3 2 1 1 1];  % number of states of each node
-% nu = [1 2 1 0 0 0];  % number of controls of each node
+ns = [2 2 1 0 0 0];  % number of successors (children) of each node
+nx = [2 3 2 1 1 1];  % number of states of each node
+nu = [1 2 1 0 0 0];  % number of controls of each node
 
-ns = [2 1 1 0 0];  % number of children of each node
-nx = [2 2 2 1 4];  % number of states of each node
-nu = [2 2 2 0 0];  % number of controls of each node
 
 if sum(ns) ~= length(ns) - 1
    error('wrong data in ns')
@@ -72,3 +69,4 @@ end
 %% code generate data for c
 
 code_generate_tree(agents, 'data.c', CLIPPING)
+code_generate_json(agents, 'data.json')

@@ -32,6 +32,7 @@ OBJS += spring_mass_dual_newton_scenarios.o
 OBJS += spring_mass_dual_newton_tree.o
 OBJS += spring_mass.o
 OBJS += random_qp.o
+OBJS += thesis_example.o
 
 FAULT_TOLERANCE_OBJS =
 FAULT_TOLERANCE_OBJS += fault_tolerance.o
@@ -39,8 +40,25 @@ FAULT_TOLERANCE_OBJS += fault_tolerance_utils/load_data.o
 
 LIBS = -ltreeqp -lhpmpc -lhpipm -lblasfeo -lqpoases -lm -ldl
 
+unit_tests:
+	$(CC) -o unit_test_0_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0
+	$(CC) -o unit_test_0_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0 -DUSE_HPMPC
+	$(CC) -o unit_test_1_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1
+	$(CC) -o unit_test_1_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1 -DUSE_HPMPC
+	$(CC) -o unit_test_2_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2
+	$(CC) -o unit_test_2_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2 -DUSE_HPMPC
+	$(CC) -o unit_test_3_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3
+	$(CC) -o unit_test_3_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3 -DUSE_HPMPC
+	$(CC) -o unit_test_4_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4
+	$(CC) -o unit_test_4_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4 -DUSE_HPMPC
+	$(CC) -o unit_test_5_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5
+	$(CC) -o unit_test_5_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5 -DUSE_HPMPC
+
 random_qp_example: random_qp.o
 	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+thesis_example: thesis_example.o
+	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 spring_mass_tdunes_example: spring_mass_dual_newton_tree.o
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
@@ -61,6 +79,7 @@ fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 
 examples:
 	$(MAKE) random_qp_example
+	$(MAKE) thesis_example
 	$(MAKE) spring_mass_tdunes_example
 	$(MAKE) spring_mass_sdunes_example
 	$(MAKE) spring_mass_example

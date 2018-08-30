@@ -190,7 +190,7 @@ int main() {
     free(qp_solver_memory);
     free(qp_out_memory);
 
-    free_tree(Nn, tree);
+    free_tree(tree);
     free(tree);
 
     free(mu);

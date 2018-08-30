@@ -85,7 +85,7 @@ int treeqp_hpmpc_opts_calculate_size(int Nn);
 
 void treeqp_hpmpc_opts_create(int Nn, treeqp_hpmpc_opts_t *opts, void *ptr);
 
-void treeqp_hpmpc_opts_set_default(treeqp_hpmpc_opts_t *opts);
+void treeqp_hpmpc_opts_set_default(int Nn, treeqp_hpmpc_opts_t *opts);
 
 
 

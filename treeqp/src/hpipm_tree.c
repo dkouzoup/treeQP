@@ -79,7 +79,7 @@ void treeqp_hpipm_opts_create(int Nn, treeqp_hpipm_opts_t *opts, void *ptr)
 
 
 
-void treeqp_hpipm_opts_set_default(treeqp_hpipm_opts_t *opts)
+void treeqp_hpipm_opts_set_default(int Nn, treeqp_hpipm_opts_t *opts)
 {
     opts->maxIter = 20;
 	opts->mu0 = 2.0;

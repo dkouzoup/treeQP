@@ -70,6 +70,7 @@ typedef enum {
     // misc
 
     TREEQP_OK,
+    TREEQP_FAILURE,
     TREEQP_INVALID_OPTION,
     TREEQP_ERROR_OPENING_FILE,
     TREEQP_UNKNOWN_ERROR,

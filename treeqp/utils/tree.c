@@ -81,8 +81,61 @@ int get_robust_horizon(const int Nn, const struct node * const tree)
 
 
 
-void setup_tree(const int Nn, const int * const nkids, struct node *const tree)
+int number_of_nodes_from_nkids(const int * const nkids)
 {
+    int indx = 0;
+    int nodes_in_stage = 1;
+    int nodes_in_next_stage;
+
+    while (1)
+    {
+        nodes_in_next_stage = 0;
+        for (int ii = 0; ii < nodes_in_stage; ii++)
+        {
+            if (nkids[indx+ii] < 0) return -1;
+            if (nkids[indx+ii] == 0) break;  // reached a leaf
+            nodes_in_next_stage += nkids[indx+ii];
+        }
+        indx += nodes_in_stage;
+        if (nodes_in_next_stage == 0) break;
+        if (nodes_in_next_stage < nodes_in_stage) return -1; // inconsistent tree data
+        nodes_in_stage = nodes_in_next_stage;
+    }
+    return indx;
+}
+
+
+
+int number_of_nodes_from_tree(const struct node * const tree)
+{
+    int indx = 0;
+    int nodes_in_stage = 1;
+    int nodes_in_next_stage;
+
+    while (1)
+    {
+        nodes_in_next_stage = 0;
+        for (int ii = 0; ii < nodes_in_stage; ii++)
+        {
+            if (tree[indx+ii].nkids < 0) return -1;
+            if (tree[indx+ii].nkids == 0) break;
+            nodes_in_next_stage += tree[indx+ii].nkids;
+        }
+        indx += nodes_in_stage;
+        if (nodes_in_next_stage == 0) break;
+        if (nodes_in_next_stage < nodes_in_stage) return -1;
+        nodes_in_stage = nodes_in_next_stage;
+    }
+    return indx;
+}
+
+
+
+return_t setup_tree(const int * const nkids, struct node * const tree)
+{
+    int Nn = number_of_nodes_from_nkids(nkids);
+    if (Nn < 0) return TREEQP_FAILURE;
+
     // initialize nodes to 'unassigned'
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -126,6 +179,7 @@ void setup_tree(const int Nn, const int * const nkids, struct node *const tree)
             tree[jj].idxkid = jj - idxkids;
         }
     }
+    return_t TREEQP_OK;
 }
 
 
@@ -228,8 +282,11 @@ void setup_multistage_tree(const int md, const int Nr, const int Nh, const int N
 
 
 
-void free_tree(const int Nn, struct node * const tree)
+return_t free_tree(struct node * const tree)
 {
+    int Nn = number_of_nodes_from_tree(tree);
+    if (Nn < 0) return TREEQP_FAILURE;
+
     for (int ii = 0; ii < Nn; ii++)
     {
         if (tree[ii].nkids > 0)
@@ -237,4 +294,5 @@ void free_tree(const int Nn, struct node * const tree)
             free(tree[ii].kids);
         }
     }
+    return TREEQP_OK;
 }

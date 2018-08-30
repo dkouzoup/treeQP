@@ -284,7 +284,7 @@ int main( )
     int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
     void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
     treeqp_hpmpc_opts_create(Nn, &hpmpc_opts, hpmpc_opts_mem);
-    treeqp_hpmpc_opts_set_default(&hpmpc_opts);
+    treeqp_hpmpc_opts_set_default(Nn, &hpmpc_opts);
 
     treeqp_hpmpc_workspace hpmpc_work;
     void *hpmpc_memory = malloc(treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts));
@@ -297,7 +297,7 @@ int main( )
     int hpipm_opts_size = treeqp_hpipm_opts_calculate_size(Nn);
     void *hpipm_opts_mem = malloc(hpipm_opts_size);
     treeqp_hpipm_opts_create(Nn, &hpipm_opts, hpipm_opts_mem);
-    treeqp_hpipm_opts_set_default(&hpipm_opts);
+    treeqp_hpipm_opts_set_default(Nn, &hpipm_opts);
 
     treeqp_hpipm_workspace hpipm_work;
     void *hpipm_memory = malloc(treeqp_hpipm_calculate_size(&qp_in, &hpipm_opts));
@@ -474,7 +474,7 @@ int main( )
     free(hpipm_memory);
     #endif
 
-    free_tree(Nn, tree);
+    free_tree(tree);
     free(tree);
 
     free(lambda_tdunes);

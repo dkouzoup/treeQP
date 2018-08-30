@@ -89,7 +89,7 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts)
 {
     opts->maxIter = 100;
     opts->termCondition = TREEQP_INFNORM;
-    opts->stationarityTolerance = 1.0e-12;
+    opts->stationarityTolerance = 1.0e-8;
 
     opts->checkLastActiveSet = 1;
 
@@ -1218,12 +1218,6 @@ static void update_M_dimensions(int idx, tree_ocp_qp_in *qp_in, int *rowsM, int 
         {
             idxsib = qp_in->tree[idxdad].kids[jj];
             *rowsM = MAX(*rowsM, qp_in->nx[idxsib]);
-            // TODO(dimitris): test that old code below was indeed wrong (currently nx > nu always)
-            // *rowsM = MAX(*rowsM, MAX(qp_in->nx[idxsib], qp_in->nu[idxsib]));
-            if (qp_in->nx[idxsib] < qp_in->nu[idxsib])
-            {
-                assert(1 == 0 && "Case not tested yet! Comment out and check if code seg. faults.");
-            }
         }
     }
 }
@@ -1582,6 +1576,7 @@ void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
 
 
 // write dual initial point to workspace ( _AFTER_ creating it )
+// NOTE(dimitris): do NOT pass zeros for lambda convention on root node
 void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work) {
     int indx = 0;
 
