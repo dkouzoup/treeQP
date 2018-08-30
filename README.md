@@ -1,4 +1,5 @@
 # treeQP: Tree-Sparse Quadratic Programming
+[![Travis Status](https://secure.travis-ci.org/dkouzoup/treeQP.png?branch=master)](http://travis-ci.org/dkouzoup/treeQP)
 
 Currently implemented algorithms:
 
