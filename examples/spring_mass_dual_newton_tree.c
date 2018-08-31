@@ -66,7 +66,7 @@ int main( ) {
     #endif
 
     // read initial point from txt file
-    int nl = Nn*NX;
+    int nl = (Nn-1)*NX;
     double *lambda = malloc(nl*sizeof(double));
     status = read_double_vector_from_txt(lambda, nl, "examples/spring_mass_utils/lambda0_tree.txt");
     if (status != TREEQP_OK) return -1;
