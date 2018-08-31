@@ -119,8 +119,8 @@ int main()
 
     treeqp_tdunes_opts_t opts;
     int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(Nn);
-    void *tdunes_opts_mem = malloc(tdunes_opts_size);
-    treeqp_tdunes_opts_create(Nn, &opts, tdunes_opts_mem);
+    void *opts_memory = malloc(tdunes_opts_size);
+    treeqp_tdunes_opts_create(Nn, &opts, opts_memory);
     treeqp_tdunes_opts_set_default(Nn, &opts);
 
     opts.maxIter = 10;
@@ -142,8 +142,8 @@ int main()
 #else
     treeqp_hpmpc_opts_t opts;
     int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
-    void *hpmpc_opts_mem = malloc(hpmpc_opts_size);
-    treeqp_hpmpc_opts_create(Nn, &opts, hpmpc_opts_mem);
+    void *opts_memory = malloc(hpmpc_opts_size);
+    treeqp_hpmpc_opts_create(Nn, &opts, opts_memory);
     treeqp_hpmpc_opts_set_default(Nn, &opts);
 
     treeqp_hpmpc_workspace work;
@@ -217,6 +217,7 @@ int main()
     printf("ERROR:\t%e\n\n", max_err);
 
     free(qp_solver_memory);
+    free(opts_memory);
     free(qp_out_memory);
     free(qp_in_memory);
 
