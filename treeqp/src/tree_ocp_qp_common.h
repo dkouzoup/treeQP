@@ -317,11 +317,6 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
     double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
 
-void tree_ocp_qp_in_fill_lti_data_diag_weights_OLD(double *A, double *B, double *b,
-    double *Q, double *q, double *P, double *p, double *R, double *r,
-    double *xmin, double *xmax, double *umin, double *umax, double *x0,
-    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in);
-
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
