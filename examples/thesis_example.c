@@ -161,5 +161,13 @@ int main() {
     printf("\nNumber of iterations: %d\n", qp_out.info.iter);
     printf("\nMaximum error in KKT residuals: %2.2e\n\n", tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out));
 
+    free(out_mem);
+    free(in_mem);
+    free(opts_mem);
+    free(solver_mem);
+
+    //TODO(dimitris): move tree inside qp_in and remove malloc from setup_tree (give num_kids as input to create_qp_in etc)
+    free_tree(tree);
+
     return 0;
 }

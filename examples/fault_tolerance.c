@@ -693,6 +693,9 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     free(qp_out_memories);
     free(qp_outs);
 
+    free(hpmpc_opts_mem);
+    free(tdunes_opts_mem);
+
     free(x0);
     free(xmin);
     free(xmax);

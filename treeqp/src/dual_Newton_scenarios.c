@@ -1857,9 +1857,11 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct blasfeo_dvec *sqnonScaled = (struct blasfeo_dvec*)qp_in->q;
     struct blasfeo_dvec *srnonScaled = (struct blasfeo_dvec*)qp_in->r;
 
+    treeqp_timer solver_tmr, interface_tmr;
+
     // ------ initialization
-    treeqp_timer timer;
-    treeqp_tic(&timer);
+    treeqp_tic(&interface_tmr);
+
     double scalingFactor;
     for (int jj = 0; jj < Nn; jj++) {
         // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
@@ -1894,8 +1896,9 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             }
         }
     }
-    double init_time = treeqp_toc(&timer);
-    // printf("init. time = %f ms\n", 1e3*init_time);
+
+    qp_out->info.interface_time = treeqp_toc(&interface_tmr);
+    treeqp_tic(&solver_tmr);
 
     work->reverseCholesky = opts->checkLastActiveSet;
 
@@ -1998,6 +2001,9 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
     }
 
+    qp_out->info.solver_time = treeqp_toc(&solver_tmr);
+    treeqp_tic(&interface_tmr);
+
     // ------ copy solution to qp_out
 
     for (int ii = 0; ii < qp_in->N; ii++) {
@@ -2049,6 +2055,8 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         }
     }
     qp_out->info.iter = NewtonIter;
+
+    qp_out->info.interface_time += treeqp_toc(&interface_tmr);
 
     if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_MAXIMUM_ITERATIONS_REACHED;

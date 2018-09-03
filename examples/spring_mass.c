@@ -466,12 +466,19 @@ int main( )
 
     #ifdef SOLVE_WITH_TDUNES
     free(tdunes_memory);
+    free(tdunes_opts_mem);
     #endif
+    #ifdef SOLVE_WITH_SDUNES
+    free(sdunes_memory);
+    #endif
+
     #ifdef SOLVE_WITH_HPMPC
     free(hpmpc_memory);
+    free(hpmpc_opts_mem);
     #endif
     #ifdef SOLVE_WITH_HPIPM
     free(hpipm_memory);
+    free(hpipm_opts_mem);
     #endif
 
     free_tree(tree);

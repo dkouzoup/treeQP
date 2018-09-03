@@ -178,6 +178,7 @@ int main( ) {
     free(nu);
 
     free(qp_in_memory);
+    free(tdunes_opts_mem);
     free(qp_solver_memory);
     free(qp_out_memory);
 
