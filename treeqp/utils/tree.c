@@ -131,6 +131,93 @@ int number_of_nodes_from_tree(const struct node * const tree)
 
 
 
+int tree_calculate_size(const int *nk)
+{
+    int Nn = number_of_nodes_from_nkids(nk);
+
+    int size = 0;
+
+    // size += Nn*sizeof(struct node);
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        size += nk[ii]*sizeof(int);
+    }
+
+    return size;
+}
+
+
+
+return_t tree_create(const int *nk, struct node * tree, void *ptr)
+{
+    int Nn = number_of_nodes_from_nkids(nk);
+    if (Nn < 0) return TREEQP_FAILURE;
+
+    int realization;  // NOTE(dimitris): used in the LTI case
+
+    char *c_ptr = (char *) ptr;
+
+    // initialize nodes to 'unassigned'
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        tree[ii].stage = -1;
+        tree[ii].real = -1;
+    }
+
+    // initialize root
+    tree[0].idx = 0;
+    tree[0].dad = -1;
+    tree[0].stage = 0;
+    tree[0].idxkid = 0;
+
+    // set up tree
+    int idxkids;
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        tree[ii].nkids = nk[ii];
+        if (nk[ii] > 0)
+        {
+            tree[ii].kids = (int *) c_ptr;
+            c_ptr += nk[ii]*sizeof(int);
+        }
+
+        // identify where children nodes start
+        idxkids = 0;
+        for (int jj = ii; jj < Nn; jj++)
+        {
+            if (tree[jj].stage == -1)
+            {
+                idxkids = jj;
+                break;
+            }
+        }
+
+        // assign data to children nodes
+        realization = 0;
+        for (int jj = idxkids; jj < idxkids + nk[ii]; jj++)
+        {
+            tree[ii].kids[jj - idxkids] = jj;
+            tree[jj].idx = jj;
+            tree[jj].dad = ii;
+            tree[jj].stage = tree[ii].stage +1;
+            tree[jj].idxkid = jj - idxkids;
+            if (tree[ii].nkids > 1)
+            {
+                tree[jj].real = realization++;
+            }
+            else
+            {
+                tree[jj].real = tree[ii].real;
+            }
+        }
+    }
+    return_t TREEQP_OK;
+}
+
+
+
+// TODO: REMOVE!!!!!!!!!!!!!!!!!!!
 return_t setup_tree(const int * const nkids, struct node * const tree)
 {
     int Nn = number_of_nodes_from_nkids(nkids);
