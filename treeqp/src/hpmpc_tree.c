@@ -29,7 +29,7 @@
 #include <assert.h>
 
 #include "treeqp/src/hpmpc_tree.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/timing.h"
 #include "treeqp/utils/types.h"
@@ -96,7 +96,7 @@ int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec 
 
 
 
-int get_size_idxb(tree_ocp_qp_in *qp_in)
+int get_size_idxb(tree_qp_in *qp_in)
 {
     int size = 0;
     int Nn = qp_in->N;
@@ -112,7 +112,7 @@ int get_size_idxb(tree_ocp_qp_in *qp_in)
 
 
 
-void setup_nb(tree_ocp_qp_in *qp_in, int *nb)
+void setup_nb(tree_qp_in *qp_in, int *nb)
 {
     int Nn = qp_in->N;
 
@@ -126,7 +126,7 @@ void setup_nb(tree_ocp_qp_in *qp_in, int *nb)
 
 
 
-void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
+void setup_nb_idxb(tree_qp_in *qp_in, int *nb, int **idxb)
 {
     int Nn = qp_in->N;
     int kk;
@@ -162,7 +162,7 @@ void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb)
 
 
 
-int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
+int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
 {
     int bytes = 0;
     int idxp;
@@ -215,7 +215,7 @@ int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts
 
 
 
-void treeqp_hpmpc_create(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
+void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
     treeqp_hpmpc_workspace *work, void *ptr)
 {
     int idxp;
@@ -308,7 +308,7 @@ void treeqp_hpmpc_create(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
 
 
 
-return_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_opts_t *opts,
+return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t *opts,
     treeqp_hpmpc_workspace *work)
 {
     struct node *tree = qp_in->tree;

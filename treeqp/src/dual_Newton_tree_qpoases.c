@@ -30,7 +30,7 @@
 
 #include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/dual_Newton_tree_qpoases.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 // #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/types.h"
@@ -43,7 +43,7 @@
 
 #include <qpOASES_e.h>
 
-answer_t stage_qp_qpoases_is_applicable(tree_ocp_qp_in *qp_in, int idx)
+answer_t stage_qp_qpoases_is_applicable(tree_qp_in *qp_in, int idx)
 {
     return YES;
 }
@@ -150,7 +150,7 @@ void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, c
 
 
 
-static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
+static void QProblem_build_elimination_matrix(tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
     QProblemB *QPB = qpoases_data->QPB;
@@ -215,7 +215,7 @@ static void QProblem_build_elimination_matrix(tree_ocp_qp_in *qp_in, int idx, tr
 
 
 
-return_t stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
+return_t stage_qp_qpoases_init(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_qpoases_data *qpoases_data =
@@ -309,7 +309,7 @@ return_t stage_qp_qpoases_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver
 
 
 
-static int QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
+static int QProblem_solve(tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
@@ -357,7 +357,7 @@ static int QProblem_solve(tree_ocp_qp_in *qp_in, int idx, treeqp_tdunes_workspac
 
 
 
-return_t stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve_extended(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
@@ -381,7 +381,7 @@ return_t stage_qp_qpoases_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *w
 
 
 
-return_t stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     int status = QProblem_solve(qp_in, idx, work);
@@ -398,7 +398,7 @@ return_t stage_qp_qpoases_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
 
 
 
-void stage_qp_qpoases_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset,
+void stage_qp_qpoases_set_CmPnCmT(tree_qp_in *qp_in, int idx, int idxdad, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -427,7 +427,7 @@ void stage_qp_qpoases_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, in
 
 
 
-void stage_qp_qpoases_add_EPmE(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset,
+void stage_qp_qpoases_add_EPmE(tree_qp_in *qp_in, int idx, int idxdad, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -445,7 +445,7 @@ void stage_qp_qpoases_add_EPmE(tree_ocp_qp_in *qp_in, int idx, int idxdad, int o
 
 
 
-void stage_qp_qpoases_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad,
+void stage_qp_qpoases_add_CmPnCkT(tree_qp_in *qp_in, int idx, int idxsib, int idxdad,
     int row_offset, int col_offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -475,7 +475,7 @@ void stage_qp_qpoases_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, in
 
 
 
-void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_)
+void stage_qp_qpoases_eval_dual_term(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
@@ -521,7 +521,7 @@ void stage_qp_qpoases_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_
 
 
 
-void stage_qp_qpoases_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_)
+void stage_qp_qpoases_export_mu(tree_qp_out *qp_out, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];

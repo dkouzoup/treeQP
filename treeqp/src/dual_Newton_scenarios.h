@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
@@ -138,15 +138,15 @@ void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts);
 
 
 
-int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts);
+int treeqp_sdunes_calculate_size(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts);
 
-void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work, void *ptr);
+void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work, void *ptr);
 
 int treeqp_sdunes_calculate_dual_dimension(int Nr, int md, int nu);
 
 void treeqp_sdunes_set_dual_initialization(double *lam, double *mu, treeqp_sdunes_workspace *work);
 
-return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work);
+return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work);
 
 
 // TODO(dimitris): move out of here

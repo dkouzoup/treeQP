@@ -32,7 +32,7 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 
-int calculate_number_of_nodes(const int md, const int Nr, const int Nh)
+int calculate_number_of_nodes(int md, int Nr, int Nh)
 {
     int n_nodes;
     if (md == 1)  // i.e. standard block-banded structure
@@ -131,10 +131,30 @@ int number_of_nodes_from_tree(const struct node * const tree)
 
 
 
-return_t setup_tree(const int * const nkids, struct node * const tree)
+int tree_calculate_size(const int *nk)
 {
-    int Nn = number_of_nodes_from_nkids(nkids);
+    int Nn = number_of_nodes_from_nkids(nk);
+
+    int bytes = 0;
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        bytes += nk[ii]*sizeof(int);
+    }
+
+    return bytes;
+}
+
+
+
+return_t tree_create(const int *nk, struct node * tree, void *ptr)
+{
+    int Nn = number_of_nodes_from_nkids(nk);
     if (Nn < 0) return TREEQP_FAILURE;
+
+    int realization;  // NOTE(dimitris): used in the LTI case
+
+    char *c_ptr = (char *) ptr;
 
     // initialize nodes to 'unassigned'
     for (int ii = 0; ii < Nn; ii++)
@@ -153,9 +173,11 @@ return_t setup_tree(const int * const nkids, struct node * const tree)
     int idxkids;
     for (int ii = 0; ii < Nn; ii++)
     {
-        tree[ii].nkids = nkids[ii];
-        if (nkids[ii] > 0) {
-            tree[ii].kids = (int *) malloc(nkids[ii]*sizeof(int));
+        tree[ii].nkids = nk[ii];
+        if (nk[ii] > 0)
+        {
+            tree[ii].kids = (int *) c_ptr;
+            c_ptr += nk[ii]*sizeof(int);
         }
 
         // identify where children nodes start
@@ -170,13 +192,22 @@ return_t setup_tree(const int * const nkids, struct node * const tree)
         }
 
         // assign data to children nodes
-        for (int jj = idxkids; jj < idxkids + nkids[ii]; jj++)
+        realization = 0;
+        for (int jj = idxkids; jj < idxkids + nk[ii]; jj++)
         {
             tree[ii].kids[jj - idxkids] = jj;
             tree[jj].idx = jj;
             tree[jj].dad = ii;
             tree[jj].stage = tree[ii].stage +1;
             tree[jj].idxkid = jj - idxkids;
+            if (tree[ii].nkids > 1)
+            {
+                tree[jj].real = realization++;
+            }
+            else
+            {
+                tree[jj].real = tree[ii].real;
+            }
         }
     }
     return_t TREEQP_OK;
@@ -184,115 +215,37 @@ return_t setup_tree(const int * const nkids, struct node * const tree)
 
 
 
-void setup_multistage_tree(const int md, const int Nr, const int Nh, const int Nn, struct node * const tree)
+void setup_multistage_tree(int md, int Nr, int Nh, int * nk)
 {
-    int idx, dad, stage, real, nkids, idxkid;
+    int num_scenarios = ipow(md, Nr);
+    int num_nodes = calculate_number_of_nodes(md, Nr, Nh);
 
-    // root
-    idx = 0;
-    dad = -1;
-    stage = 0;
-    real = -1;
-    if (stage < Nr)
-    {
-        nkids = md;
-    }
-    else if (stage < Nh)
-    {
-        nkids = 1;
-    }
-    else
-    {
-        nkids = 0;
-    }
-    tree[idx].idx = idx;
-    tree[idx].dad = dad;
-    tree[idx].stage = stage;
-    tree[idx].real = real;
-    tree[idx].nkids = nkids;
-    tree[idx].idxkid = 0;
+    int nodes_in_next_stage;
+    int nodes_in_stage = 1;
+    int idx = 0;
 
-    if (nkids > 0)
+    for (int kk = 0; kk < Nh; kk++)
     {
-        tree[idx].kids = (int *) malloc(nkids*sizeof(int));
-        if (nkids > 1)
+        // printf("nodes in stage %d: %d\n", kk, nodes_in_stage);
+        nodes_in_next_stage = 0;
+        for (int ii = 0; ii < nodes_in_stage; ii++)
         {
-            for (int ii = 0; ii < nkids; ii++)
+            if (kk < Nr)
             {
-                idxkid = ii+1;
-                tree[idx].kids[ii] = idxkid;
-                tree[idxkid].dad = idx;
-                tree[idxkid].real = ii;
-                tree[idxkid].idxkid = ii;
+                nk[idx+ii] = md;
             }
-        }
-        else  // nkids == 1
-        {
-            idxkid = 1;
-            tree[idx].kids[0] = idxkid;
-            tree[idxkid].dad = idx;
-            tree[idxkid].real = 0;
-            tree[idxkid].idxkid = 0;
-        }
-    }
-    // kids
-    for (idx = 1; idx < Nn; idx++)
-    {
-        stage = tree[tree[idx].dad].stage+1;
-        if (stage < Nr)
-        {
-            nkids = md;
-        }
-        else if (stage < Nh)
-        {
-            nkids = 1;
-        }
-        else
-        {
-            nkids = 0;
-        }
-        tree[idx].idx = idx;
-        tree[idx].stage = stage;
-        tree[idx].nkids = nkids;
-        if (nkids > 0)
-        {
-            tree[idx].kids = (int *) malloc(nkids*sizeof(int));
-            if (nkids > 1)
+            else
             {
-                for (int ii = 0; ii < nkids; ii++)
-                {
-                    idxkid = tree[idx-1].kids[tree[idx-1].nkids-1]+ii+1;
-                    tree[idx].kids[ii] = idxkid;
-                    tree[idxkid].dad = idx;
-                    tree[idxkid].real = ii;
-                    tree[idxkid].idxkid = ii;
-                }
+                nk[idx+ii] = 1;
             }
-            else  // nkids==1
-            {
-                idxkid = tree[idx-1].kids[tree[idx-1].nkids-1]+1;
-                tree[idx].kids[0] = idxkid;
-                tree[idxkid].dad = idx;
-                tree[idxkid].real = tree[idx].real;
-                tree[idxkid].idxkid = 0;
-            }
+            nodes_in_next_stage += nk[idx+ii];
         }
+        idx += nodes_in_stage;
+        nodes_in_stage = nodes_in_next_stage;
     }
-}
-
-
-
-return_t free_tree(struct node * const tree)
-{
-    int Nn = number_of_nodes_from_tree(tree);
-    if (Nn < 0) return TREEQP_FAILURE;
-
-    for (int ii = 0; ii < Nn; ii++)
+    // printf("nodes in stage %d: %d\n", Nh, nodes_in_stage);
+    for (int ii = 0; ii < nodes_in_stage; ii++)
     {
-        if (tree[ii].nkids > 0)
-        {
-            free(tree[ii].kids);
-        }
+        nk[idx+ii] = 0;
     }
-    return TREEQP_OK;
 }

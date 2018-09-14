@@ -30,7 +30,7 @@
 
 #include "treeqp/src/hpmpc_tree.h"  // for helper functions
 #include "treeqp/src/hpipm_tree.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/timing.h"
 #include "treeqp/utils/types.h"
@@ -107,7 +107,7 @@ static void cast_options(treeqp_hpipm_opts_t *treeqp_opts, struct d_tree_ocp_qp_
 
 
 
-void setup_nkids(tree_ocp_qp_in *qp_in, int *nkids)
+void setup_nkids(tree_qp_in *qp_in, int *nkids)
 {
     int Nn = qp_in->N;
     struct node *tree = qp_in->tree;
@@ -125,7 +125,7 @@ void setup_nkids(tree_ocp_qp_in *qp_in, int *nkids)
 
 
 
-void setup_nbx(tree_ocp_qp_in *qp_in, int *nbx)
+void setup_nbx(tree_qp_in *qp_in, int *nbx)
 {
     int Nn = qp_in->N;
 
@@ -137,7 +137,7 @@ void setup_nbx(tree_ocp_qp_in *qp_in, int *nbx)
 
 
 
-void setup_nbu(tree_ocp_qp_in *qp_in, int *nbu)
+void setup_nbu(tree_qp_in *qp_in, int *nbu)
 {
     int Nn = qp_in->N;
 
@@ -149,7 +149,7 @@ void setup_nbu(tree_ocp_qp_in *qp_in, int *nbu)
 
 
 
-void setup_ns(tree_ocp_qp_in *qp_in, int *ns)
+void setup_ns(tree_qp_in *qp_in, int *ns)
 {
     int Nn = qp_in->N;
 
@@ -161,7 +161,7 @@ void setup_ns(tree_ocp_qp_in *qp_in, int *ns)
 
 
 
-int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts)
+int treeqp_hpipm_calculate_size(tree_qp_in *qp_in, treeqp_hpipm_opts_t *opts)
 {
     int bytes = 0;
 
@@ -234,7 +234,7 @@ int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts
 
 
 
-void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
+void treeqp_hpipm_create(tree_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
     treeqp_hpipm_workspace *work, void *ptr)
 {
     struct node *tree = qp_in->tree;
@@ -304,7 +304,7 @@ void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts,
 
 
 
-return_t treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts,
+return_t treeqp_hpipm_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpipm_opts_t *opts,
     treeqp_hpipm_workspace *work)
 {
     struct node *tree = qp_in->tree;

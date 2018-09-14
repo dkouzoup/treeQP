@@ -31,7 +31,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/utils/types.h"
@@ -483,13 +483,12 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     treeqp_tdunes_workspace *works_tdunes;
     treeqp_hpmpc_workspace *works_hpmpc;
 
-    struct node **forest = malloc(n_realizations*sizeof(struct node*));
-    tree_ocp_qp_in *qp_ins = malloc(n_realizations*sizeof(tree_ocp_qp_in));
+    tree_qp_in *qp_ins = malloc(n_realizations*sizeof(tree_qp_in));
     void **qp_in_memories = malloc(n_realizations*sizeof(void*));
     works_tdunes = malloc(n_realizations*sizeof(treeqp_tdunes_workspace));
     works_hpmpc = malloc(n_realizations*sizeof(treeqp_hpmpc_workspace));
     void **solver_memories = malloc(n_realizations*sizeof(void*));
-    tree_ocp_qp_out *qp_outs = malloc(n_realizations*sizeof(tree_ocp_qp_out));
+    tree_qp_out *qp_outs = malloc(n_realizations*sizeof(tree_qp_out));
     void **qp_out_memories = malloc(n_realizations*sizeof(void*));
 
     int size;
@@ -499,18 +498,14 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         // create solver only if tree has been generated for this configuration
         if (data[ii].Nn != -1)
         {
-            //set up tree
-            forest[ii] = malloc(data[ii].Nn*sizeof(struct node));
-            setup_tree(data[ii].nc, forest[ii]);
-
             // set up QP data
-            size = tree_ocp_qp_in_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, forest[ii]);
+            size = tree_qp_in_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc);
             qp_in_memories[ii] = malloc(size);
-            tree_ocp_qp_in_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, forest[ii], &qp_ins[ii], qp_in_memories[ii]);
-            tree_ocp_qp_in_set_ltv_dynamics_colmajor(data[ii].A, data[ii].B, data[ii].b, &qp_ins[ii]);
-            tree_ocp_qp_in_set_ltv_objective_diag(data[ii].Qd, data[ii].Rd, data[ii].q, data[ii].r, &qp_ins[ii]);
-            tree_ocp_qp_in_set_const_bounds(xmin, xmax, umin, umax, &qp_ins[ii]);
-            tree_ocp_qp_in_set_x0_colmaj(&qp_ins[ii], x0);
+            tree_qp_in_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc, &qp_ins[ii], qp_in_memories[ii]);
+            tree_qp_in_set_ltv_dynamics_colmajor(data[ii].A, data[ii].B, data[ii].b, &qp_ins[ii]);
+            tree_qp_in_set_ltv_objective_diag(data[ii].Qd, data[ii].Rd, data[ii].q, data[ii].r, &qp_ins[ii]);
+            tree_qp_in_set_const_bounds(xmin, xmax, umin, umax, &qp_ins[ii]);
+            tree_qp_in_set_x0_colmaj(&qp_ins[ii], x0);
 
             // set up QP solver
             switch (solver)
@@ -528,9 +523,9 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
             }
 
             // set up QP solution
-            size = tree_ocp_qp_out_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL);
+            size = tree_qp_out_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL);
             qp_out_memories[ii] = malloc(size);
-            tree_ocp_qp_out_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, &qp_outs[ii], qp_out_memories[ii]);
+            tree_qp_out_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, &qp_outs[ii], qp_out_memories[ii]);
         }
     }
 
@@ -562,13 +557,13 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
                 break;
         }
         res->cpu_times[tt] = treeqp_toc(&timer);
-        // tree_ocp_qp_out_print(qp_ins[mpc_config].N, &qp_outs[mpc_config]);
+        // tree_qp_out_print(qp_ins[mpc_config].N, &qp_outs[mpc_config]);
 
         if (qp_outs[mpc_config].info.iter == maxIter && sim_params->print_level > 1)
             printf("maximum number of iterations reached\n");
 
         // check KKT conditions
-        res->kkt_tol[tt] = tree_ocp_qp_out_max_KKT_res(&qp_ins[mpc_config], &qp_outs[mpc_config]);
+        res->kkt_tol[tt] = tree_qp_out_max_KKT_res(&qp_ins[mpc_config], &qp_outs[mpc_config]);
         // printf("KKT = %f\n", res->kkt_tol[tt]);
         // assert(res->kkt_tol[tt] <= tol && "violation of KKT conditions too high");
         if (res->kkt_tol[tt] > tol)
@@ -632,7 +627,7 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         {
             if (data[ii].Nn != -1)
             {
-                tree_ocp_qp_in_set_x0_colmaj(&qp_ins[ii], x0);
+                tree_qp_in_set_x0_colmaj(&qp_ins[ii], x0);
             }
         }
 
@@ -677,14 +672,11 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
     {
         if (data[ii].Nn != -1)
         {
-            free_tree(forest[ii]);
-            free(forest[ii]);
             free(qp_in_memories[ii]);
             free(solver_memories[ii]);
             free(qp_out_memories[ii]);
         }
     }
-    free(forest);
     free(qp_in_memories);
     free(qp_ins);
     free(solver_memories);

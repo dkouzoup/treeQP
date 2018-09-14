@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 
@@ -40,13 +40,13 @@ extern "C" {
 
 void print_node(const struct node * const tree);
 
-void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in);
+void tree_qp_in_print_dims(const tree_qp_in * const qp_in);
 
-void tree_ocp_qp_in_print(const tree_ocp_qp_in * const qp_in);
+void tree_qp_in_print(const tree_qp_in * const qp_in);
 
-void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out);
+void tree_qp_out_print(const int Nn, const tree_qp_out * const qp_out);
 
-void tree_ocp_qp_out_write_to_txt(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out, const char *fpath);
+void tree_qp_out_write_to_txt(const tree_qp_in * const qp_in, const tree_qp_out * const qp_out, const char *fpath);
 
 
 

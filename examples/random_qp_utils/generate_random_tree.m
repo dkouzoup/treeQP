@@ -1,9 +1,9 @@
-function [ agents ] = generate_random_tree( ns, nx, nu, CLIPPING )
+function [ agents ] = generate_random_tree( nk, nx, nu, CLIPPING )
 
-% GENERATE_RANDOM_TREE Generate a tree with structure given by ns and
+% GENERATE_RANDOM_TREE Generate a tree with structure given by nk and
 %   dimensions given by nx, nu.
 %
-%   ns:         number of successors (children) of node ( 1 x N )
+%   nk:         number of successors (children) of node ( 1 x N )
 %   nx:         number of states ( 1 x N )
 %   nu:         number of controls ( 1 x N )
 %   CLIPPING:   when true (default), Q,R are diagonal and S is zero
@@ -13,7 +13,7 @@ if nargin == 3
 end
 
 % initialize all nodes to unassigned
-for ii = 1:length(ns)
+for ii = 1:length(nk)
     agents(ii).stage = -1;
     agents(ii).idx = NaN;
     agents(ii).dad = NaN;
@@ -28,19 +28,19 @@ agents(1).stage = 0;
 agents(1).idxkid = 0;
 
 % initialize tree
-for ii = 1: length(ns)
+for ii = 1: length(nk)
     %disp(['initializing node ' num2str(ii)]);
 
-    agents(ii).nkids = ns(ii);
+    agents(ii).nkids = nk(ii);
 
     % identify where children nodes (with unasigned stage) are
-    for jj = ii:length(ns)
+    for jj = ii:length(nk)
         if agents(jj).stage == -1
             break;
         end
     end
 
-    for kk = jj:jj + ns(ii) - 1
+    for kk = jj:jj + nk(ii) - 1
         agents(kk).idx    = kk;
         agents(kk).dad    = ii;
         agents(kk).stage  = agents(ii).stage + 1;
@@ -49,7 +49,7 @@ for ii = 1: length(ns)
 
 end
 
-for ii = 1:length(ns)
+for ii = 1:length(nk)
     iidad = agents(ii).dad;
 
     if ii > 1
