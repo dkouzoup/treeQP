@@ -153,9 +153,11 @@ int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in);
 
 int tree_ocp_qp_in_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc, const struct node * const tree);
 
-int tree_ocp_qp_in_calculate_size_new(const int Nn, const int * const nx, const int * const nu, const int * const nc, const int * const nk);
+int tree_ocp_qp_in_calculate_size_new(int Nn, const int * nx, const int * nu, const int * nc, const int * nk);
 
 void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const nu, const int * const nc, struct node * const tree, tree_ocp_qp_in * const qp_in, void *ptr);
+
+void tree_ocp_qp_in_create_new(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk, tree_ocp_qp_in * qp_in, void *ptr);
 
 int tree_ocp_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc);
 

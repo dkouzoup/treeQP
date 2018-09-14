@@ -88,17 +88,14 @@ int main( )
     status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
     if (status != TREEQP_OK) return status;
 
-
-    // setup scenario tree
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_multistage_tree(md, Nr, Nh, Nn, tree);
-
     // setup QP
     tree_ocp_qp_in qp_in;
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
+    int *nk = malloc(Nn*sizeof(int));
+    setup_multistage_tree_new(md, Nr, Nh, nk);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
 
@@ -138,7 +135,7 @@ int main( )
             nx[ii] = NX;
         }
 
-        if (tree[ii].nkids > 0)  // not a leaf
+        if (nk[ii] > 0)  // not a leaf
         {
             nu[ii] = NU;
             nc[ii] = 0;
@@ -156,9 +153,9 @@ int main( )
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, nc, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, nc, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create_new(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
@@ -480,9 +477,6 @@ int main( )
     free(hpipm_memory);
     free(hpipm_opts_mem);
     #endif
-
-    free_tree(tree);
-    free(tree);
 
     free(lambda_tdunes);
     free(lambda_sdunes);

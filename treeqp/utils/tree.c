@@ -135,16 +135,14 @@ int tree_calculate_size(const int *nk)
 {
     int Nn = number_of_nodes_from_nkids(nk);
 
-    int size = 0;
-
-    // size += Nn*sizeof(struct node);
+    int bytes = 0;
 
     for (int ii = 0; ii < Nn; ii++)
     {
-        size += nk[ii]*sizeof(int);
+        bytes += nk[ii]*sizeof(int);
     }
 
-    return size;
+    return bytes;
 }
 
 

@@ -128,10 +128,12 @@ int tree_ocp_qp_in_calculate_size(const int Nn, const int * const nx, const int 
 
 
 
-int tree_ocp_qp_in_calculate_size_new(const int Nn, const int * const nx, const int * const nu,
-    const int * const nc, const int * const nk)
+int tree_ocp_qp_in_calculate_size_new(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
 {
     int bytes = 0;
+
+    bytes += Nn*sizeof(struct node);
+    bytes += tree_calculate_size(nk);
 
     bytes += 3*Nn*sizeof(int);  // nx, nu, nc
 
@@ -223,9 +225,6 @@ int tree_ocp_qp_in_calculate_size_new(const int Nn, const int * const nx, const 
 
     return bytes;
 }
-// TODO FOLLOWING ASSERT IN NEW CREATE
-// assert (Nn == number_of_nodes_from_tree(tree) && "Detected number of nodes different than given one");
-
 
 
 
@@ -379,6 +378,168 @@ void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const
     tree_ocp_qp_in_set_inf_bounds(qp_in);
 
     assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) >= c_ptr);
+    // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
+    //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
+    // exit(1);
+}
+
+
+
+void tree_ocp_qp_in_create_new(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk,
+    tree_ocp_qp_in * qp_in, void *ptr)
+{
+    char *c_ptr = (char *) ptr;
+
+    qp_in->N = Nn;
+
+    qp_in->tree = (struct node *) c_ptr;
+    c_ptr += Nn*sizeof(struct node);
+    tree_create(nk, qp_in->tree, (void *)c_ptr);
+    c_ptr += tree_calculate_size(nk);
+
+    assert (Nn == number_of_nodes_from_tree(qp_in->tree) && "Detected number of nodes different than given one");
+
+    qp_in->nx = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
+    qp_in->nu = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
+    qp_in->nc = (int *) c_ptr;
+    c_ptr += Nn*sizeof(int);
+
+    qp_in->internal_memory.is_A_initialized = (int *) c_ptr;
+    c_ptr += qp_in->tree[0].nkids*sizeof(int);
+    qp_in->internal_memory.is_b_initialized = (int *) c_ptr;
+    c_ptr += qp_in->tree[0].nkids*sizeof(int);
+
+    // copy dimensions to allocated memory
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        qp_in->nx[ii] = nx[ii];
+        qp_in->nu[ii] = nu[ii];
+
+        if (nc == NULL)
+        {
+            qp_in->nc[ii] = 0;
+        } else
+        {
+            qp_in->nc[ii] = nc[ii];
+        }
+        qp_in->internal_memory.is_A_initialized[ii] = 0;
+        qp_in->internal_memory.is_b_initialized[ii] = 0;
+    }
+
+    qp_in->internal_memory.is_C_initialized = 0;
+    qp_in->internal_memory.is_dmin_initialized = 0;
+    qp_in->internal_memory.is_dmax_initialized = 0;
+    qp_in->internal_memory.is_S_initialized = 0;
+    qp_in->internal_memory.is_r_initialized = 0;
+
+    qp_in->A = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
+    qp_in->B = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dmat);
+    qp_in->b = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dvec);
+
+    qp_in->Q = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->R = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->S = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+
+    qp_in->q = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->r = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+
+    qp_in->xmin = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->xmax = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->umin = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->umax = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+
+    qp_in->C = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->D = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dmat);
+    qp_in->dmin = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_in->dmax = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+
+    qp_in->internal_memory.A0 = (struct blasfeo_dmat *) c_ptr;
+    c_ptr += qp_in->tree[0].nkids*sizeof(struct blasfeo_dmat);
+    qp_in->internal_memory.b0 = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += qp_in->tree[0].nkids*sizeof(struct blasfeo_dvec);
+
+    // align pointer
+    align_char_to(64, &c_ptr);
+
+    int idx, idxp;
+
+    // strmats
+    for (int idx = 0; idx < Nn; idx++)
+    {
+        idxp = qp_in->tree[idx].dad;
+
+        if (idx > 0)
+        {
+            init_strmat(nx[idx], nx[idxp], &qp_in->A[idx-1], &c_ptr);
+            init_strmat(nx[idx], nu[idxp], &qp_in->B[idx-1], &c_ptr);
+            if (idx <= qp_in->tree[0].nkids)
+            {
+                init_strmat(nx[idx], nx[idxp], &qp_in->internal_memory.A0[idx-1], &c_ptr);
+            }
+        }
+
+        init_strmat(nx[idx], nx[idx], &qp_in->Q[idx], &c_ptr);
+        init_strmat(nu[idx], nu[idx], &qp_in->R[idx], &c_ptr);
+        init_strmat(nu[idx], nx[idx], &qp_in->S[idx], &c_ptr);
+
+        init_strmat(qp_in->nc[idx], nx[idx], &qp_in->C[idx], &c_ptr);
+        init_strmat(qp_in->nc[idx], nu[idx], &qp_in->D[idx], &c_ptr);
+    }
+
+    init_strmat(qp_in->nc[0], nx[0], &qp_in->internal_memory.C0, &c_ptr);
+    init_strmat(nu[0], nx[0], &qp_in->internal_memory.S0, &c_ptr);
+
+    // strvecs
+    for (idx = 0; idx < Nn; idx++)
+    {
+        idxp = qp_in->tree[idx].dad;
+
+        if (idx > 0)
+        {
+            init_strvec(nx[idx], &qp_in->b[idx-1], &c_ptr);
+            if (idx <= qp_in->tree[0].nkids)
+            {
+                init_strvec(nx[idx], &qp_in->internal_memory.b0[idx-1], &c_ptr);
+            }
+        }
+        init_strvec(nx[idx], &qp_in->q[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->r[idx], &c_ptr);
+
+        init_strvec(nx[idx], &qp_in->xmin[idx], &c_ptr);
+        init_strvec(nx[idx], &qp_in->xmax[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->umin[idx], &c_ptr);
+        init_strvec(nu[idx], &qp_in->umax[idx], &c_ptr);
+
+        init_strvec(qp_in->nc[idx], &qp_in->dmin[idx], &c_ptr);
+        init_strvec(qp_in->nc[idx], &qp_in->dmax[idx], &c_ptr);
+    }
+
+    init_strvec(qp_in->nx[0], &qp_in->internal_memory.x0, &c_ptr);
+    init_strvec(qp_in->nc[0], &qp_in->internal_memory.dmin0, &c_ptr);
+    init_strvec(qp_in->nc[0], &qp_in->internal_memory.dmax0, &c_ptr);
+    init_strvec(qp_in->nu[0], &qp_in->internal_memory.r0, &c_ptr);
+
+    tree_ocp_qp_in_set_inf_bounds(qp_in);
+
+    assert((char *)ptr + tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, nc, nk) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
     // exit(1);
