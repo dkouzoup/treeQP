@@ -53,13 +53,15 @@ struct node
 #endif
 #endif
 
-int calculate_number_of_nodes(const int md, const int Nr, const int Nh);
+int calculate_number_of_nodes(int md, int Nr, int Nh);
 
 int get_number_of_parent_nodes(const int Nn, const struct node * const tree);
 
 int get_robust_horizon(const int Nn, const struct node * const tree);
 
 void setup_multistage_tree(const int md, const int Nr, const int Nh, const int Nn, struct node * const tree);
+
+void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk);
 
 return_t setup_tree(const int * const nkids, struct node * const tree);
 

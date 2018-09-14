@@ -32,7 +32,7 @@
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
 
-int calculate_number_of_nodes(const int md, const int Nr, const int Nh)
+int calculate_number_of_nodes(int md, int Nr, int Nh)
 {
     int n_nodes;
     if (md == 1)  // i.e. standard block-banded structure
@@ -184,6 +184,44 @@ return_t setup_tree(const int * const nkids, struct node * const tree)
 
 
 
+void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk)
+{
+    int num_scenarios = ipow(md, Nr);
+    int num_nodes = calculate_number_of_nodes(md, Nr, Nh);
+
+    int nodes_in_next_stage;
+    int nodes_in_stage = 1;
+    int idx = 0;
+
+    for (int kk = 0; kk < Nh; kk++)
+    {
+        // printf("nodes in stage %d: %d\n", kk, nodes_in_stage);
+        nodes_in_next_stage = 0;
+        for (int ii = 0; ii < nodes_in_stage; ii++)
+        {
+            if (kk < Nr)
+            {
+                nk[idx+ii] = md;
+            }
+            else
+            {
+                nk[idx+ii] = 1;
+            }
+            nodes_in_next_stage += nk[idx+ii];
+        }
+        idx += nodes_in_stage;
+        nodes_in_stage = nodes_in_next_stage;
+    }
+    // printf("nodes in stage %d: %d\n", Nh, nodes_in_stage);
+    for (int ii = 0; ii < nodes_in_stage; ii++)
+    {
+        nk[idx+ii] = 0;
+    }
+}
+
+
+
+// TODO(dimitris): get rid of this function
 void setup_multistage_tree(const int md, const int Nr, const int Nh, const int Nn, struct node * const tree)
 {
     int idx, dad, stage, real, nkids, idxkid;

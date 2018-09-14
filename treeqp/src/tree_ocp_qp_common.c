@@ -128,6 +128,107 @@ int tree_ocp_qp_in_calculate_size(const int Nn, const int * const nx, const int 
 
 
 
+int tree_ocp_qp_in_calculate_size_new(const int Nn, const int * const nx, const int * const nu,
+    const int * const nc, const int * const nk)
+{
+    int bytes = 0;
+
+    bytes += 3*Nn*sizeof(int);  // nx, nu, nc
+
+    bytes += 2*(Nn-1)*sizeof(struct blasfeo_dmat);  // A, B
+    bytes += (Nn-1)*sizeof(struct blasfeo_dvec);  // b
+
+    bytes += 3*Nn*sizeof(struct blasfeo_dmat);  // Q, R, S
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // q, r
+
+    bytes += 4*Nn*sizeof(struct blasfeo_dvec);  // xmin, xmax, umin, umax
+
+    bytes += 2*Nn*sizeof(struct blasfeo_dmat);  // C, D
+    bytes += 2*Nn*sizeof(struct blasfeo_dvec);  // dmin, dmax
+
+    bytes += nk[0]*sizeof(int);  // internal_memory.is_A_initialized
+    bytes += nk[0]*sizeof(int);  // internal_memory.is_b_initialized
+    bytes += nk[0]*sizeof(struct blasfeo_dmat);  // internal_memory.A0
+    bytes += nk[0]*sizeof(struct blasfeo_dvec);  // internal_memory.b0
+
+    int idx, nc_;
+
+    int idxp = 0;
+    int counter = nk[idxp];
+
+    for (idx = 0; idx < Nn; idx++)
+    {
+        if (idx > 0)
+        {
+            if (counter > 0)
+            {
+                counter--;
+            }
+            else
+            {
+                idxp++;
+                counter = nk[idxp];
+            }
+        }
+
+        if (nc == NULL)
+        {
+            nc_ = 0;
+        }
+        else
+        {
+            nc_ = nc[idx];
+        }
+
+        if (idx > 0)
+        {
+            bytes += blasfeo_memsize_dmat(nx[idx], nx[idxp]);  // A
+            bytes += blasfeo_memsize_dmat(nx[idx], nu[idxp]);  // B
+            bytes += blasfeo_memsize_dvec(nx[idx]);  // b
+
+            if (idx <= nk[0])  // children of root
+            {
+                bytes += blasfeo_memsize_dmat(nx[idx], nx[idxp]);  // internal_memory.A0
+                bytes += blasfeo_memsize_dvec(nx[idx]);  // internal_memory.b0
+            }
+        }
+
+        bytes += blasfeo_memsize_dmat(nx[idx], nx[idx]);  // Q
+        bytes += blasfeo_memsize_dmat(nu[idx], nu[idx]);  // R
+        bytes += blasfeo_memsize_dmat(nu[idx], nx[idx]);  // S
+
+        bytes += blasfeo_memsize_dvec(nx[idx]);  // q
+        bytes += blasfeo_memsize_dvec(nu[idx]);  // r
+
+        bytes += 2*blasfeo_memsize_dvec(nx[idx]);  // xmin, xmax
+        bytes += 2*blasfeo_memsize_dvec(nu[idx]);  // umin, umax
+
+        bytes += blasfeo_memsize_dmat(nc_, nx[idx]);  // C
+        bytes += blasfeo_memsize_dmat(nc_, nu[idx]);  // D
+        bytes += 2*blasfeo_memsize_dvec(nc_);  // dmin, dmax
+
+        if (idx == 0)
+        {
+            bytes += blasfeo_memsize_dvec(nx[0]);  // internal_memory.x0
+            bytes += blasfeo_memsize_dmat(nc_, nx[0]);  // internal_memory.C0
+            bytes += 2*blasfeo_memsize_dvec(nc_);  // internal_memory.dmin0, internal_memory.dmax0
+
+            bytes += blasfeo_memsize_dmat(nu[0], nx[0]);  // internal_memory.S0
+            bytes += blasfeo_memsize_dvec(nu[0]);  // internal_memory.r0
+        }
+    }
+
+    make_int_multiple_of(64, &bytes);
+    bytes += 1*64;
+
+    return bytes;
+}
+// TODO FOLLOWING ASSERT IN NEW CREATE
+// assert (Nn == number_of_nodes_from_tree(tree) && "Detected number of nodes different than given one");
+
+
+
+
 void tree_ocp_qp_in_create(const int Nn, const int * const nx, const int * const nu, const int * const nc,
     struct node * const tree, tree_ocp_qp_in * const qp_in, void *ptr)
 {
