@@ -61,22 +61,19 @@ int main( ) {
     double x0[NX];
     for (int ii = 0; ii < NX; ii++) x0[ii] = 0.0;
 
-    // setup scenario tree
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_multistage_tree(md, Nr, Nh, Nn, tree);
-
     // setup QP
-
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
+    int *nk = malloc(Nn*sizeof(int));
+    setup_multistage_tree_new(md, Nr, Nh, nk);
 
     for (int ii = 0; ii < Nn; ii++)
     {
         // state and input dimensions on each node (only different at root/leaves)
         nx[ii] = NX;
 
-        if (tree[ii].nkids > 0)  // not a leaf
+        if (nk[ii] > 0)  // not a leaf
             nu[ii] = NU;
         else
             nu[ii] = 0;
@@ -85,9 +82,9 @@ int main( ) {
     }
 
     tree_ocp_qp_in qp_in;
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, nc, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, nc, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create_new(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
@@ -129,7 +126,7 @@ int main( ) {
 
 	printf("\nipm iter = %d\n", hpipm_work.hpipm_memory.iter);
 	printf("\nalpha_aff\tmu_aff\t\tsigma\t\talpha\t\tmu\n");
-	d_print_e_tran_mat(5, hpipm_work.hpipm_memory.iter, hpipm_work.hpipm_memory.stat, 5);
+	d_print_exp_tran_mat(5, hpipm_work.hpipm_memory.iter, hpipm_work.hpipm_memory.stat, 5);
 
     printf("SOL HPIPM\n");
     for (int ii = 0; ii < 5; ii++)
@@ -140,6 +137,16 @@ int main( ) {
     printf("SOL HPMPC\n");
     for (int ii = 0; ii < 5; ii++)
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
+
+    free(nx);
+    free(nu);
+    free(nc);
+    free(nk);
+
+    free(qp_in_memory);
+    free(qp_out_memory);
+
+    // TODO(dimitris): free everything..
 
     return 0;
 }
