@@ -55,10 +55,10 @@ int main() {
     tree_ocp_qp_in qp_in;
 
     int qp_in_size =
-        tree_ocp_qp_in_calculate_size_new(6, nx, nu, NULL, nk);
+        tree_ocp_qp_in_calculate_size(6, nx, nu, NULL, nk);
 
     void *in_mem = malloc(qp_in_size);
-    tree_ocp_qp_in_create_new(6, nx, nu, NULL, nk, &qp_in, in_mem);
+    tree_ocp_qp_in_create(6, nx, nu, NULL, nk, &qp_in, in_mem);
 
     double A1[] = {1.1, 3.3, 2.2, 4.4};
     double A2[] = {5.5, 7.7, 6.6, 8.8};

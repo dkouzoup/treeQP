@@ -63,7 +63,7 @@ int tree_calculate_size(const int *nk);
 
 return_t tree_create(const int *nk, struct node * tree, void *ptr);
 
-void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk);
+void setup_multistage_tree(int md, int Nr, int Nh, int * nk);
 
 int number_of_nodes_from_nkids(const int * const nkids);
 

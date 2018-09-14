@@ -76,9 +76,9 @@ int main()
     // set up QP data
     tree_ocp_qp_in qp_in;
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, NULL, nk);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create_new(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
 #ifdef CLIPPING

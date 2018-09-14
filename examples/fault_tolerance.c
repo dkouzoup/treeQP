@@ -499,9 +499,9 @@ int run_closed_loop_simulation(char *treeQP_abs_path, params *sim_params, int *m
         if (data[ii].Nn != -1)
         {
             // set up QP data
-            size = tree_ocp_qp_in_calculate_size_new(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc);
+            size = tree_ocp_qp_in_calculate_size(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc);
             qp_in_memories[ii] = malloc(size);
-            tree_ocp_qp_in_create_new(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc, &qp_ins[ii], qp_in_memories[ii]);
+            tree_ocp_qp_in_create(data[ii].Nn, data[ii].nx, data[ii].nu, NULL, data[ii].nc, &qp_ins[ii], qp_in_memories[ii]);
             tree_ocp_qp_in_set_ltv_dynamics_colmajor(data[ii].A, data[ii].B, data[ii].b, &qp_ins[ii]);
             tree_ocp_qp_in_set_ltv_objective_diag(data[ii].Qd, data[ii].Rd, data[ii].q, data[ii].r, &qp_ins[ii]);
             tree_ocp_qp_in_set_const_bounds(xmin, xmax, umin, umax, &qp_ins[ii]);

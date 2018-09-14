@@ -95,7 +95,7 @@ int main( )
     int *nu = malloc(Nn*sizeof(int));
     int *nc = malloc(Nn*sizeof(int));
     int *nk = malloc(Nn*sizeof(int));
-    setup_multistage_tree_new(md, Nr, Nh, nk);
+    setup_multistage_tree(md, Nr, Nh, nk);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
 
@@ -153,9 +153,9 @@ int main( )
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, nc, nk);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create_new(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds

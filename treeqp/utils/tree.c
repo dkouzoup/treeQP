@@ -215,7 +215,7 @@ return_t tree_create(const int *nk, struct node * tree, void *ptr)
 
 
 
-void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk)
+void setup_multistage_tree(int md, int Nr, int Nh, int * nk)
 {
     int num_scenarios = ipow(md, Nr);
     int num_nodes = calculate_number_of_nodes(md, Nr, Nh);

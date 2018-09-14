@@ -82,7 +82,7 @@ int main( ) {
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
     int *nk = malloc(Nn*sizeof(int));
-    setup_multistage_tree_new(md, Nr, Nh, nk);
+    setup_multistage_tree(md, Nr, Nh, nk);
 
     for (int ii = 0; ii < Nn; ii++)
     {
@@ -102,9 +102,9 @@ int main( ) {
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, NULL, nk);
+    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create_new(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,

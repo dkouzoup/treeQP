@@ -43,7 +43,7 @@
 
 
 
-int tree_ocp_qp_in_calculate_size_new(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
+int tree_ocp_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
 {
     int bytes = 0;
 
@@ -143,7 +143,7 @@ int tree_ocp_qp_in_calculate_size_new(int Nn, const int * nx, const int * nu, co
 
 
 
-void tree_ocp_qp_in_create_new(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk,
+void tree_ocp_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk,
     tree_ocp_qp_in * qp_in, void *ptr)
 {
     char *c_ptr = (char *) ptr;
@@ -297,7 +297,7 @@ void tree_ocp_qp_in_create_new(int Nn, const int * nx, const int * nu, const int
 
     tree_ocp_qp_in_set_inf_bounds(qp_in);
 
-    assert((char *)ptr + tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, nc, nk) >= c_ptr);
+    assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, nk) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
     // exit(1);
