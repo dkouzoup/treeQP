@@ -85,21 +85,19 @@ int main() {
     status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
     if (status != TREEQP_OK) return -1;
 
-    // setup scenario tree
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_multistage_tree(md, Nr, Nh, Nn, tree);
-
     // setup QP
     tree_ocp_qp_in qp_in;
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
+    int *nk = malloc(Nn*sizeof(int));
+    setup_multistage_tree_new(md, Nr, Nh, nk);
 
     for (int ii = 0; ii < Nn; ii++)
     {
         nx[ii] = NX;
 
-        if (tree[ii].nkids > 0)  // not a leaf
+        if (nk[ii] > 0)  // not a leaf
         {
             nu[ii] = NU;
         }
@@ -109,9 +107,9 @@ int main() {
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create_new(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
     tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
@@ -185,13 +183,11 @@ int main() {
     // Free allocated memory
     free(nx);
     free(nu);
+    free(nk);
 
     free(qp_in_memory);
     free(qp_solver_memory);
     free(qp_out_memory);
-
-    free_tree(tree);
-    free(tree);
 
     free(mu);
     free(lambda);

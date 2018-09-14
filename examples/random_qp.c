@@ -73,16 +73,12 @@ int main()
     //   /
     // 0 - 2 - 5
 
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_tree(ns, tree);
-    // for (int ii = 0; ii < Nn; ii++) print_node(&tree[ii]);
-
     // set up QP data
     tree_ocp_qp_in qp_in;
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
+    int qp_in_size = tree_ocp_qp_in_calculate_size_new(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
+    tree_ocp_qp_in_create_new(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
     tree_ocp_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
 #ifdef CLIPPING
@@ -220,9 +216,6 @@ int main()
     free(opts_memory);
     free(qp_out_memory);
     free(qp_in_memory);
-
-    free_tree(tree);
-    free(tree);
 
     assert(kkt_err < 1e-12 && "maximum KKT residual too high!");
     assert(max_err < 1e-12 && "deviation from given solution too high!");

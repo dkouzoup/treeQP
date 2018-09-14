@@ -67,10 +67,6 @@ void setup_multistage_tree(const int md, const int Nr, const int Nh, const int N
 
 void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk);
 
-return_t setup_tree(const int * const nkids, struct node * const tree);
-
-return_t free_tree(struct node * const tree);
-
 int number_of_nodes_from_nkids(const int * const nkids);
 
 // TODO(dimitris): use this to eliminate Nn from input arguments in several (non time critical) functions

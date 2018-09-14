@@ -215,60 +215,6 @@ return_t tree_create(const int *nk, struct node * tree, void *ptr)
 
 
 
-// TODO: REMOVE!!!!!!!!!!!!!!!!!!!
-return_t setup_tree(const int * const nkids, struct node * const tree)
-{
-    int Nn = number_of_nodes_from_nkids(nkids);
-    if (Nn < 0) return TREEQP_FAILURE;
-
-    // initialize nodes to 'unassigned'
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        tree[ii].stage = -1;
-        tree[ii].real = -1;
-    }
-
-    // initialize root
-    tree[0].idx = 0;
-    tree[0].dad = -1;
-    tree[0].stage = 0;
-    tree[0].idxkid = 0;
-
-    // set up tree
-    int idxkids;
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        tree[ii].nkids = nkids[ii];
-        if (nkids[ii] > 0) {
-            tree[ii].kids = (int *) malloc(nkids[ii]*sizeof(int));
-        }
-
-        // identify where children nodes start
-        idxkids = 0;
-        for (int jj = ii; jj < Nn; jj++)
-        {
-            if (tree[jj].stage == -1)
-            {
-                idxkids = jj;
-                break;
-            }
-        }
-
-        // assign data to children nodes
-        for (int jj = idxkids; jj < idxkids + nkids[ii]; jj++)
-        {
-            tree[ii].kids[jj - idxkids] = jj;
-            tree[jj].idx = jj;
-            tree[jj].dad = ii;
-            tree[jj].stage = tree[ii].stage +1;
-            tree[jj].idxkid = jj - idxkids;
-        }
-    }
-    return_t TREEQP_OK;
-}
-
-
-
 void setup_multistage_tree_new(int md, int Nr, int Nh, int * nk)
 {
     int num_scenarios = ipow(md, Nr);
@@ -401,21 +347,4 @@ void setup_multistage_tree(const int md, const int Nr, const int Nh, const int N
             }
         }
     }
-}
-
-
-
-return_t free_tree(struct node * const tree)
-{
-    int Nn = number_of_nodes_from_tree(tree);
-    if (Nn < 0) return TREEQP_FAILURE;
-
-    for (int ii = 0; ii < Nn; ii++)
-    {
-        if (tree[ii].nkids > 0)
-        {
-            free(tree[ii].kids);
-        }
-    }
-    return TREEQP_OK;
 }

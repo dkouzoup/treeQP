@@ -449,6 +449,7 @@ int main( )
     free(nx);
     free(nu);
     free(nc);
+    free(nk);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
     free(C);

@@ -48,21 +48,17 @@
 
 int main() {
 
-    int num_kids[] = {2, 2, 1, 0, 0, 0};
+    int nk[] = {2, 2, 1, 0, 0, 0};
     int nx[] = {2, 2, 2, 2, 2, 2};
     int nu[] = {1, 1, 1, 0, 0, 0};
-    // int nc[] = {0, 0, 0, 0, 0, 0};
-
-    struct node tree[6];
-    setup_tree(num_kids, tree);
 
     tree_ocp_qp_in qp_in;
 
     int qp_in_size =
-        tree_ocp_qp_in_calculate_size(6, nx, nu, NULL, tree);
+        tree_ocp_qp_in_calculate_size_new(6, nx, nu, NULL, nk);
 
     void *in_mem = malloc(qp_in_size);
-    tree_ocp_qp_in_create(6, nx, nu, NULL, tree, &qp_in, in_mem);
+    tree_ocp_qp_in_create_new(6, nx, nu, NULL, nk, &qp_in, in_mem);
 
     double A1[] = {1.1, 3.3, 2.2, 4.4};
     double A2[] = {5.5, 7.7, 6.6, 8.8};
@@ -165,9 +161,6 @@ int main() {
     free(in_mem);
     free(opts_mem);
     free(solver_mem);
-
-    //TODO(dimitris): move tree inside qp_in and remove malloc from setup_tree (give num_kids as input to create_qp_in etc)
-    free_tree(tree);
 
     return 0;
 }

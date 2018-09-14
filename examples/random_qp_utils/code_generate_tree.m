@@ -43,8 +43,8 @@ fprintf(datafile, '\n/* Dimensions */\n\n');
 
 fprintf(datafile,'int Nn = %d;\n', Nnodes);
 
-% print ns
-fprintf(datafile,'int ns[%d] = { ', Nnodes);
+% print nk
+fprintf(datafile,'int nk[%d] = { ', Nnodes);
 for ii = 1:Nnodes
 	fprintf(datafile,'%d, ', agents(ii).nkids);
 end
