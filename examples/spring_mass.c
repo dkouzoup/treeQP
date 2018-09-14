@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/hpipm_tree.h"
 #include "treeqp/src/dual_Newton_tree.h"
@@ -89,7 +89,7 @@ int main( )
     if (status != TREEQP_OK) return status;
 
     // setup QP
-    tree_ocp_qp_in qp_in;
+    tree_qp_in qp_in;
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
@@ -153,9 +153,9 @@ int main( )
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, nk);
+    int qp_in_size = tree_qp_in_calculate_size(Nn, nx, nu, nc, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
+    tree_qp_in_create(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
 
     #ifdef TEST_GENERAL_CONSTRAINTS
     // set C, D, dmin, dmax equivalent to bounds
@@ -194,11 +194,11 @@ int main( )
         }
     }
 
-    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+    tree_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, C, CN, D, dmin, dmax, &qp_in);
 
     // remove bounds
-    tree_ocp_qp_in_set_inf_bounds(&qp_in);
+    tree_qp_in_set_inf_bounds(&qp_in);
 
     if (NC == 1 && make_u_constr_general == 1)
     {
@@ -219,24 +219,24 @@ int main( )
         }
     }
     // restore bound on x0
-    tree_ocp_qp_in_set_x0_colmaj(&qp_in, x0);
+    tree_qp_in_set_x0_colmaj(&qp_in, x0);
 
     #else
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+    tree_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
     #endif
 
     // setup QP solution
-    tree_ocp_qp_out qp_out;
+    tree_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
+    int qp_out_size = tree_qp_out_calculate_size(Nn, nx, nu, nc);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
+    tree_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
 
     // eliminate x0 from QP
-    tree_ocp_qp_in_eliminate_x0(&qp_in);
-    tree_ocp_qp_out_eliminate_x0(&qp_out);
+    tree_qp_in_eliminate_x0(&qp_in);
+    tree_qp_out_eliminate_x0(&qp_out);
 
     double overhead;
     double max_overhead;
@@ -326,7 +326,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (tdunes):\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of tree dual Newton in spring_mass.c too high!");
 
@@ -362,7 +362,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (sdunes):\t\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of sdunes in spring_mass.c too high!");
 
@@ -395,7 +395,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpmpc):\t\t\t %2.2e\n\n", kkt_err);
     assert(kkt_err < 1e-10 && "KKT tolerance of tree hpmpc in spring_mass.c too high!");
 
@@ -406,7 +406,7 @@ int main( )
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
     // printf("HPMPC\n:");
-    // tree_ocp_qp_out_print(Nn, &qp_out);
+    // tree_qp_out_print(Nn, &qp_out);
     #endif
 
 
@@ -431,7 +431,7 @@ int main( )
         if (overhead > max_overhead) max_overhead = overhead;
     }
 
-    kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("Maximum error in KKT residuals (hpipm):\t\t\t %2.2e\n\n", kkt_err);
     // assert(kkt_err < 1e-10 && "KKT tolerance of tree hpipm in spring_mass.c too high!");
 
@@ -442,7 +442,7 @@ int main( )
         blasfeo_print_tran_dvec(qp_in.nx[ii], &qp_out.x[ii], 0);
     }
     // printf("HPIPM\n:");
-    // tree_ocp_qp_out_print(Nn, &qp_out);
+    // tree_qp_out_print(Nn, &qp_out);
     #endif
 
     // Free memory

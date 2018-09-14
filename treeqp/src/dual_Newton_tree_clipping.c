@@ -30,7 +30,7 @@
 
 #include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/dual_Newton_tree_clipping.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/types.h"
@@ -42,7 +42,7 @@
 
 
 
-answer_t stage_qp_clipping_is_applicable(tree_ocp_qp_in *qp_in, int idx)
+answer_t stage_qp_clipping_is_applicable(tree_qp_in *qp_in, int idx)
 {
     answer_t ans = YES;
 
@@ -146,7 +146,7 @@ void stage_qp_clipping_assign_data(int nx, int nu, int nc, void *stage_qp_data, 
 
 
 
-return_t stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
+return_t stage_qp_clipping_init(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -185,7 +185,7 @@ return_t stage_qp_clipping_init(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solve
 
 
 
-return_t stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_clipping_solve_extended(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -228,7 +228,7 @@ return_t stage_qp_clipping_solve_extended(tree_ocp_qp_in *qp_in, int idx, void *
 
 
 
-return_t stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_clipping_solve(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -261,7 +261,7 @@ return_t stage_qp_clipping_solve(tree_ocp_qp_in *qp_in, int idx, void *work_)
 
 
 
-void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset,
+void stage_qp_clipping_set_CmPnCmT(tree_qp_in *qp_in, int idx, int idxdad, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -298,7 +298,7 @@ void stage_qp_clipping_set_CmPnCmT(tree_ocp_qp_in *qp_in, int idx, int idxdad, i
 
 
 
-void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_)
+void stage_qp_clipping_add_EPmE(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
 
@@ -315,7 +315,7 @@ void stage_qp_clipping_add_EPmE(tree_ocp_qp_in *qp_in, int idx, int idxdad, int 
 
 
 
-void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad,
+void stage_qp_clipping_add_CmPnCkT(tree_qp_in *qp_in, int idx, int idxsib, int idxdad,
     int row_offset, int col_offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -356,7 +356,7 @@ void stage_qp_clipping_add_CmPnCkT(tree_ocp_qp_in *qp_in, int idx, int idxsib, i
 
 
 
-void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work_)
+void stage_qp_clipping_eval_dual_term(tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =
@@ -383,7 +383,7 @@ void stage_qp_clipping_eval_dual_term(tree_ocp_qp_in *qp_in, int idx, void *work
 
 
 
-void stage_qp_clipping_export_mu(tree_ocp_qp_out *qp_out, int idx, void *work_)
+void stage_qp_clipping_export_mu(tree_qp_out *qp_out, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_clipping_data *clipping_data =

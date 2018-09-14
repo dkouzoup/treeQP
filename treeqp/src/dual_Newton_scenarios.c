@@ -37,7 +37,7 @@
 
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/dual_Newton_scenarios.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/types.h"
@@ -304,7 +304,7 @@ int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct b
 
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
-static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in *qp_in,
+static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_qp_in *qp_in,
     treeqp_sdunes_workspace *work, treeqp_sdunes_opts_t *opts) {
 
     int ii, kk, idx, idxp1, idxm1;
@@ -482,7 +482,7 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
 }
 
 
-static void calculate_residuals(int Ns, int Nh, tree_ocp_qp_in *qp_in,
+static void calculate_residuals(int Ns, int Nh, tree_qp_in *qp_in,
     treeqp_sdunes_workspace *work) {
 
     int ii, kk, idx0, idxm1;
@@ -1222,7 +1222,7 @@ double gradient_trans_times_direction(int Ns, int Nh, treeqp_sdunes_workspace *w
 }
 
 
-double evaluate_dual_function(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_workspace *work) {
+double evaluate_dual_function(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_workspace *work) {
     int *commonNodes = work->commonNodes;
     double *fvals = work->fvals;
 
@@ -1378,7 +1378,7 @@ double evaluate_dual_function(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdun
 }
 
 
-int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
+int line_search(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work) {
 
     int ii, jj, kk;
@@ -1488,7 +1488,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
 }
 
 
-int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
+int treeqp_sdunes_calculate_size(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
 {
     struct node *tree = qp_in->tree;
     int nx = qp_in->nx[1];
@@ -1596,7 +1596,7 @@ int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *op
 }
 
 
-void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
+void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work, void *ptr) {
 
     struct node *tree = qp_in->tree;
@@ -1834,7 +1834,7 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 }
 
 
-return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
 
     int NewtonIter, lsIter;
@@ -1864,7 +1864,7 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
 
     double scalingFactor;
     for (int jj = 0; jj < Nn; jj++) {
-        // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
+        // NOTE(dimitris): inverse of scaling factor in tree_qp_in_fill_lti_data
         scalingFactor = (double)ipow(md, MIN(qp_in->tree[jj].stage, Nr))/ipow(md, Nr);
 
         blasfeo_ddiaex(qp_in->nx[jj], scalingFactor, &sQnonScaled[jj], 0, 0, &work->sQ[jj], 0);

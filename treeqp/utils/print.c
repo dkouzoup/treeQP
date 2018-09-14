@@ -33,7 +33,7 @@
 #include <blasfeo_d_aux.h>
 #include <blasfeo_d_aux_ext_dep.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
@@ -61,7 +61,7 @@ void print_node(const struct node * const tree)
 
 
 
-void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
+void tree_qp_in_print_dims(const tree_qp_in * const qp_in)
 {
     int N = qp_in->N;
     int *nx = qp_in->nx;
@@ -79,7 +79,7 @@ void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_in_print(const tree_ocp_qp_in * const qp_in)
+void tree_qp_in_print(const tree_qp_in * const qp_in)
 {
     int Nn = qp_in->N;
     double min, max;
@@ -198,7 +198,7 @@ void tree_ocp_qp_in_print(const tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out)
+void tree_qp_out_print(const int Nn, const tree_qp_out * const qp_out)
 {
     int nx, nu, nc;
 
@@ -237,7 +237,7 @@ void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out)
 
 
 
-void tree_ocp_qp_out_write_to_txt(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out, const char *fpath)
+void tree_qp_out_write_to_txt(const tree_qp_in * const qp_in, const tree_qp_out * const qp_out, const char *fpath)
 {
     int Nn = qp_in->N;
     int dimx = total_number_of_states(qp_in);

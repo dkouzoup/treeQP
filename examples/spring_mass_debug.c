@@ -31,7 +31,7 @@
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/src/hpipm_tree.h"
 #include "treeqp/src/dual_Newton_tree.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
@@ -81,13 +81,13 @@ int main( ) {
         nc[ii] = 0;
     }
 
-    tree_ocp_qp_in qp_in;
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, nk);
+    tree_qp_in qp_in;
+    int qp_in_size = tree_qp_in_calculate_size(Nn, nx, nu, nc, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
+    tree_qp_in_create(Nn, nx, nu, nc, nk, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+    tree_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
 
     // set up HPMPC solver
@@ -113,11 +113,11 @@ int main( ) {
     treeqp_hpipm_create(&qp_in, &hpipm_opts, &hpipm_work, hpipm_memory);
 
     // setup QP solution
-    tree_ocp_qp_out qp_out;
+    tree_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc);
+    int qp_out_size = tree_qp_out_calculate_size(Nn, nx, nu, nc);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
+    tree_qp_out_create(Nn, nx, nu, nc, &qp_out, qp_out_memory);
 
 
     int hpipm_status = treeqp_hpipm_solve(&qp_in, &qp_out, &hpipm_opts, &hpipm_work);

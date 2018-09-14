@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/memory.h"
 #include "treeqp/utils/tree.h"
@@ -43,7 +43,7 @@
 
 
 
-int tree_ocp_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
+int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
 {
     int bytes = 0;
 
@@ -143,8 +143,8 @@ int tree_ocp_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const 
 
 
 
-void tree_ocp_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk,
-    tree_ocp_qp_in * qp_in, void *ptr)
+void tree_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  const int * nk,
+    tree_qp_in * qp_in, void *ptr)
 {
     char *c_ptr = (char *) ptr;
 
@@ -295,17 +295,17 @@ void tree_ocp_qp_in_create(int Nn, const int * nx, const int * nu, const int * n
     init_strvec(qp_in->nc[0], &qp_in->internal_memory.dmax0, &c_ptr);
     init_strvec(qp_in->nu[0], &qp_in->internal_memory.r0, &c_ptr);
 
-    tree_ocp_qp_in_set_inf_bounds(qp_in);
+    tree_qp_in_set_inf_bounds(qp_in);
 
-    assert((char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, nk) >= c_ptr);
+    assert((char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, nk) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
     // exit(1);
 }
 
 
 
-int tree_ocp_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc)
+int tree_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc)
 {
     int bytes = 6*Nn*sizeof(struct blasfeo_dvec);  // x, u, lam, mu_x, mu_u, mu_d
 
@@ -335,8 +335,8 @@ int tree_ocp_qp_out_calculate_size(const int Nn, const int * const nx, const int
 
 
 
-void tree_ocp_qp_out_create(const int Nn, const int * const nx, const int * const nu,
-    const int * const nc, tree_ocp_qp_out * const qp_out, void *ptr)
+void tree_qp_out_create(const int Nn, const int * const nx, const int * const nu,
+    const int * const nc, tree_qp_out * const qp_out, void *ptr)
 {
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -379,15 +379,15 @@ void tree_ocp_qp_out_create(const int Nn, const int * const nx, const int * cons
 
     qp_out->info.Nn = Nn;
 
-    assert((char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu, nc) >= c_ptr);
+    assert((char *)ptr + tree_qp_out_calculate_size(Nn, nx, nu, nc) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + tree_ocp_qp_out_calculate_size(Nn, nx, nu) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + tree_qp_out_calculate_size(Nn, nx, nu) - c_ptr);
     // exit(1);
 }
 
 
 
-void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in * const qp_in)
+void tree_qp_in_eliminate_x0(tree_qp_in * const qp_in)
 {
     int nx0 = qp_in->nx[0];
     int nc0 = qp_in->nc[0];
@@ -499,7 +499,7 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in * const qp_in)
 
     qp_in->nx[0] = 0;
 
-    tree_ocp_qp_in_set_x0_strvec(qp_in, &qp_in->xmin[0]);
+    tree_qp_in_set_x0_strvec(qp_in, &qp_in->xmin[0]);
 
     qp_in->Q[0].pA = NULL;
     qp_in->Q[0].m = 0;
@@ -515,7 +515,7 @@ void tree_ocp_qp_in_eliminate_x0(tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out * const qp_out)
+void tree_qp_out_eliminate_x0(tree_qp_out * const qp_out)
 {
     qp_out->x[0].pa = NULL;
     qp_out->x[0].m = 0;
@@ -526,8 +526,8 @@ void tree_ocp_qp_out_eliminate_x0(tree_ocp_qp_out * const qp_out)
 
 
 
-void tree_ocp_qp_out_calculate_KKT_res(const tree_ocp_qp_in * const qp_in,
-    const tree_ocp_qp_out * const qp_out, double *res)
+void tree_qp_out_calculate_KKT_res(const tree_qp_in * const qp_in,
+    const tree_qp_out * const qp_out, double *res)
 {
     int Nn = qp_in->N;
     int nz = total_number_of_primal_variables(qp_in);
@@ -752,7 +752,7 @@ void tree_ocp_qp_out_calculate_KKT_res(const tree_ocp_qp_in * const qp_in,
 
 
 
-double tree_ocp_qp_out_max_KKT_res(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out)
+double tree_qp_out_max_KKT_res(const tree_qp_in * const qp_in, const tree_qp_out * const qp_out)
 {
     int nz = total_number_of_primal_variables(qp_in);
     int ne = total_number_of_dynamic_constraints(qp_in);
@@ -760,7 +760,7 @@ double tree_ocp_qp_out_max_KKT_res(const tree_ocp_qp_in * const qp_in, const tre
     int nKKT = 3*nz + ne + 2*ng;
 
     double *res = malloc(nKKT*sizeof(double));
-    tree_ocp_qp_out_calculate_KKT_res(qp_in, qp_out, res);
+    tree_qp_out_calculate_KKT_res(qp_in, qp_out, res);
 
     double err = ABS(res[0]);
     double cur;
@@ -775,7 +775,7 @@ double tree_ocp_qp_out_max_KKT_res(const tree_ocp_qp_in * const qp_in, const tre
 
 
 
-int total_number_of_states(const tree_ocp_qp_in * const qp_in)
+int total_number_of_states(const tree_qp_in * const qp_in)
 {
     int nx = 0;
 
@@ -786,7 +786,7 @@ int total_number_of_states(const tree_ocp_qp_in * const qp_in)
 
 
 
-int max_number_of_states(const tree_ocp_qp_in * const qp_in)
+int max_number_of_states(const tree_qp_in * const qp_in)
 {
     int nx_max = 0;
 
@@ -797,7 +797,7 @@ int max_number_of_states(const tree_ocp_qp_in * const qp_in)
 
 
 
-int total_number_of_controls(const tree_ocp_qp_in * const qp_in)
+int total_number_of_controls(const tree_qp_in * const qp_in)
 {
     int nu = 0;
 
@@ -808,7 +808,7 @@ int total_number_of_controls(const tree_ocp_qp_in * const qp_in)
 
 
 
-int max_number_of_controls(const tree_ocp_qp_in * const qp_in)
+int max_number_of_controls(const tree_qp_in * const qp_in)
 {
     int nu_max = 0;
 
@@ -819,14 +819,14 @@ int max_number_of_controls(const tree_ocp_qp_in * const qp_in)
 
 
 
-int total_number_of_primal_variables(const tree_ocp_qp_in * const qp_in)
+int total_number_of_primal_variables(const tree_qp_in * const qp_in)
 {
     return total_number_of_controls(qp_in) + total_number_of_states(qp_in);
 }
 
 
 
-int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in)
+int total_number_of_dynamic_constraints(const tree_qp_in * const qp_in)
 {
     int ne = 0;
 
@@ -836,7 +836,7 @@ int total_number_of_dynamic_constraints(const tree_ocp_qp_in * const qp_in)
 
 
 
-int total_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
+int total_number_of_general_constraints(const tree_qp_in * const qp_in)
 {
     int ng = 0;
 
@@ -846,7 +846,7 @@ int total_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
 
 
 
-int max_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
+int max_number_of_general_constraints(const tree_qp_in * const qp_in)
 {
     int ng_max = 0;
 
@@ -857,7 +857,7 @@ int max_number_of_general_constraints(const tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_edge_A_colmajor(const double * const A, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -904,7 +904,7 @@ void tree_ocp_qp_in_set_edge_A_colmajor(const double * const A, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_edge_A_colmajor(double * const A, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_edge_A_colmajor(double * const A, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -935,7 +935,7 @@ void tree_ocp_qp_in_get_edge_A_colmajor(double * const A, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_edge_B_colmajor(const double * const B, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -969,7 +969,7 @@ void tree_ocp_qp_in_set_edge_B_colmajor(const double * const B, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_edge_B_colmajor(double * const B, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_edge_B_colmajor(double * const B, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1000,7 +1000,7 @@ void tree_ocp_qp_in_get_edge_B_colmajor(double * const B, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_edge_b(const double * const b, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1034,7 +1034,7 @@ void tree_ocp_qp_in_set_edge_b(const double * const b, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_get_edge_b(double * const b, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_edge_b(double * const b, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1056,27 +1056,27 @@ void tree_ocp_qp_in_get_edge_b(double * const b, const tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
-    const double * const b, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_edge_dynamics_colmajor(const double * const A, const double * const B,
+    const double * const b, tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_set_edge_A_colmajor(A, -1, qp_in, indx);
-    tree_ocp_qp_in_set_edge_B_colmajor(B, -1, qp_in, indx);
-    tree_ocp_qp_in_set_edge_b(b, qp_in, indx);
+    tree_qp_in_set_edge_A_colmajor(A, -1, qp_in, indx);
+    tree_qp_in_set_edge_B_colmajor(B, -1, qp_in, indx);
+    tree_qp_in_set_edge_b(b, qp_in, indx);
 }
 
 
 
-void tree_ocp_qp_in_get_edge_dynamics_colmajor(double * const A, double * const B,
-    double * const b, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_edge_dynamics_colmajor(double * const A, double * const B,
+    double * const b, const tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_get_edge_A_colmajor(A, -1, qp_in, indx);
-    tree_ocp_qp_in_get_edge_B_colmajor(B, -1, qp_in, indx);
-    tree_ocp_qp_in_get_edge_b(b, qp_in, indx);
+    tree_qp_in_get_edge_A_colmajor(A, -1, qp_in, indx);
+    tree_qp_in_get_edge_B_colmajor(B, -1, qp_in, indx);
+    tree_qp_in_get_edge_b(b, qp_in, indx);
 }
 
 
 
-void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     // TODO(dimitris): assert is_Q_symmetric, is_Q_pos_def
 
@@ -1107,7 +1107,7 @@ void tree_ocp_qp_in_set_node_Q_colmajor(const double * const Q, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_node_Q_colmajor(double * const Q, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_Q_colmajor(double * const Q, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1133,7 +1133,7 @@ void tree_ocp_qp_in_get_node_Q_colmajor(double * const Q, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_R_colmajor(const double * const R, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1162,7 +1162,7 @@ void tree_ocp_qp_in_set_node_R_colmajor(const double * const R, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_node_R_colmajor(double * const R, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_R_colmajor(double * const R, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1188,7 +1188,7 @@ void tree_ocp_qp_in_get_node_R_colmajor(double * const R, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_S_colmajor(const double * const S, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1229,7 +1229,7 @@ void tree_ocp_qp_in_set_node_S_colmajor(const double * const S, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_node_S_colmajor(double * const S, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_S_colmajor(double * const S, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1256,7 +1256,7 @@ void tree_ocp_qp_in_get_node_S_colmajor(double * const S, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_q(const double * const q, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1274,7 +1274,7 @@ void tree_ocp_qp_in_set_node_q(const double * const q, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_get_node_q(double * const q, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_q(double * const q, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1290,7 +1290,7 @@ void tree_ocp_qp_in_get_node_q(double * const q, const tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_r(const double * const r, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1319,7 +1319,7 @@ void tree_ocp_qp_in_set_node_r(const double * const r, tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_get_node_r(double * const r, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_r(double * const r, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1336,32 +1336,32 @@ void tree_ocp_qp_in_get_node_r(double * const r, const tree_ocp_qp_in * const qp
 
 
 
-void tree_ocp_qp_in_set_node_objective_colmajor(const double * const Q, const double * const R, const double * const S,
-    const double * const q, const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_objective_colmajor(const double * const Q, const double * const R, const double * const S,
+    const double * const q, const double * const r, tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_set_node_Q_colmajor(Q, -1, qp_in, indx);
-    tree_ocp_qp_in_set_node_R_colmajor(R, -1, qp_in, indx);
-    tree_ocp_qp_in_set_node_S_colmajor(S, -1, qp_in, indx);
-    tree_ocp_qp_in_set_node_q(q, qp_in, indx);
-    tree_ocp_qp_in_set_node_r(r, qp_in, indx);
+    tree_qp_in_set_node_Q_colmajor(Q, -1, qp_in, indx);
+    tree_qp_in_set_node_R_colmajor(R, -1, qp_in, indx);
+    tree_qp_in_set_node_S_colmajor(S, -1, qp_in, indx);
+    tree_qp_in_set_node_q(q, qp_in, indx);
+    tree_qp_in_set_node_r(r, qp_in, indx);
 }
 
 
 
-void tree_ocp_qp_in_get_node_objective_colmajor(double * const Q, double * const R, double * const S,
-    double * const q, double * const r, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_objective_colmajor(double * const Q, double * const R, double * const S,
+    double * const q, double * const r, const tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_get_node_Q_colmajor(Q, -1, qp_in, indx);
-    tree_ocp_qp_in_get_node_R_colmajor(R, -1, qp_in, indx);
-    tree_ocp_qp_in_get_node_S_colmajor(S, -1, qp_in, indx);
-    tree_ocp_qp_in_get_node_q(q, qp_in, indx);
-    tree_ocp_qp_in_get_node_r(r, qp_in, indx);
+    tree_qp_in_get_node_Q_colmajor(Q, -1, qp_in, indx);
+    tree_qp_in_get_node_R_colmajor(R, -1, qp_in, indx);
+    tree_qp_in_get_node_S_colmajor(S, -1, qp_in, indx);
+    tree_qp_in_get_node_q(q, qp_in, indx);
+    tree_qp_in_get_node_r(r, qp_in, indx);
 }
 
 
 
-void tree_ocp_qp_in_set_node_objective_diag(const double * const Qd, const double * const Rd,
-    const double * const q, const double * const r, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_objective_diag(const double * const Qd, const double * const Rd,
+    const double * const q, const double * const r, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1417,7 +1417,7 @@ void tree_ocp_qp_in_set_node_objective_diag(const double * const Qd, const doubl
 
 
 
-void tree_ocp_qp_in_set_node_xmin(const double * const xmin, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_xmin(const double * const xmin, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1435,7 +1435,7 @@ void tree_ocp_qp_in_set_node_xmin(const double * const xmin, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_xmin(double * const xmin, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_xmin(double * const xmin, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1451,7 +1451,7 @@ void tree_ocp_qp_in_get_node_xmin(double * const xmin, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_xmax(const double * const xmax, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1469,7 +1469,7 @@ void tree_ocp_qp_in_set_node_xmax(const double * const xmax, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_xmax(double * const xmax, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_xmax(double * const xmax, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1485,7 +1485,7 @@ void tree_ocp_qp_in_get_node_xmax(double * const xmax, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_umin(const double * const umin, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_umin(const double * const umin, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1503,7 +1503,7 @@ void tree_ocp_qp_in_set_node_umin(const double * const umin, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_umin(double * const umin, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_umin(double * const umin, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1519,7 +1519,7 @@ void tree_ocp_qp_in_get_node_umin(double * const umin, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_umax(const double * const umax, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1537,7 +1537,7 @@ void tree_ocp_qp_in_set_node_umax(const double * const umax, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_umax(double * const umax, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_umax(double * const umax, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1553,31 +1553,31 @@ void tree_ocp_qp_in_get_node_umax(double * const umax, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_bounds(const double * const xmin, const double * const xmax,
-    const double * const umin, const double * const umax, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_bounds(const double * const xmin, const double * const xmax,
+    const double * const umin, const double * const umax, tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_set_node_xmin(xmin, qp_in, indx);
-    tree_ocp_qp_in_set_node_xmax(xmax, qp_in, indx);
-    tree_ocp_qp_in_set_node_umin(umin, qp_in, indx);
-    tree_ocp_qp_in_set_node_umax(umax, qp_in, indx);
+    tree_qp_in_set_node_xmin(xmin, qp_in, indx);
+    tree_qp_in_set_node_xmax(xmax, qp_in, indx);
+    tree_qp_in_set_node_umin(umin, qp_in, indx);
+    tree_qp_in_set_node_umax(umax, qp_in, indx);
 
     // TODO(dimitris): assert lower bounds <= upper bounds
 }
 
 
 
-void tree_ocp_qp_in_get_node_bounds(double * const xmin, double * const xmax,
-    double * const umin, double * const umax, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_bounds(double * const xmin, double * const xmax,
+    double * const umin, double * const umax, const tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_get_node_xmin(xmin, qp_in, indx);
-    tree_ocp_qp_in_get_node_xmax(xmax, qp_in, indx);
-    tree_ocp_qp_in_get_node_umin(umin, qp_in, indx);
-    tree_ocp_qp_in_get_node_umax(umax, qp_in, indx);
+    tree_qp_in_get_node_xmin(xmin, qp_in, indx);
+    tree_qp_in_get_node_xmax(xmax, qp_in, indx);
+    tree_qp_in_get_node_umin(umin, qp_in, indx);
+    tree_qp_in_get_node_umax(umax, qp_in, indx);
 }
 
 
 
-void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_C_colmajor(const double * const C, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1618,7 +1618,7 @@ void tree_ocp_qp_in_set_node_C_colmajor(const double * const C, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_node_C_colmajor(double * const C, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_C_colmajor(double * const C, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1645,7 +1645,7 @@ void tree_ocp_qp_in_get_node_C_colmajor(double * const C, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_D_colmajor(const double * const D, const int lda, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1676,7 +1676,7 @@ void tree_ocp_qp_in_set_node_D_colmajor(const double * const D, const int lda, t
 
 
 
-void tree_ocp_qp_in_get_node_D_colmajor(double * const D, const int lda, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_D_colmajor(double * const D, const int lda, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
     int lda_mod;
@@ -1703,7 +1703,7 @@ void tree_ocp_qp_in_get_node_D_colmajor(double * const D, const int lda, const t
 
 
 
-void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_dmin(const double * const dmin, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1732,7 +1732,7 @@ void tree_ocp_qp_in_set_node_dmin(const double * const dmin, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_dmin(double * const dmin, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_dmin(double * const dmin, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1749,7 +1749,7 @@ void tree_ocp_qp_in_get_node_dmin(double * const dmin, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_dmax(const double * const dmax, tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1778,7 +1778,7 @@ void tree_ocp_qp_in_set_node_dmax(const double * const dmax, tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_get_node_dmax(double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_dmax(double * const dmax, const tree_qp_in * const qp_in, const int indx)
 {
     int Nn = qp_in->N;
 
@@ -1795,35 +1795,35 @@ void tree_ocp_qp_in_get_node_dmax(double * const dmax, const tree_ocp_qp_in * co
 
 
 
-void tree_ocp_qp_in_set_node_general_constraints(const double * const C, const double * const D,
-    const double * const dmin, const double * const dmax, tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_set_node_general_constraints(const double * const C, const double * const D,
+    const double * const dmin, const double * const dmax, tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_set_node_C_colmajor(C, -1, qp_in, indx);
-    tree_ocp_qp_in_set_node_D_colmajor(D, -1, qp_in, indx);
-    tree_ocp_qp_in_set_node_dmin(dmin, qp_in, indx);
-    tree_ocp_qp_in_set_node_dmax(dmax, qp_in, indx);
+    tree_qp_in_set_node_C_colmajor(C, -1, qp_in, indx);
+    tree_qp_in_set_node_D_colmajor(D, -1, qp_in, indx);
+    tree_qp_in_set_node_dmin(dmin, qp_in, indx);
+    tree_qp_in_set_node_dmax(dmax, qp_in, indx);
 
     // TODO(dimitris): assert lower bounds <= upper bounds
 }
 
 
 
-void tree_ocp_qp_in_get_node_general_constraints(double * const C, double * const D,
-    double * const dmin, double * const dmax, const tree_ocp_qp_in * const qp_in, const int indx)
+void tree_qp_in_get_node_general_constraints(double * const C, double * const D,
+    double * const dmin, double * const dmax, const tree_qp_in * const qp_in, const int indx)
 {
-    tree_ocp_qp_in_get_node_C_colmajor(C, -1, qp_in, indx);
-    tree_ocp_qp_in_get_node_D_colmajor(D, -1, qp_in, indx);
-    tree_ocp_qp_in_get_node_dmin(dmin, qp_in, indx);
-    tree_ocp_qp_in_get_node_dmax(dmax, qp_in, indx);
+    tree_qp_in_get_node_C_colmajor(C, -1, qp_in, indx);
+    tree_qp_in_get_node_D_colmajor(D, -1, qp_in, indx);
+    tree_qp_in_get_node_dmin(dmin, qp_in, indx);
+    tree_qp_in_get_node_dmax(dmax, qp_in, indx);
 }
 
 
 
 // NOTE(dimitris): weights are scaled to minimize the average cost over all scenarios
-void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
+void tree_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
     double *Q, double *q, double *P, double *p, double *R, double *r,
     double *xmin, double *xmax, double *umin, double *umax, double *x0,
-    double *C, double *CN, double *D, double *dmin, double *dmax, tree_ocp_qp_in *qp_in)
+    double *C, double *CN, double *D, double *dmin, double *dmax, tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     struct node *tree = qp_in->tree;
@@ -1879,16 +1879,16 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
             nxp = qp_in->nx[tree[ii].dad];
             nup = qp_in->nu[tree[ii].dad];
 
-            tree_ocp_qp_in_set_edge_dynamics_colmajor(&A[re*nx*nxp], &B[re*nx*nup], &b[re*nx], qp_in, ii-1);
+            tree_qp_in_set_edge_dynamics_colmajor(&A[re*nx*nxp], &B[re*nx*nup], &b[re*nx], qp_in, ii-1);
         }
 
         if (tree[ii].nkids > 0)
         {
-            tree_ocp_qp_in_set_node_objective_diag(Q, R, q, r, qp_in, ii);
+            tree_qp_in_set_node_objective_diag(Q, R, q, r, qp_in, ii);
         }
         else
         {
-            tree_ocp_qp_in_set_node_objective_diag(P, NULL, p, NULL, qp_in, ii);
+            tree_qp_in_set_node_objective_diag(P, NULL, p, NULL, qp_in, ii);
         }
 
         // scale objective function with number of nodes per stage
@@ -1915,28 +1915,28 @@ void tree_ocp_qp_in_fill_lti_data_diag_weights(double *A, double *B, double *b,
 
         if (ii == 0)
         {
-            tree_ocp_qp_in_set_node_bounds(x0, x0, umin, umax, qp_in, ii);
+            tree_qp_in_set_node_bounds(x0, x0, umin, umax, qp_in, ii);
         }
         else
         {
-            tree_ocp_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
+            tree_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
         }
 
         if (tree[ii].nkids > 0)
         {
-            tree_ocp_qp_in_set_node_general_constraints(C, D, dmin, dmax, qp_in, ii);
+            tree_qp_in_set_node_general_constraints(C, D, dmin, dmax, qp_in, ii);
         }
         else
         {
             // TODO: maybe we need dNmin, dNmax?
-            tree_ocp_qp_in_set_node_general_constraints(CN, NULL, dmin, dmax, qp_in, ii);
+            tree_qp_in_set_node_general_constraints(CN, NULL, dmin, dmax, qp_in, ii);
         }
     }
 }
 
 
 
-void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_ocp_qp_in *qp_in)
+void tree_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
 
@@ -1951,7 +1951,7 @@ void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, t
     for(int ii = 0; ii < Nn-1; ii++)
     {
         #if 1
-        tree_ocp_qp_in_set_edge_dynamics_colmajor(&A[idxA], &B[idxB], &b[idxb], qp_in, ii);
+        tree_qp_in_set_edge_dynamics_colmajor(&A[idxA], &B[idxB], &b[idxb], qp_in, ii);
         idxA += sA[ii].m * sA[ii].n;
         idxB += sB[ii].m * sB[ii].n;
         idxb += sb[ii].m;
@@ -1970,7 +1970,7 @@ void tree_ocp_qp_in_set_ltv_dynamics_colmajor(double *A, double *B, double *b, t
 
 
 
-void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_ocp_qp_in *qp_in)
+void tree_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
 
@@ -1988,7 +1988,7 @@ void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, do
     for (int ii = 0; ii < Nn; ii++)
     {
         #if 1
-        tree_ocp_qp_in_set_node_objective_diag(&Qd[idxQ], &Rd[idxR], &q[idxQ], &r[idxR], qp_in, ii);
+        tree_qp_in_set_node_objective_diag(&Qd[idxQ], &Rd[idxR], &q[idxQ], &r[idxR], qp_in, ii);
         idxQ += sQ[ii].m;
         idxR += sR[ii].m;
         #else
@@ -2013,8 +2013,8 @@ void tree_ocp_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, do
 
 
 
-void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
-    tree_ocp_qp_in *qp_in)
+void tree_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, double *q, double *r,
+    tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
 
@@ -2033,7 +2033,7 @@ void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, 
     for(int ii = 0; ii < Nn; ii++)
     {
         #if 1
-        tree_ocp_qp_in_set_node_objective_colmajor(&Q[idxQ], &R[idxR], &S[idxS], &q[idxq], &r[idxr], qp_in, ii);
+        tree_qp_in_set_node_objective_colmajor(&Q[idxQ], &R[idxR], &S[idxS], &q[idxq], &r[idxr], qp_in, ii);
         idxQ += sQ[ii].m * sQ[ii].n;
         idxR += sR[ii].m * sR[ii].n;
         idxS += sS[ii].m * sS[ii].n;
@@ -2060,8 +2060,8 @@ void tree_ocp_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, 
 
 
 
-void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax,
-    tree_ocp_qp_in *qp_in)
+void tree_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax,
+    tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     int nx = qp_in->nx[1];
@@ -2077,13 +2077,13 @@ void tree_ocp_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, d
         assert(qp_in->nx[ii] == nx || qp_in->nx[ii] == 0);
         assert(qp_in->nu[ii] == nu || qp_in->nu[ii] == 0);
 
-        tree_ocp_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
+        tree_qp_in_set_node_bounds(xmin, xmax, umin, umax, qp_in, ii);
     }
 }
 
 
 
-void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
+void tree_qp_in_set_inf_bounds(tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     int *nx = qp_in->nx;
@@ -2112,7 +2112,7 @@ void tree_ocp_qp_in_set_inf_bounds(tree_ocp_qp_in *qp_in)
 
 
 
-void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx0)
+void tree_qp_in_set_x0_strvec(tree_qp_in *qp_in, struct blasfeo_dvec *sx0)
 {
     int Nn = qp_in->N;
     int nx0 = qp_in->nx[0];
@@ -2187,17 +2187,17 @@ void tree_ocp_qp_in_set_x0_strvec(tree_ocp_qp_in *qp_in, struct blasfeo_dvec *sx
 
 
 
-void tree_ocp_qp_in_set_x0_colmaj(tree_ocp_qp_in *qp_in, double *x0)
+void tree_qp_in_set_x0_colmaj(tree_qp_in *qp_in, double *x0)
 {
     struct blasfeo_dvec *sx0 = &qp_in->internal_memory.x0;
 
     blasfeo_pack_dvec(sx0->m, x0, sx0, 0);
-    tree_ocp_qp_in_set_x0_strvec(qp_in, sx0);
+    tree_qp_in_set_x0_strvec(qp_in, sx0);
 }
 
 
 
-void tree_ocp_qp_out_set_node_x(const double * const x, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_node_x(const double * const x, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2213,7 +2213,7 @@ void tree_ocp_qp_out_set_node_x(const double * const x, tree_ocp_qp_out * const 
 
 
 
-void tree_ocp_qp_out_get_node_x(double * const x, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_node_x(double * const x, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;  // TODO(dimitris): use the fact that Nn is stored here in other functions too
 
@@ -2229,7 +2229,7 @@ void tree_ocp_qp_out_get_node_x(double * const x, const tree_ocp_qp_out * const 
 
 
 
-void tree_ocp_qp_out_set_node_u(const double * const u, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_node_u(const double * const u, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2245,7 +2245,7 @@ void tree_ocp_qp_out_set_node_u(const double * const u, tree_ocp_qp_out * const 
 
 
 
-void tree_ocp_qp_out_get_node_u(double * const u, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_node_u(double * const u, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2261,7 +2261,7 @@ void tree_ocp_qp_out_get_node_u(double * const u, const tree_ocp_qp_out * const 
 
 
 
-void tree_ocp_qp_out_set_edge_lam(const double * const lam, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_edge_lam(const double * const lam, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2277,7 +2277,7 @@ void tree_ocp_qp_out_set_edge_lam(const double * const lam, tree_ocp_qp_out * co
 
 
 
-void tree_ocp_qp_out_get_edge_lam(double * const lam, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_edge_lam(double * const lam, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2293,7 +2293,7 @@ void tree_ocp_qp_out_get_edge_lam(double * const lam, const tree_ocp_qp_out * co
 
 
 
-void tree_ocp_qp_out_set_node_mu_u(const double * const mu_u, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_node_mu_u(const double * const mu_u, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2309,7 +2309,7 @@ void tree_ocp_qp_out_set_node_mu_u(const double * const mu_u, tree_ocp_qp_out * 
 
 
 
-void tree_ocp_qp_out_get_node_mu_u(double * const mu_u, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_node_mu_u(double * const mu_u, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2325,7 +2325,7 @@ void tree_ocp_qp_out_get_node_mu_u(double * const mu_u, const tree_ocp_qp_out * 
 
 
 
-void tree_ocp_qp_out_set_node_mu_x(const double * const mu_x, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_node_mu_x(const double * const mu_x, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2341,7 +2341,7 @@ void tree_ocp_qp_out_set_node_mu_x(const double * const mu_x, tree_ocp_qp_out * 
 
 
 
-void tree_ocp_qp_out_get_node_mu_x(double * const mu_x, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_node_mu_x(double * const mu_x, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2357,7 +2357,7 @@ void tree_ocp_qp_out_get_node_mu_x(double * const mu_x, const tree_ocp_qp_out * 
 
 
 
-void tree_ocp_qp_out_set_node_mu_d(const double * const mu_d, tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_set_node_mu_d(const double * const mu_d, tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 
@@ -2373,7 +2373,7 @@ void tree_ocp_qp_out_set_node_mu_d(const double * const mu_d, tree_ocp_qp_out * 
 
 
 
-void tree_ocp_qp_out_get_node_mu_d(double * const mu_d, const tree_ocp_qp_out * const qp_out, const int indx)
+void tree_qp_out_get_node_mu_d(double * const mu_d, const tree_qp_out * const qp_out, const int indx)
 {
     int Nn = qp_out->info.Nn;
 

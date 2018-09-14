@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/utils/types.h"
@@ -74,40 +74,40 @@ int main()
     // 0 - 2 - 5
 
     // set up QP data
-    tree_ocp_qp_in qp_in;
+    tree_qp_in qp_in;
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, nk);
+    int qp_in_size = tree_qp_in_calculate_size(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
+    tree_qp_in_create(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
-    tree_ocp_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
+    tree_qp_in_set_ltv_dynamics_colmajor(A, B, b, &qp_in);
 #ifdef CLIPPING
-    tree_ocp_qp_in_set_ltv_objective_diag(Qd, Rd, q, r, &qp_in);
+    tree_qp_in_set_ltv_objective_diag(Qd, Rd, q, r, &qp_in);
 #else
-    tree_ocp_qp_in_set_ltv_objective_colmajor(Q, R, S, q, r, &qp_in);
+    tree_qp_in_set_ltv_objective_colmajor(Q, R, S, q, r, &qp_in);
 #endif
-    tree_ocp_qp_in_set_inf_bounds(&qp_in);
+    tree_qp_in_set_inf_bounds(&qp_in);
 
 #if 0
     double x0[] = {1., 1.,};
-    tree_ocp_qp_in_set_x0_colmaj(&qp_in, x0);
+    tree_qp_in_set_x0_colmaj(&qp_in, x0);
 #endif
 
 #ifndef DATA
-    tree_ocp_qp_in_print(&qp_in);
+    tree_qp_in_print(&qp_in);
 #endif
 
     // set up QP solution
-    tree_ocp_qp_out qp_out;
+    tree_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
+    int qp_out_size = tree_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
+    tree_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
 #if 0
     // eliminate x0 variable
-    tree_ocp_qp_in_eliminate_x0(&qp_in);
-    tree_ocp_qp_out_eliminate_x0(&qp_out);
+    tree_qp_in_eliminate_x0(&qp_in);
+    tree_qp_out_eliminate_x0(&qp_out);
 #endif
 
     // set up QP solver
@@ -166,7 +166,7 @@ int main()
 #if PROFILE > 0 && PRINT_LEVEL > 0
     print_timers(qp_out.info.iter);
 #endif
-    tree_ocp_qp_out_print(Nn, &qp_out);
+    tree_qp_out_print(Nn, &qp_out);
     print_blasfeo_target();
 #endif
 
@@ -208,7 +208,7 @@ int main()
 
     printf("ITERS:\t%d\n", qp_out.info.iter);
 
-    double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    double kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     printf("KKT:\t%2.2e\n", kkt_err);
     printf("ERROR:\t%e\n\n", max_err);
 

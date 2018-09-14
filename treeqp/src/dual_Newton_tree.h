@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 #include "treeqp/src/dual_Newton_common.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/types.h"
 
 #include <blasfeo_target.h>
@@ -43,19 +43,19 @@ extern "C" {
 
 typedef struct stage_qp_fcn_ptrs_
 {
-    answer_t (*is_applicable)(tree_ocp_qp_in *qp_in, int idx);
+    answer_t (*is_applicable)(tree_qp_in *qp_in, int idx);
     int (*calculate_size)(int nx, int nu, int nc);
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data)(int nx, int nu, int nc, void *data, char **c_double_ptr);
-    return_t (*init)(tree_ocp_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
-    return_t (*solve_extended)(tree_ocp_qp_in *qp_in, int idx, void *work);
-    return_t (*solve)(tree_ocp_qp_in *qp_in, int idx, void *work);
-    void (*set_CmPnCmT)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
-    void (*add_EPmE)(tree_ocp_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
-    void (*add_CmPnCkT)(tree_ocp_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
-    void (*eval_dual_term)(tree_ocp_qp_in *qp_in, int idx, void *work_);
-    void (*export_mu)(tree_ocp_qp_out *qp_out, int idx, void *work_);
+    return_t (*init)(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
+    return_t (*solve_extended)(tree_qp_in *qp_in, int idx, void *work);
+    return_t (*solve)(tree_qp_in *qp_in, int idx, void *work);
+    void (*set_CmPnCmT)(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_EPmE)(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_CmPnCkT)(tree_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
+    void (*eval_dual_term)(tree_qp_in *qp_in, int idx, void *work_);
+    void (*export_mu)(tree_qp_out *qp_out, int idx, void *work_);
 } stage_qp_fcn_ptrs;
 
 
@@ -147,17 +147,17 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts);
 
 
 
-int treeqp_tdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts);
+int treeqp_tdunes_calculate_size(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts);
 
-void treeqp_tdunes_create(tree_ocp_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work, void *ptr);
+void treeqp_tdunes_create(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work, void *ptr);
 
 void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work);
 
-return_t treeqp_tdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
+return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
 
 
 // TODO(dimitris): move to utils!
-void write_solution_to_txt(tree_ocp_qp_in *qp_in, int Np, int iter, struct node *tree, treeqp_tdunes_workspace *work);
+void write_solution_to_txt(tree_qp_in *qp_in, int Np, int iter, struct node *tree, treeqp_tdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

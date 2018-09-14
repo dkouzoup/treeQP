@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/types.h"
 
 #include <blasfeo_target.h>
@@ -91,19 +91,19 @@ void treeqp_hpmpc_opts_set_default(int Nn, treeqp_hpmpc_opts_t *opts);
 
 int number_of_bounds(const struct blasfeo_dvec *vmin, const struct blasfeo_dvec *vmax);
 
-void setup_nb(tree_ocp_qp_in *qp_in, int *nb);
+void setup_nb(tree_qp_in *qp_in, int *nb);
 
-int get_size_idxb(tree_ocp_qp_in *qp_in);
+int get_size_idxb(tree_qp_in *qp_in);
 
-void setup_nb_idxb(tree_ocp_qp_in *qp_in, int *nb, int **idxb);
+void setup_nb_idxb(tree_qp_in *qp_in, int *nb, int **idxb);
 
 
 
-int treeqp_hpmpc_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts);
+int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts);
 
-void treeqp_hpmpc_create(tree_ocp_qp_in *qp_in, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work, void *ptr);
+void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work, void *ptr);
 
-return_t treeqp_hpmpc_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work);
+return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work);
 
 
 
