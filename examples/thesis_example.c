@@ -54,10 +54,8 @@ int main() {
 
     tree_qp_in qp_in;
 
-    int qp_in_size =
-        tree_qp_in_calculate_size(6, nx, nu, NULL, nk);
-
-    void *in_mem = malloc(qp_in_size);
+    int in_size = tree_qp_in_calculate_size(6, nx, nu, NULL, nk);
+    void *in_mem = malloc(in_size);
     tree_qp_in_create(6, nx, nu, NULL, nk, &qp_in, in_mem);
 
     double A1[] = {1.1, 3.3, 2.2, 4.4};
@@ -69,16 +67,11 @@ int main() {
     double b1[] = {0.0, 0.0};
     double b2[] = {1.0, 1.0};
 
-    tree_qp_in_set_edge_dynamics_colmajor(A1, B1, b1,
-        &qp_in, 0);
-    tree_qp_in_set_edge_dynamics_colmajor(A1, B1, b1,
-        &qp_in, 2);
-    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2,
-        &qp_in, 1);
-    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2,
-        &qp_in, 3);
-    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2,
-        &qp_in, 4);
+    tree_qp_in_set_edge_dynamics_colmajor(A1, B1, b1, &qp_in, 0);
+    tree_qp_in_set_edge_dynamics_colmajor(A1, B1, b1, &qp_in, 2);
+    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2, &qp_in, 1);
+    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2, &qp_in, 3);
+    tree_qp_in_set_edge_dynamics_colmajor(A2, B2, b2, &qp_in, 4);
 
     double Qd[] = {2.0, 2.0};
     double Rd[] = {1.0};
@@ -86,8 +79,7 @@ int main() {
     double r[] = {0.0};
 
     for (int ii = 0; ii < 6; ii++)
-        tree_qp_in_set_node_objective_diag(Qd, Rd, q, r,
-            &qp_in, ii);
+        tree_qp_in_set_node_objective_diag(Qd, Rd, q, r, &qp_in, ii);
 
     double x0[] = {2.1, 2.1};
     double umin[] = {-1};
@@ -106,8 +98,8 @@ int main() {
 
     tree_qp_out qp_out;
 
-    int qp_out_size = tree_qp_out_calculate_size(6, nx, nu, NULL);
-    void *out_mem = malloc(qp_out_size);
+    int out_size = tree_qp_out_calculate_size(6, nx, nu, NULL);
+    void *out_mem = malloc(out_size);
     tree_qp_out_create(6, nx, nu, NULL, &qp_out, out_mem);
 
     #ifndef USE_HPMPC
@@ -118,16 +110,15 @@ int main() {
     treeqp_tdunes_opts_set_default(6, &opts);
 
     for (int ii = 0; ii < 6; ii++)
-    {
         opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
-    }
+
     opts.maxIter = 100;
 
     treeqp_tdunes_workspace work;
 
-    int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
-    void *solver_mem = malloc(treeqp_size);
-    treeqp_tdunes_create(&qp_in, &opts, &work, solver_mem);
+    int alg_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
+    void *alg_mem = malloc(alg_size);
+    treeqp_tdunes_create(&qp_in, &opts, &work, alg_mem);
 
     int status = treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 
@@ -141,9 +132,9 @@ int main() {
 
     treeqp_hpmpc_workspace work;
 
-    int treeqp_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
-    void *solver_mem = malloc(treeqp_size);
-    treeqp_hpmpc_create(&qp_in, &opts, &work, solver_mem);
+    int alg_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
+    void *alg_mem = malloc(alg_size);
+    treeqp_hpmpc_create(&qp_in, &opts, &work, alg_mem);
 
     int status = treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 
@@ -155,12 +146,13 @@ int main() {
 
     printf("\nSolver status: %d\n", status);
     printf("\nNumber of iterations: %d\n", qp_out.info.iter);
-    printf("\nMaximum error in KKT residuals: %2.2e\n\n", tree_qp_out_max_KKT_res(&qp_in, &qp_out));
+    printf("\nMaximum error in KKT residuals: %2.2e\n\n",
+        tree_qp_out_max_KKT_res(&qp_in, &qp_out));
 
+    free(alg_mem);
+    free(opts_mem);
     free(out_mem);
     free(in_mem);
-    free(opts_mem);
-    free(solver_mem);
 
     return 0;
 }
