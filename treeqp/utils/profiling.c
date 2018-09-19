@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "treeqp/utils/profiling.h"
 #include "treeqp/utils/utils.h"
@@ -34,60 +35,111 @@
 
 #if PROFILE > 0
 
+int timers_calculate_size(int num_iter)
+{
+    int bytes = 0;
+
+    #if PROFILE > 1
+    bytes += 2*num_iter*sizeof(double);  // iter_times, min_iter_times
+    bytes += 1*num_iter*sizeof(int);  // ls_iters
+    #endif
+
+    #if PROFILE > 2
+    bytes += 8*num_iter*sizeof(double);  // stage_qps_times, ..., min_line_search_times
+    #endif
+
+    return bytes;
+}
+
+
+
+void timers_create(int num_iter, treeqp_profiling_t *timings, void *ptr)
+{
+    // char pointer
+    char *c_ptr = (char *) ptr;
+
+    timings->num_iter = num_iter;
+
+    // doubles
+    #if PROFILE > 1
+    timings->iter_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->min_iter_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    #endif
+
+    #if PROFILE > 2
+    timings->stage_qps_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->build_dual_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->newton_direction_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->line_search_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->min_stage_qps_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->min_build_dual_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->min_newton_direction_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    timings->min_line_search_times = (double *)c_ptr;
+    c_ptr += num_iter*sizeof(double);
+    #endif
+
+    // ints
+    #if PROFILE > 1
+    timings->ls_iters = (int *)c_ptr;
+    c_ptr += num_iter*sizeof(int);
+    #endif
+
+    assert((char *)ptr + timers_calculate_size(num_iter) >= c_ptr);
+}
+
+
+
 // assign NaNs everywhere
-void initialize_timers(int num_iter)
+void timers_initialize(treeqp_profiling_t *timings)
 {
-    timings.num_iter = num_iter;
-    timings.total_time = 0.0/0.0;
-    timings.run_indx = 0;
+    int num_iter = timings->num_iter;
+
+    timings->total_time = 0.0/0.0;
+    timings->run_indx = 0;
 
     #if PROFILE > 1
-    timings.iter_times = malloc(num_iter*sizeof(double));
-    timings.min_iter_times = malloc(num_iter*sizeof(double));
-    timings.ls_iters = malloc(num_iter*sizeof(int));
-
     for (int ii = 0; ii < num_iter; ii++)
     {
-        timings.iter_times[ii] = 0.0/0.0;
-        timings.ls_iters[ii] = 0;
+        timings->iter_times[ii] = 0.0/0.0;
+        timings->ls_iters[ii] = 0;
     }
     #endif
 
     #if PROFILE > 2
-    timings.stage_qps_times = malloc(num_iter*sizeof(double));
-    timings.build_dual_times = malloc(num_iter*sizeof(double));
-    timings.newton_direction_times = malloc(num_iter*sizeof(double));
-    timings.line_search_times = malloc(num_iter*sizeof(double));
-
-    timings.min_stage_qps_times = malloc(num_iter*sizeof(double));
-    timings.min_build_dual_times = malloc(num_iter*sizeof(double));
-    timings.min_newton_direction_times = malloc(num_iter*sizeof(double));
-    timings.min_line_search_times = malloc(num_iter*sizeof(double));
-
     for (int ii = 0; ii < num_iter; ii++)
     {
-        timings.stage_qps_times[ii] = 0.0/0.0;
-        timings.build_dual_times[ii] = 0.0/0.0;
-        timings.newton_direction_times[ii] = 0.0/0.0;
-        timings.line_search_times[ii] = 0.0/0.0;
+        timings->stage_qps_times[ii] = 0.0/0.0;
+        timings->build_dual_times[ii] = 0.0/0.0;
+        timings->newton_direction_times[ii] = 0.0/0.0;
+        timings->line_search_times[ii] = 0.0/0.0;
     }
     #endif
 }
 
 
 
-void update_min_timers(void)
+// update min timers
+void timers_update(treeqp_profiling_t *timings)
 {
-    int run_indx = timings.run_indx;
-    int num_iter = timings.num_iter;
+    int run_indx = timings->run_indx;
+    int num_iter = timings->num_iter;
 
     if (run_indx == 0)
     {
-        timings.min_total_time = timings.total_time;
+        timings->min_total_time = timings->total_time;
     }
     else
     {
-        timings.min_total_time = MIN(timings.min_total_time, timings.total_time);
+        timings->min_total_time = MIN(timings->min_total_time, timings->total_time);
     }
 
     #if PROFILE > 1
@@ -95,21 +147,21 @@ void update_min_timers(void)
     {
         for (int ii = 0; ii < num_iter; ii++)
         {
-            timings.min_iter_times[ii] = timings.iter_times[ii];
+            timings->min_iter_times[ii] = timings->iter_times[ii];
         }
     }
     else
     {
         for (int ii = 0; ii < num_iter; ii++)
         {
-            timings.min_iter_times[ii] = MIN(timings.min_iter_times[ii], timings.iter_times[ii]);
+            timings->min_iter_times[ii] = MIN(timings->min_iter_times[ii], timings->iter_times[ii]);
         }
     }
     if (run_indx == 0)
     {
         for (int ii = 0; ii < num_iter; ii++)
         {
-            timings.total_ls_iter += timings.ls_iters[ii];
+            timings->total_ls_iter += timings->ls_iters[ii];
         }
     }
     #endif
@@ -119,39 +171,39 @@ void update_min_timers(void)
     {
         for (int ii = 0; ii < num_iter; ii++)
         {
-            timings.min_stage_qps_times[ii] = timings.stage_qps_times[ii];
-            timings.min_build_dual_times[ii] = timings.build_dual_times[ii];
-            timings.min_newton_direction_times[ii] = timings.newton_direction_times[ii];
-            timings.min_line_search_times[ii] = timings.line_search_times[ii];
+            timings->min_stage_qps_times[ii] = timings->stage_qps_times[ii];
+            timings->min_build_dual_times[ii] = timings->build_dual_times[ii];
+            timings->min_newton_direction_times[ii] = timings->newton_direction_times[ii];
+            timings->min_line_search_times[ii] = timings->line_search_times[ii];
         }
     }
     else
     {
         for (int ii = 0; ii < num_iter; ii++)
         {
-            timings.min_stage_qps_times[ii] =
-                MIN(timings.min_stage_qps_times[ii], timings.stage_qps_times[ii]);
-            timings.min_build_dual_times[ii] =
-                MIN(timings.min_build_dual_times[ii], timings.build_dual_times[ii]);
-            timings.min_newton_direction_times[ii] =
-                MIN(timings.min_newton_direction_times[ii], timings.newton_direction_times[ii]);
-            timings.min_line_search_times[ii] =
-                MIN(timings.min_line_search_times[ii], timings.line_search_times[ii]);
+            timings->min_stage_qps_times[ii] =
+                MIN(timings->min_stage_qps_times[ii], timings->stage_qps_times[ii]);
+            timings->min_build_dual_times[ii] =
+                MIN(timings->min_build_dual_times[ii], timings->build_dual_times[ii]);
+            timings->min_newton_direction_times[ii] =
+                MIN(timings->min_newton_direction_times[ii], timings->newton_direction_times[ii]);
+            timings->min_line_search_times[ii] =
+                MIN(timings->min_line_search_times[ii], timings->line_search_times[ii]);
         }
     }
     #endif
-    timings.run_indx++;
+    timings->run_indx++;
 }
 
 
 
-void print_timers(void)
+void timers_print(treeqp_profiling_t *timings)
 {
     #if PROFILE > 1
     int num_iter;
-    for (num_iter = 0; num_iter < timings.num_iter; num_iter++)
+    for (num_iter = 0; num_iter < timings->num_iter; num_iter++)
     {
-        if (isnan(timings.iter_times[num_iter])) break;
+        if (isnan(timings->iter_times[num_iter])) break;
     }
     #endif
 
@@ -168,9 +220,9 @@ void print_timers(void)
     #if PROFILE > 0
     printf("\nTotal time:\n\n");
     #if PROFILE > 1
-    printf("> > > algorithm converged in (%d it):\t %10.4f ms\n\n", num_iter, timings.min_total_time*1e3);
+    printf("> > > algorithm converged in (%d it):\t %10.4f ms\n\n", num_iter, timings->min_total_time*1e3);
     #else
-    printf("> > > algorithm converged in:\t %10.4f ms\n\n", timings.min_total_time*1e3);
+    printf("> > > algorithm converged in:\t %10.4f ms\n\n", timings->min_total_time*1e3);
     #endif
     #endif
 
@@ -179,7 +231,7 @@ void print_timers(void)
     for (int jj = 0; jj < num_iter; jj++)
     {
         printf("Iteration #%3d - %7.3f ms  (%3d ls iters. )\n",
-            jj+1, timings.min_iter_times[jj]*1e3, timings.ls_iters[jj]);
+            jj+1, timings->min_iter_times[jj]*1e3, timings->ls_iters[jj]);
     }
     #endif
 
@@ -193,10 +245,10 @@ void print_timers(void)
     double sum_all = 0.;
     for (int jj = 0; jj < num_iter; jj++)
     {
-        sum_stage_qps_times += timings.min_stage_qps_times[jj];
-        sum_build_dual_times += timings.min_build_dual_times[jj];
-        sum_newton_direction_times += timings.min_newton_direction_times[jj];
-        sum_line_search_times += timings.min_line_search_times[jj];
+        sum_stage_qps_times += timings->min_stage_qps_times[jj];
+        sum_build_dual_times += timings->min_build_dual_times[jj];
+        sum_newton_direction_times += timings->min_newton_direction_times[jj];
+        sum_line_search_times += timings->min_line_search_times[jj];
     }
     sum_all = sum_stage_qps_times + sum_build_dual_times + sum_newton_direction_times
         + sum_line_search_times;
@@ -208,7 +260,7 @@ void print_timers(void)
     printf("> > > calculated Newton direction in: \t %10.4f ms (%5.2f %%)\n",
         sum_newton_direction_times*1e3, 100*sum_newton_direction_times/sum_all);
     printf("> > > performed line-search (%d it) in:\t %10.4f ms (%5.2f %%)\n",
-        timings.total_ls_iter, sum_line_search_times*1e3, 100*sum_line_search_times/sum_all);
+        timings->total_ls_iter, sum_line_search_times*1e3, 100*sum_line_search_times/sum_all);
     // NOTE(dimitris): this sum would be equal to min_total_time if
     // a) the run where min_total_time occured coincides with the run where all min_times occured
     // b) the time for the calculation of the termination condition was zero
@@ -220,62 +272,39 @@ void print_timers(void)
 
 
 
-void write_timers_to_txt(void)
+void timers_write_to_txt(treeqp_profiling_t *timings)
 {
     char fname[256];
     char prefix[] = "examples/spring_mass_utils";
 
     #if PROFILE > 1
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");
-    write_int_vector_to_txt(timings.ls_iters, timings.num_iter, fname);
+    write_int_vector_to_txt(timings->ls_iters, timings->num_iter, fname);
     #endif
 
     // NOTE(dimitris): do not save cpu time if PROFILE is too high (inaccurate results)
     #if PROFILE < 3
 
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "cputime");
-    write_double_vector_to_txt(&timings.min_total_time, 1, fname);
+    write_double_vector_to_txt(&timings->min_total_time, 1, fname);
 
     #if PROFILE > 1
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "iter_times");
-    write_double_vector_to_txt(timings.min_iter_times, timings.num_iter, fname);
+    write_double_vector_to_txt(timings->min_iter_times, timings->num_iter, fname);
     #endif
 
     #endif  /* PROFILE < 3 */
 
     #if PROFILE > 2
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "stage_qps_times");
-    write_double_vector_to_txt(timings.min_stage_qps_times, timings.num_iter, fname);
+    write_double_vector_to_txt(timings->min_stage_qps_times, timings->num_iter, fname);
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "build_dual_times");
-    write_double_vector_to_txt(timings.min_build_dual_times, timings.num_iter, fname);
+    write_double_vector_to_txt(timings->min_build_dual_times, timings->num_iter, fname);
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "newton_direction_times");
-    write_double_vector_to_txt(timings.min_newton_direction_times, timings.num_iter, fname);
+    write_double_vector_to_txt(timings->min_newton_direction_times, timings->num_iter, fname);
     snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "line_search_times");
-    write_double_vector_to_txt(timings.min_line_search_times, timings.num_iter, fname);
+    write_double_vector_to_txt(timings->min_line_search_times, timings->num_iter, fname);
     #endif
-}
-
-
-// TODO(dimitris): GET RID OF THIS
-void free_timers(void)
-{
-#if PROFILE > 1
-    free(timings.iter_times);
-    free(timings.min_iter_times);
-    free(timings.ls_iters);
-#endif
-
-#if PROFILE > 2
-    free(timings.stage_qps_times);
-    free(timings.build_dual_times);
-    free(timings.newton_direction_times);
-    free(timings.line_search_times);
-
-    free(timings.min_stage_qps_times);
-    free(timings.min_build_dual_times);
-    free(timings.min_newton_direction_times);
-    free(timings.min_line_search_times);
-#endif
 }
 
 #endif  /* PROFILE > 0 */

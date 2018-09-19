@@ -140,8 +140,7 @@ int main() {
 
     #endif
 
-    // print_timers();
-    // free_timers();
+    timers_print(&work.timings);
 
     tree_qp_out_print(6, &qp_out);
 

@@ -67,32 +67,27 @@ typedef struct treeqp_profiling_t_
 
 } treeqp_profiling_t;
 
-#if PROFILE > 0
-treeqp_profiling_t timings;  // TODO(dimitrsi): MOVE TO SOLVER MEMORY!!! (DANGEROUS ATM IF CREATING TWO SOLVERS)
-treeqp_timer tot_tmr;
-#endif
-
-// + cputime and ls iterations per iteration
+// TODO(dimitris): no need for global variables
 #if PROFILE > 1
 treeqp_timer iter_tmr;
 #endif
 
-// + time per key operation per iteration
 #if PROFILE > 2
 treeqp_timer tmr;
 #endif
 
-void initialize_timers(int num_iter);
+int timers_calculate_size(int num_iter);
 
-void update_min_timers();
+void timers_create(int num_iter, treeqp_profiling_t *timings, void *ptr);
 
-void print_timers(void);
+void timers_initialize(treeqp_profiling_t *timings);
+
+void timers_update(treeqp_profiling_t *timings);
+
+void timers_print(treeqp_profiling_t *timings);
 
 // TODO(dimitris): return return_t
-void write_timers_to_txt(void);
-
-// TODO(dimitris): REMOVE ONCE TIMINGS STORED IN MEMORY
-void free_timers(void);
+void timers_write_to_txt(treeqp_profiling_t *timings);
 
 #ifdef __cplusplus
 }  /* extern "C" */

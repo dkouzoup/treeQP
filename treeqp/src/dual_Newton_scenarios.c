@@ -235,7 +235,7 @@ void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int
     write_int_vector_to_txt(&NewtonIter, 1, "examples/spring_mass_utils/iter.txt");
 
     #if PROFILE > 0
-    write_timers_to_txt();
+    timers_write_to_txt(&work->timings);
     #endif
 
     free(muIter);
@@ -1589,6 +1589,10 @@ int treeqp_sdunes_calculate_size(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, Nh*nx);  // Ut
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, nu*Nr);  // K
 
+    #if PROFILE > 0
+    bytes += timers_calculate_size(opts->maxIter);
+    #endif
+
     make_int_multiple_of(64, &bytes);
     bytes += 1*64;
 
@@ -1828,7 +1832,8 @@ void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     free(processedNodes);
 
     #if PROFILE > 0
-    initialize_timers(opts->maxIter);
+    timers_create(opts->maxIter, &work->timings, c_ptr);
+    timers_initialize(&work->timings);
     #endif
 
     assert((char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) >= c_ptr);
@@ -1862,6 +1867,10 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     struct blasfeo_dvec *srnonScaled = (struct blasfeo_dvec*)qp_in->r;
 
     treeqp_timer solver_tmr, interface_tmr, total_tmr;
+
+    #if PROFILE > 0
+    treeqp_profiling_t *timings = &work->timings;
+    #endif
 
     treeqp_tic(&total_tmr);
 
@@ -1926,7 +1935,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         #endif
         solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work, opts);
         #if PROFILE > 2
-        timings.stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- calculate dual gradient
@@ -1956,7 +1965,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         // NOTE(dimitris): inaccurate since part of dual Hessian is calculated while solving
         // the stage QPs
         #if PROFILE > 2
-        timings.build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         #if PROFILE > 2
@@ -1976,7 +1985,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
-        timings.newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- line search
@@ -1987,7 +1996,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         lsIter = line_search(Ns, Nh, qp_in, opts, work);
 
         #if PROFILE > 2
-        timings.line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- reset data for next iteration
@@ -2002,8 +2011,8 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         printf("iteration #%d: %d ls iterations \t\t(error %5.2e)\n", NewtonIter, lsIter, error);
         #endif
         #if PROFILE > 1
-        timings.iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
-        timings.ls_iters[NewtonIter] = lsIter;
+        timings->iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
+        timings->ls_iters[NewtonIter] = lsIter;
         #endif
     }
 
@@ -2070,8 +2079,8 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     qp_out->info.total_time = treeqp_toc(&total_tmr);
 
     #if PROFILE > 0
-    timings.total_time = qp_out->info.total_time;
-    update_min_timers();
+    timings->total_time = qp_out->info.total_time;
+    timers_update(timings);
     #endif
 
     return status;

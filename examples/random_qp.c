@@ -158,8 +158,7 @@ int main()
 
 #ifndef DATA
 #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers();
-    free_timers();
+    timers_print(&work.timings);
 #endif
     tree_qp_out_print(Nn, &qp_out);
     print_blasfeo_target();

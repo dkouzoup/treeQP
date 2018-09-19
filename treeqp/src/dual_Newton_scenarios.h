@@ -37,6 +37,10 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
 
+#if PROFILE > 0
+#include "treeqp/utils/profiling.h"
+#endif
+
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 
@@ -126,6 +130,11 @@ typedef struct treeqp_sdunes_workspace_
     struct blasfeo_dvec **sxasPrev;
     struct blasfeo_dvec **suasPrev;
     struct blasfeo_dmat **sTmpLambdaD;
+
+    #if PROFILE > 0
+    treeqp_profiling_t timings;
+    #endif
+
 } treeqp_sdunes_workspace;
 
 

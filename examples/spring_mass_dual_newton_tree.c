@@ -142,8 +142,7 @@ int main( ) {
     write_solution_to_txt(&qp_in, Np, qp_out.info.iter, qp_in.tree, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers();
-    free_timers();
+    timers_print(&work.timings);
     #endif
 
     #if PRINT_LEVEL > 0

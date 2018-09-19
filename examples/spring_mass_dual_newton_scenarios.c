@@ -149,8 +149,7 @@ int main() {
     write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers();
-    free_timers();
+    timers_print(&work.timings);
     #endif
 
     #if PRINT_LEVEL > 0
