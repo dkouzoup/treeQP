@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 
 #include "treeqp/utils/profiling.h"
 #include "treeqp/utils/utils.h"

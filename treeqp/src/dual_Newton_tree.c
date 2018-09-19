@@ -72,7 +72,7 @@ int treeqp_tdunes_opts_calculate_size(int Nn)
 
 
 
-void treeqp_tdunes_opts_create(int Nn, treeqp_tdunes_opts_t *opts, void *ptr)
+void treeqp_tdunes_opts_create(int Nn, treeqp_tdunes_opts_t * opts, void * ptr)
 {
     // char pointer
     char *c_ptr = (char *) ptr;
@@ -85,7 +85,7 @@ void treeqp_tdunes_opts_create(int Nn, treeqp_tdunes_opts_t *opts, void *ptr)
 
 
 
-void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts)
+void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t * opts)
 {
     opts->maxIter = 100;
     opts->termCondition = TREEQP_INFNORM;
@@ -169,7 +169,7 @@ static void setup_npar(int Nh, int Nn, struct node *tree, int *npar)
 
 
 
-static void setup_idxpos(tree_qp_in *qp_in, int *idxpos)
+static void setup_idxpos(const tree_qp_in * qp_in, int *idxpos)
 {
     int Nn = qp_in->N;
     int idxdad;
@@ -190,7 +190,7 @@ static void setup_idxpos(tree_qp_in *qp_in, int *idxpos)
 
 
 
-static int maximum_hessian_block_dimension(tree_qp_in *qp_in)
+static int maximum_hessian_block_dimension(const tree_qp_in * qp_in)
 {
     int maxDim = 0;
     int currDim, idxkid;
@@ -210,7 +210,7 @@ static int maximum_hessian_block_dimension(tree_qp_in *qp_in)
 
 
 
-static return_t solve_stage_problems(tree_qp_in *qp_in, treeqp_tdunes_workspace *work)
+static return_t solve_stage_problems(const tree_qp_in *qp_in, treeqp_tdunes_workspace *work)
 {
     int idxkid, idxdad, idxpos;
     int Nn = qp_in->N;
@@ -322,8 +322,8 @@ static return_t solve_stage_problems(tree_qp_in *qp_in, treeqp_tdunes_workspace 
 
 
 
-static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes_workspace *work) {
-
+static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes_workspace *work)
+{
     int *xasChanged = work->xasChanged;
     int *uasChanged = work->uasChanged;
 
@@ -333,18 +333,23 @@ static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes
     struct blasfeo_dvec *suasPrev = &work->suasPrev[indx];
 
     xasChanged[indx] = 0;
-    for (int ii = 0; ii < sxas->m; ii++) {
-        if (BLASFEO_DVECEL(sxas, ii) != BLASFEO_DVECEL(sxasPrev, ii)) {
+    for (int ii = 0; ii < sxas->m; ii++)
+    {
+        if (BLASFEO_DVECEL(sxas, ii) != BLASFEO_DVECEL(sxasPrev, ii))
+        {
             xasChanged[indx] = 1;
             break;
         }
     }
     blasfeo_dveccp(sxas->m, sxas, 0, sxasPrev, 0);
 
-    if (!isLeaf) {
+    if (!isLeaf)
+    {
         uasChanged[indx] = 0;
-        for (int ii = 0; ii < suas->m; ii++) {
-            if (BLASFEO_DVECEL(suas, ii) != BLASFEO_DVECEL(suasPrev, ii)) {
+        for (int ii = 0; ii < suas->m; ii++)
+        {
+            if (BLASFEO_DVECEL(suas, ii) != BLASFEO_DVECEL(suasPrev, ii))
+            {
                 uasChanged[indx] = 1;
                 break;
             }
@@ -354,7 +359,8 @@ static void compare_with_previous_active_set(int isLeaf, int indx, treeqp_tdunes
 }
 
 
-static int find_starting_point_of_factorization(struct node *tree, treeqp_tdunes_workspace *work) {
+static int find_starting_point_of_factorization(struct node *tree, treeqp_tdunes_workspace *work)
+{
     int idxdad, asDadChanged;
     int Np = work->Np;
     int idxFactorStart = Np;
@@ -362,22 +368,27 @@ static int find_starting_point_of_factorization(struct node *tree, treeqp_tdunes
     int *uasChanged = work->uasChanged;
     int *blockChanged = work->blockChanged;
 
-    for (int kk = 0; kk < Np; kk++) {
+    for (int kk = 0; kk < Np; kk++)
+    {
         blockChanged[kk] = 0;
     }
 
     // TODO(dimitris):check if it's worth parallelizing
     // --> CAREFULLY THOUGH since multiple threads write on same memory
-    for (int kk = work->Nn-1; kk > 0; kk--) {
+    for (int kk = work->Nn-1; kk > 0; kk--)
+    {
         idxdad = tree[kk].dad;
         asDadChanged = xasChanged[idxdad] | uasChanged[idxdad];
 
         if (asDadChanged || xasChanged[kk]) blockChanged[idxdad] = 1;
     }
-    for (int kk = Np-1; kk >= 0; kk--) {
-        if (!blockChanged[kk]) {
+    for (int kk = Np-1; kk >= 0; kk--)
+    {
+        if (!blockChanged[kk])
+        {
             idxFactorStart--;
-        } else {
+        } else
+        {
             break;
         }
     }
@@ -389,23 +400,30 @@ static int find_starting_point_of_factorization(struct node *tree, treeqp_tdunes
 // TODO(dimitris): one, two, inf norms efficiently in blasfeo?
 // TODO(dimitris): benchmark different stopping criteria
 // TODO(dimitris): check if it is slower or faster when parallelized
-static double calculate_error_in_residuals(termination_t condition, treeqp_tdunes_workspace *work) {
+static double calculate_error_in_residuals(termination_t condition, treeqp_tdunes_workspace *work)
+{
     double error = 0;
     int Np = work->Np;
     struct blasfeo_dvec *sres = work->sres;
 
-    if ((condition == TREEQP_SUMSQUAREDERRORS) || (condition == TREEQP_TWONORM)) {
-        for (int kk = 0; kk < Np; kk++) {
+    if ((condition == TREEQP_SUMSQUAREDERRORS) || (condition == TREEQP_TWONORM))
+    {
+        for (int kk = 0; kk < Np; kk++)
+        {
             error += blasfeo_ddot(sres[kk].m, &sres[kk], 0, &sres[kk], 0);
         }
         if (condition == TREEQP_TWONORM) error = sqrt(error);
-    } else if (condition == TREEQP_INFNORM) {
-        for (int kk = 0; kk < Np; kk++) {
-            for (int ii = 0; ii < sres[kk].m; ii++) {
+    } else if (condition == TREEQP_INFNORM)
+    {
+        for (int kk = 0; kk < Np; kk++)
+        {
+            for (int ii = 0; ii < sres[kk].m; ii++)
+            {
                 error = MAX(error, ABS(BLASFEO_DVECEL(&sres[kk], ii)));
             }
         }
-    } else {
+    } else
+    {
         // NOTE(dimitris): this should never occur as we check options at the beginning
         printf("[TREEQP] Options struct corrupted!\n");
         exit(1);
@@ -416,8 +434,8 @@ static double calculate_error_in_residuals(termination_t condition, treeqp_tdune
 
 
 
-static return_t build_dual_problem(tree_qp_in *qp_in, int *idxFactorStart,
-    treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
+static return_t build_dual_problem(const tree_qp_in *qp_in, int *idxFactorStart,
+    const treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
 
     int idxdad, idxpos, idxsib, idxii, ns, isLeaf, asDadChanged;
@@ -611,8 +629,8 @@ static return_t build_dual_problem(tree_qp_in *qp_in, int *idxFactorStart,
 
 
 
-static void calculate_delta_lambda(tree_qp_in *qp_in, int idxFactorStart,
-    treeqp_tdunes_workspace *work, treeqp_tdunes_opts_t *opts)
+static void calculate_delta_lambda(const tree_qp_in *qp_in, int idxFactorStart,
+    treeqp_tdunes_workspace *work, const treeqp_tdunes_opts_t *opts)
 {
     struct node *tree = (struct node *)qp_in->tree;
     int idxdad, idxpos;
@@ -778,12 +796,14 @@ static void calculate_delta_lambda(tree_qp_in *qp_in, int idxFactorStart,
 }
 
 
-static double gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
+static double gradient_trans_times_direction(treeqp_tdunes_workspace *work)
+{
     double ans = 0;
     struct blasfeo_dvec *sres = work->sres;
     struct blasfeo_dvec *sDeltalambda = work->sDeltalambda;
 
-    for (int kk = 0; kk < work->Np; kk++) {
+    for (int kk = 0; kk < work->Np; kk++)
+    {
         ans += blasfeo_ddot(sres[kk].m, &sres[kk], 0, &sDeltalambda[kk], 0);
     }
     // NOTE(dimitris): res has was -gradient above
@@ -791,7 +811,7 @@ static double gradient_trans_times_direction(treeqp_tdunes_workspace *work) {
 }
 
 
-static return_t evaluate_dual_function(tree_qp_in *qp_in, treeqp_tdunes_workspace *work, double *fval)
+static return_t evaluate_dual_function(const tree_qp_in *qp_in, treeqp_tdunes_workspace *work, double *fval)
 {
     int idxkid, idxpos, idxdad;
 
@@ -886,7 +906,7 @@ static return_t evaluate_dual_function(tree_qp_in *qp_in, treeqp_tdunes_workspac
 
 
 
-static return_t line_search(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
+static return_t line_search(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     int Nn = qp_in->N;
     int Np = work->Np;
@@ -973,7 +993,7 @@ static return_t line_search(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeq
 
 
 
-void write_solution_to_txt(tree_qp_in *qp_in, int Np, int iter, struct node *tree,
+void write_solution_to_txt(const tree_qp_in *qp_in, int Np, int iter, struct node *tree,
     treeqp_tdunes_workspace *work)
 {
     int kk, indx, indu, ind;
@@ -1028,7 +1048,7 @@ void write_solution_to_txt(tree_qp_in *qp_in, int Np, int iter, struct node *tre
 
 
 // TODO(dimitris): extend this
-static return_t treeqp_tdunes_validate_opts(treeqp_tdunes_opts_t *opts)
+static return_t treeqp_tdunes_validate_opts(const treeqp_tdunes_opts_t *opts)
 {
     if ((opts->termCondition != TREEQP_SUMSQUAREDERRORS) &&
         (opts->termCondition != TREEQP_TWONORM) &&
@@ -1054,8 +1074,8 @@ static return_t treeqp_tdunes_validate_opts(treeqp_tdunes_opts_t *opts)
 
 
 
-return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
-    treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
+return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
+    const treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work)
 {
     return_t status;
 
@@ -1213,7 +1233,7 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
 
 
 
-static void update_M_dimensions(int idx, tree_qp_in *qp_in, int *rowsM, int *colsM)
+static void update_M_dimensions(int idx, const tree_qp_in *qp_in, int *rowsM, int *colsM)
 {
     int idxdad = qp_in->tree[idx].dad;
     int idxsib;
@@ -1237,7 +1257,7 @@ static void update_M_dimensions(int idx, tree_qp_in *qp_in, int *rowsM, int *col
 
 
 
-int treeqp_tdunes_calculate_size(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts)
+int treeqp_tdunes_calculate_size(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *opts)
 {
     struct node *tree = qp_in->tree;
     int bytes = 0;
@@ -1357,7 +1377,7 @@ int treeqp_tdunes_calculate_size(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts)
 
 
 
-void treeqp_tdunes_create(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
+void treeqp_tdunes_create(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *opts,
     treeqp_tdunes_workspace *work, void *ptr)
 {
     struct node *tree = qp_in->tree;
@@ -1599,11 +1619,12 @@ void treeqp_tdunes_create(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
 
 // write dual initial point to workspace ( _AFTER_ creating it )
 // NOTE(dimitris): do NOT pass zeros for lambda convention on root node
-void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work) {
+void treeqp_tdunes_set_dual_initialization(const double *lambda, treeqp_tdunes_workspace *work)
+{
     int indx = 0;
 
     for (int ii = 0; ii < work->Np; ii++) {
-        blasfeo_pack_dvec(work->slambda[ii].m, &lambda[indx], &work->slambda[ii], 0);
+        blasfeo_pack_dvec(work->slambda[ii].m, (double *)&lambda[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }
 }

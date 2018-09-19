@@ -43,7 +43,7 @@
 
 #include <qpOASES_e.h>
 
-answer_t stage_qp_qpoases_is_applicable(tree_qp_in *qp_in, int idx)
+answer_t stage_qp_qpoases_is_applicable(const tree_qp_in *qp_in, int idx)
 {
     return YES;
 }
@@ -150,7 +150,7 @@ void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, c
 
 
 
-static void QProblem_build_elimination_matrix(tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
+static void QProblem_build_elimination_matrix(const tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
     QProblemB *QPB = qpoases_data->QPB;
@@ -215,7 +215,7 @@ static void QProblem_build_elimination_matrix(tree_qp_in *qp_in, int idx, treeqp
 
 
 
-return_t stage_qp_qpoases_init(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
+return_t stage_qp_qpoases_init(const tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
     treeqp_tdunes_qpoases_data *qpoases_data =
@@ -309,7 +309,7 @@ return_t stage_qp_qpoases_init(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad
 
 
 
-static int QProblem_solve(tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
+static int QProblem_solve(const tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *work)
 {
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
 
@@ -357,7 +357,7 @@ static int QProblem_solve(tree_qp_in *qp_in, int idx, treeqp_tdunes_workspace *w
 
 
 
-return_t stage_qp_qpoases_solve_extended(tree_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve_extended(const tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
@@ -381,7 +381,7 @@ return_t stage_qp_qpoases_solve_extended(tree_qp_in *qp_in, int idx, void *work_
 
 
 
-return_t stage_qp_qpoases_solve(tree_qp_in *qp_in, int idx, void *work_)
+return_t stage_qp_qpoases_solve(const tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     int status = QProblem_solve(qp_in, idx, work);
@@ -398,7 +398,7 @@ return_t stage_qp_qpoases_solve(tree_qp_in *qp_in, int idx, void *work_)
 
 
 
-void stage_qp_qpoases_set_CmPnCmT(tree_qp_in *qp_in, int idx, int idxdad, int offset,
+void stage_qp_qpoases_set_CmPnCmT(const tree_qp_in *qp_in, int idx, int idxdad, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -427,7 +427,7 @@ void stage_qp_qpoases_set_CmPnCmT(tree_qp_in *qp_in, int idx, int idxdad, int of
 
 
 
-void stage_qp_qpoases_add_EPmE(tree_qp_in *qp_in, int idx, int idxdad, int offset,
+void stage_qp_qpoases_add_EPmE(const tree_qp_in *qp_in, int idx, int idxdad, int offset,
     void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -445,7 +445,7 @@ void stage_qp_qpoases_add_EPmE(tree_qp_in *qp_in, int idx, int idxdad, int offse
 
 
 
-void stage_qp_qpoases_add_CmPnCkT(tree_qp_in *qp_in, int idx, int idxsib, int idxdad,
+void stage_qp_qpoases_add_CmPnCkT(const tree_qp_in *qp_in, int idx, int idxsib, int idxdad,
     int row_offset, int col_offset, void *work_)
 {
     treeqp_tdunes_workspace *work = (treeqp_tdunes_workspace *) work_;
@@ -475,7 +475,7 @@ void stage_qp_qpoases_add_CmPnCkT(tree_qp_in *qp_in, int idx, int idxsib, int id
 
 
 
-void stage_qp_qpoases_eval_dual_term(tree_qp_in *qp_in, int idx, void *work_)
+void stage_qp_qpoases_eval_dual_term(const tree_qp_in *qp_in, int idx, void *work_)
 {
     treeqp_tdunes_workspace *work = work_;
     treeqp_tdunes_qpoases_data *qpoases_data = work->stage_qp_data[idx];
