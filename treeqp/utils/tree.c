@@ -206,7 +206,14 @@ return_t tree_create(const int *nk, struct node * tree, void *ptr)
             }
             else
             {
-                tree[jj].real = tree[ii].real;
+                if (ii > 0)
+                {
+                    tree[jj].real = tree[ii].real;
+                }
+                else  // treat nominal case (linear topology) separately
+                {
+                    tree[jj].real = 0;
+                }
             }
         }
     }
