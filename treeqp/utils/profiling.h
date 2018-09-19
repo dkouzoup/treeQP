@@ -35,42 +35,64 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/timing.h"
 
-// NOTE(dimitris): this has to be >= maxit
-#define kMax 200
-
+typedef struct treeqp_profiling_t_
+{
+    int num_iter;
+    int run_indx;
 // total cpu time and ls iterations
 #if PROFILE > 0
+    double total_time;
+    double min_total_time;
+    int total_ls_iter;
+#endif
+
+// + cputime and ls iterations per iteration
+#if PROFILE > 1
+    double *iter_times;
+    double *min_iter_times;
+    int *ls_iters;
+#endif
+
+// + time per key operation per iteration
+#if PROFILE > 2
+    double *stage_qps_times;
+    double *min_stage_qps_times;
+    double *build_dual_times;
+    double *min_build_dual_times;
+    double *newton_direction_times;
+    double *min_newton_direction_times;
+    double *line_search_times;
+    double *min_line_search_times;
+#endif
+
+} treeqp_profiling_t;
+
+#if PROFILE > 0
+treeqp_profiling_t timings;  // TODO(dimitrsi): MOVE TO SOLVER MEMORY!!! (DANGEROUS ATM IF CREATING TWO SOLVERS)
 treeqp_timer tot_tmr;
-double total_time;
-double min_total_time;
-int total_ls_iter;
 #endif
 
 // + cputime and ls iterations per iteration
 #if PROFILE > 1
 treeqp_timer iter_tmr;
-double iter_times[kMax];
-double min_iter_times[kMax];
-int ls_iters[kMax];
 #endif
 
 // + time per key operation per iteration
 #if PROFILE > 2
 treeqp_timer tmr;
-double stage_qps_times[kMax];
-double min_stage_qps_times[kMax];
-double build_dual_times[kMax];
-double min_build_dual_times[kMax];
-double newton_direction_times[kMax];
-double min_newton_direction_times[kMax];
-double line_search_times[kMax];
-double min_line_search_times[kMax];
 #endif
 
-void initialize_timers(void);
-void update_min_timers(int iter);
-void print_timers(int newtonIter);
+void initialize_timers(int num_iter);
+
+void update_min_timers();
+
+void print_timers(void);
+
+// TODO(dimitris): return return_t
 void write_timers_to_txt(void);
+
+// TODO(dimitris): REMOVE ONCE TIMINGS STORED IN MEMORY
+void free_timers(void);
 
 #ifdef __cplusplus
 }  /* extern "C" */

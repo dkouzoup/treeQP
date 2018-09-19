@@ -44,9 +44,10 @@ typedef struct treeqp_info_t_
 {
     int Nn;
     int iter;
+    double total_time;
     double solver_time;
     double interface_time;
-    // TODO(dimitris): add total time and iteration logs
+    // TODO(dimitris): add iteration logs
 } treeqp_info_t;
 
 

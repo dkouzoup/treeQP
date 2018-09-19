@@ -140,7 +140,8 @@ int main() {
 
     #endif
 
-    // print_timers(qp_out.info.iter);
+    // print_timers();
+    // free_timers();
 
     tree_qp_out_print(6, &qp_out);
 

@@ -140,31 +140,17 @@ int main() {
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
-    #if PROFILE > 0
-    initialize_timers();
-    #endif
-
     for (int jj = 0; jj < NREP; jj++)
     {
         treeqp_sdunes_set_dual_initialization(lambda, mu, &work);
-
-        #if PROFILE > 0
-        treeqp_tic(&tot_tmr);
-        #endif
-
         status = treeqp_sdunes_solve(&qp_in, &qp_out, &opts, &work);
-
         // printf("QP solver status at run %d: %d\n", jj, status);
-
-        #if PROFILE > 0
-        total_time = treeqp_toc(&tot_tmr);
-        update_min_timers(jj);
-        #endif
     }
     write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
+    print_timers();
+    free_timers();
     #endif
 
     #if PRINT_LEVEL > 0

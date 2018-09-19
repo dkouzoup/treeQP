@@ -132,31 +132,18 @@ int main( ) {
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
-    #if PROFILE > 0
-    initialize_timers( );
-    #endif
-
     for (int jj = 0; jj < NREP; jj++)
     {
-        // TODO(dimitris): set dual init. in qp_out
+        // TODO(dimitris): set dual init. in qp_out (not quite possible for sdunes though)
         treeqp_tdunes_set_dual_initialization(lambda, &work);
-
-        #if PROFILE > 0
-        treeqp_tic(&tot_tmr);
-        #endif
-
         treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
-        // exit(1);
-        #if PROFILE > 0
-        total_time = treeqp_toc(&tot_tmr);
-        update_min_timers(jj);
-        #endif
     }
 
     write_solution_to_txt(&qp_in, Np, qp_out.info.iter, qp_in.tree, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
+    print_timers();
+    free_timers();
     #endif
 
     #if PRINT_LEVEL > 0

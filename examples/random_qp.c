@@ -150,21 +150,16 @@ int main()
 #endif  // USE_HPMPC
 
     // solve QP
-#if PROFILE > 0
-    initialize_timers( );
-#endif
 #ifndef USE_HPMPC
     treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 #else
     treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 #endif
-#if PROFILE > 0
-    update_min_timers(0);
-#endif
 
 #ifndef DATA
 #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
+    print_timers();
+    free_timers();
 #endif
     tree_qp_out_print(Nn, &qp_out);
     print_blasfeo_target();

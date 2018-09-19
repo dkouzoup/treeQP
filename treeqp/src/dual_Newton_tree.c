@@ -1062,7 +1062,9 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
-    treeqp_timer solver_tmr, interface_tmr;
+    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+
+    treeqp_tic(&total_tmr);
 
     int *nx = (int *)qp_in->nx;
     int *nu = (int *)qp_in->nu;
@@ -1120,7 +1122,7 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings.stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // calculate gradient and Hessian of the dual problem
@@ -1129,7 +1131,7 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         #endif
         status = build_dual_problem(qp_in, &idxFactorStart, opts, work);
         #if PROFILE > 2
-        build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings.build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
         if (status == TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
@@ -1145,7 +1147,7 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         #endif
         calculate_delta_lambda(qp_in, idxFactorStart, work, opts);
         #if PROFILE > 2
-        newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings.newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // line-search
@@ -1158,15 +1160,15 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings.line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         #if PRINT_LEVEL > 1
         printf("iteration #%d: %d ls iterations\n", NewtonIter, work->lsIter);
         #endif
         #if PROFILE > 1
-        iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
-        ls_iters[NewtonIter] = work->lsIter;
+        timings.iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
+        timings.ls_iters[NewtonIter] = work->lsIter;
         #endif
     }
 
@@ -1195,7 +1197,14 @@ return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_MAXIMUM_ITERATIONS_REACHED;
 
-    return status;  // TODO(dimitris): return correct status
+    qp_out->info.total_time = treeqp_toc(&total_tmr);
+
+    #if PROFILE > 0
+    timings.total_time = qp_out->info.total_time;
+    update_min_timers();
+    #endif
+
+    return status;
 }
 
 
@@ -1566,6 +1575,10 @@ void treeqp_tdunes_create(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts,
 
     work->cmod = (double *) c_ptr;
     c_ptr += Nn*sizeof(double);
+
+    #if PROFILE > 0
+    initialize_timers(opts->maxIter);
+    #endif
 
     assert((char *)ptr + treeqp_tdunes_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
