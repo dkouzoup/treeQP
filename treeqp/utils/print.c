@@ -33,6 +33,7 @@
 #include <blasfeo_d_aux.h>
 #include <blasfeo_d_aux_ext_dep.h>
 
+#include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
@@ -40,7 +41,7 @@
 
 
 
-void print_node(const struct node * const tree)
+void node_print(const struct node *tree)
 {
     printf("\n");
     printf("idx    = \t%d\n", tree[0].idx);
@@ -61,7 +62,7 @@ void print_node(const struct node * const tree)
 
 
 
-void tree_qp_in_print_dims(const tree_qp_in * const qp_in)
+void tree_qp_in_print_dims(const tree_qp_in *qp_in)
 {
     int N = qp_in->N;
     int *nx = qp_in->nx;
@@ -79,7 +80,7 @@ void tree_qp_in_print_dims(const tree_qp_in * const qp_in)
 
 
 
-void tree_qp_in_print(const tree_qp_in * const qp_in)
+void tree_qp_in_print(const tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     double min, max;
@@ -198,7 +199,7 @@ void tree_qp_in_print(const tree_qp_in * const qp_in)
 
 
 
-void tree_qp_out_print(const int Nn, const tree_qp_out * const qp_out)
+void tree_qp_out_print(int Nn, const tree_qp_out *qp_out)
 {
     int nx, nu, nc;
 
@@ -237,7 +238,7 @@ void tree_qp_out_print(const int Nn, const tree_qp_out * const qp_out)
 
 
 
-void tree_qp_out_write_to_txt(const tree_qp_in * const qp_in, const tree_qp_out * const qp_out, const char *fpath)
+void tree_qp_out_write_to_txt(const tree_qp_in *qp_in, const tree_qp_out *qp_out, const char *fpath)
 {
     int Nn = qp_in->N;
     int dimx = total_number_of_states(qp_in);
@@ -271,4 +272,31 @@ void tree_qp_out_write_to_txt(const tree_qp_in * const qp_in, const tree_qp_out 
 
     free(x);
     free(u);
+}
+
+
+
+void regularization_status_print(regType_t reg_type, reg_result_t reg_res)
+{
+    switch (reg_type)
+    {
+        case TREEQP_NO_REGULARIZATION:
+            printf("NO REGULARIZATION: Hessian block never regularized\n");
+            break;
+        case TREEQP_ALWAYS_LEVENBERG_MARQUARDT:
+            printf("ALWAYS REGULARIZATION: Hessian block always regularized\n");
+            break;
+        case TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT:
+            // check result
+            switch (reg_res)
+            {
+                case TREEQP_NO_REGULARIZATION_ADDED:
+                    printf("ON-THE-FLY REGULARIZATION: Hessian block not regularized\n");
+                    break;
+                case TREEQP_REGULARIZATION_ADDED:
+                    printf("ON-THE-FLY REGULARIZATION: Hessian block regularized\n");
+                    break;
+            }
+            break;
+    }
 }

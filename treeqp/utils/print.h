@@ -32,23 +32,24 @@
 extern "C" {
 #endif
 
+#include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 
 
 
-void print_node(const struct node * const tree);
+void node_print(const struct node *tree);
 
-void tree_qp_in_print_dims(const tree_qp_in * const qp_in);
+void tree_qp_in_print_dims(const tree_qp_in *qp_in);
 
-void tree_qp_in_print(const tree_qp_in * const qp_in);
+void tree_qp_in_print(const tree_qp_in *qp_in);
 
-void tree_qp_out_print(const int Nn, const tree_qp_out * const qp_out);
+void tree_qp_out_print(int Nn, const tree_qp_out *qp_out);
 
-void tree_qp_out_write_to_txt(const tree_qp_in * const qp_in, const tree_qp_out * const qp_out, const char *fpath);
+void tree_qp_out_write_to_txt(const tree_qp_in *qp_in, const tree_qp_out *qp_out, const char *fpath);
 
-
+void regularization_status_print(regType_t reg_type, reg_result_t reg_res);
 
 #ifdef __cplusplus
 }  /* extern "C" */
