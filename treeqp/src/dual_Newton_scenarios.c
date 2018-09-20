@@ -47,6 +47,10 @@
 #include "treeqp/utils/utils.h"
 #include "treeqp/utils/timing.h"
 
+#if PROFILE > 0
+#include "treeqp/utils/print.h"
+#endif
+
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 #include <blasfeo_d_aux.h>

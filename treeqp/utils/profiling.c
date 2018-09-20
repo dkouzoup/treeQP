@@ -271,41 +271,4 @@ void timers_print(treeqp_profiling_t *timings)
     #endif
 }
 
-
-
-void timers_write_to_txt(treeqp_profiling_t *timings)
-{
-    char fname[256];
-    char prefix[] = "examples/spring_mass_utils";
-
-    #if PROFILE > 1
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");
-    write_int_vector_to_txt(timings->ls_iters, timings->num_iter, fname);
-    #endif
-
-    // NOTE(dimitris): do not save cpu time if PROFILE is too high (inaccurate results)
-    #if PROFILE < 3
-
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "cputime");
-    write_double_vector_to_txt(&timings->min_total_time, 1, fname);
-
-    #if PROFILE > 1
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "iter_times");
-    write_double_vector_to_txt(timings->min_iter_times, timings->num_iter, fname);
-    #endif
-
-    #endif  /* PROFILE < 3 */
-
-    #if PROFILE > 2
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "stage_qps_times");
-    write_double_vector_to_txt(timings->min_stage_qps_times, timings->num_iter, fname);
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "build_dual_times");
-    write_double_vector_to_txt(timings->min_build_dual_times, timings->num_iter, fname);
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "newton_direction_times");
-    write_double_vector_to_txt(timings->min_newton_direction_times, timings->num_iter, fname);
-    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "line_search_times");
-    write_double_vector_to_txt(timings->min_line_search_times, timings->num_iter, fname);
-    #endif
-}
-
 #endif  /* PROFILE > 0 */

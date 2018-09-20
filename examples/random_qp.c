@@ -161,7 +161,7 @@ int main()
     timers_print(&work.timings);
 #endif
     tree_qp_out_print(Nn, &qp_out);
-    print_blasfeo_target();
+    blasfeo_print_target();
 #endif
 
     int indx = 0;

@@ -35,9 +35,11 @@
 
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/tree_qp_common.h"
+#include "treeqp/utils/print.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
+#include "treeqp/utils/profiling.h"
 
 
 
@@ -276,7 +278,7 @@ void tree_qp_out_write_to_txt(const tree_qp_in *qp_in, const tree_qp_out *qp_out
 
 
 
-void regularization_status_print(regType_t reg_type, reg_result_t reg_res)
+void regularization_print_status(regType_t reg_type, reg_result_t reg_res)
 {
     switch (reg_type)
     {
@@ -303,7 +305,48 @@ void regularization_status_print(regType_t reg_type, reg_result_t reg_res)
 
 
 
-void print_blasfeo_target(void)
+#if PROFILE > 0
+
+void timers_write_to_txt(treeqp_profiling_t *timings)
+{
+    char fname[256];
+    char prefix[] = "examples/spring_mass_utils";
+
+    #if PROFILE > 1
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");
+    write_int_vector_to_txt(timings->ls_iters, timings->num_iter, fname);
+    #endif
+
+    // NOTE(dimitris): do not save cpu time if PROFILE is too high (inaccurate results)
+    #if PROFILE < 3
+
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "cputime");
+    write_double_vector_to_txt(&timings->min_total_time, 1, fname);
+
+    #if PROFILE > 1
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "iter_times");
+    write_double_vector_to_txt(timings->min_iter_times, timings->num_iter, fname);
+    #endif
+
+    #endif  /* PROFILE < 3 */
+
+    #if PROFILE > 2
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "stage_qps_times");
+    write_double_vector_to_txt(timings->min_stage_qps_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "build_dual_times");
+    write_double_vector_to_txt(timings->min_build_dual_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "newton_direction_times");
+    write_double_vector_to_txt(timings->min_newton_direction_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "line_search_times");
+    write_double_vector_to_txt(timings->min_line_search_times, timings->num_iter, fname);
+    #endif
+}
+
+#endif  /* PROFILE > 0 */
+
+
+
+void blasfeo_print_target(void)
 {
     printf("\n");
     #if defined(LA_HIGH_PERFORMANCE)

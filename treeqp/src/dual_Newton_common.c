@@ -73,7 +73,7 @@ reg_result_t treeqp_dpotrf_l_with_reg_opts(struct blasfeo_dmat *M, struct blasfe
             }
         }
     }
-    // regularization_status_print(reg_type, res);
+    // regularization_print_status(reg_type, res);
     return res;
 }
 

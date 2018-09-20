@@ -86,9 +86,6 @@ void timers_update(treeqp_profiling_t *timings);
 
 void timers_print(treeqp_profiling_t *timings);
 
-// TODO(dimitris): return return_t
-void timers_write_to_txt(treeqp_profiling_t *timings);
-
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

@@ -25,8 +25,8 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_BLASFEO_UTILS_H_
-#define TREEQP_UTILS_BLASFEO_UTILS_H_
+#ifndef TREEQP_UTILS_BLASFEO_H_
+#define TREEQP_UTILS_BLASFEO_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,4 +64,4 @@ answer_t is_strmat_zero(const struct blasfeo_dmat *M);
 }  /* extern "C" */
 #endif
 
-#endif  /*  TREEQP_UTILS_BLASFEO_UTILS_H_ */
+#endif  /*  TREEQP_UTILS_BLASFEO_H_ */
