@@ -48,7 +48,7 @@ int calculate_number_of_nodes(int md, int Nr, int Nh)
 
 
 
-int get_number_of_parent_nodes(const int Nn, const struct node * const tree)
+int get_number_of_parent_nodes(int Nn, const struct node *tree)
 {
     int Np = 0;
 
@@ -61,7 +61,7 @@ int get_number_of_parent_nodes(const int Nn, const struct node * const tree)
 
 
 
-int get_robust_horizon(const int Nn, const struct node * const tree)
+int get_robust_horizon(int Nn, const struct node *tree)
 {
     int Nr = 0;
 
@@ -81,7 +81,7 @@ int get_robust_horizon(const int Nn, const struct node * const tree)
 
 
 
-int number_of_nodes_from_nkids(const int * const nkids)
+int number_of_nodes_from_nkids(const int *nkids)
 {
     int indx = 0;
     int nodes_in_stage = 1;
@@ -106,7 +106,7 @@ int number_of_nodes_from_nkids(const int * const nkids)
 
 
 
-int number_of_nodes_from_tree(const struct node * const tree)
+int number_of_nodes_from_tree(const struct node *tree)
 {
     int indx = 0;
     int nodes_in_stage = 1;
@@ -147,7 +147,7 @@ int tree_calculate_size(const int *nk)
 
 
 
-return_t tree_create(const int *nk, struct node * tree, void *ptr)
+return_t tree_create(const int *nk, struct node *tree, void *ptr)
 {
     int Nn = number_of_nodes_from_nkids(nk);
     if (Nn < 0) return TREEQP_FAILURE;
@@ -222,7 +222,7 @@ return_t tree_create(const int *nk, struct node * tree, void *ptr)
 
 
 
-void setup_multistage_tree(int md, int Nr, int Nh, int * nk)
+void setup_multistage_tree(int md, int Nr, int Nh, int *nk)
 {
     int num_scenarios = ipow(md, Nr);
     int num_nodes = calculate_number_of_nodes(md, Nr, Nh);
