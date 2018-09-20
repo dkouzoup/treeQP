@@ -51,6 +51,8 @@ void tree_qp_out_write_to_txt(const tree_qp_in *qp_in, const tree_qp_out *qp_out
 
 void regularization_status_print(regType_t reg_type, reg_result_t reg_res);
 
+void print_blasfeo_target(void);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

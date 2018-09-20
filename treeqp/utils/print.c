@@ -300,3 +300,18 @@ void regularization_status_print(regType_t reg_type, reg_result_t reg_res)
             break;
     }
 }
+
+
+
+void print_blasfeo_target(void)
+{
+    printf("\n");
+    #if defined(LA_HIGH_PERFORMANCE)
+    printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");
+    #elif defined(LA_REFERENCE)
+    printf("blasfeo compiled with LA = REFERENCE\n");
+    #elif defined(LA_BLAS)
+    printf("blasfeo compiled with LA = BLAS\n");
+    #endif
+    printf("\n");
+}
