@@ -38,26 +38,38 @@ extern "C" {
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 
+
+// memory alignment
 void make_int_multiple_of(int num, int *size);
+
 int align_char_to(int num, char **c_ptr);
 
-void create_int(int n, int **v, char **ptr);
-void create_double(int n, double **v, char **ptr);
 
-void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr);
-void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr);
+// memory allocation
+void create_int(int m, int **v, char **ptr);
 
-void init_strvec(int rows, struct blasfeo_dvec *sV, char **ptr);
-void init_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr);
+void create_double(int m, double **v, char **ptr);
 
-void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n);
-void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n);
-void free_double_ptr_strmat(struct blasfeo_dmat **arr, int m);
-void free_double_ptr_strvec(struct blasfeo_dvec **arr, int m);
+void create_strvec(int m, struct blasfeo_dvec *sv, char **ptr);
 
-void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n, char **ptr);
-void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **ptr);
-void create_double_ptr_int(int ***arr, int m, int n, char **ptr);
+void create_strmat(int m, int n, struct blasfeo_dmat *sM, char **ptr);
+
+void create_double_ptr_int(int m, int n, int ***arr, char **ptr);
+
+void create_double_ptr_strvec(int m, int n, struct blasfeo_dvec ***arr, char **ptr);
+
+void create_double_ptr_strmat(int m, int n, struct blasfeo_dmat ***arr, char **ptr);
+
+
+// create and initialize blasfeo structures
+void wrapper_vec_to_strvec(int m, const double *v, struct blasfeo_dvec *sv, char **ptr);
+
+void wrapper_mat_to_strmat(int m, int n, const double *M, struct blasfeo_dmat *sM, char **ptr);
+
+void init_strvec(int m, struct blasfeo_dvec *sv, char **ptr);
+
+void init_strmat(int m, int n, struct blasfeo_dmat *sM, char **ptr);
+
 
 #ifdef __cplusplus
 }  /* extern "C" */

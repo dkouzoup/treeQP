@@ -1647,8 +1647,8 @@ void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     c_ptr += Ns*sizeof(double);
 
     // generate indexing of scenario nodes from tree and flags for removed bounds
-    create_double_ptr_int(&work->nodeIdx, Ns, Nh+1, &c_ptr);
-    create_double_ptr_int(&work->boundsRemoved, Ns, Nh+1, &c_ptr);
+    create_double_ptr_int(Ns, Nh+1, &work->nodeIdx, &c_ptr);
+    create_double_ptr_int(Ns, Nh+1, &work->boundsRemoved, &c_ptr);
 
     for (int ii = 0; ii < Ns; ii++) {
         node = tree[Nn-Ns+ii].idx;
@@ -1720,32 +1720,32 @@ void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 
     if (opts->checkLastActiveSet)
     {
-        create_double_ptr_int(&work->xasChanged, Ns, Nh+1, &c_ptr);
-        create_double_ptr_int(&work->uasChanged, Ns, Nh+1, &c_ptr);
+        create_double_ptr_int(Ns, Nh+1, &work->xasChanged, &c_ptr);
+        create_double_ptr_int(Ns, Nh+1, &work->uasChanged, &c_ptr);
     }
 
-    create_double_ptr_strvec(&work->sx, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->su, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sxas, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->suas, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sxUnc, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->suUnc, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sQinvCal, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sRinvCal, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sresk, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sreskMod, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->smu, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sDeltamu, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sZbar, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sLambdaD, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sCholLambdaD, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sLambdaL, Ns, Nh-1, &c_ptr);
-    create_double_ptr_strmat(&work->sCholLambdaL, Ns, Nh-1, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sx, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->su, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sxas, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->suas, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sxUnc, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->suUnc, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sQinvCal, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sRinvCal, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sresk, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sreskMod, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->smu, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sDeltamu, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sZbar, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sLambdaD, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sCholLambdaD, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh-1, &work->sLambdaL, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh-1, &work->sCholLambdaL, &c_ptr);
     if (opts->checkLastActiveSet)
     {
-        create_double_ptr_strmat(&work->sTmpLambdaD, Ns, Nh, &c_ptr);
-        create_double_ptr_strvec(&work->sxasPrev, Ns, Nh, &c_ptr);
-        create_double_ptr_strvec(&work->suasPrev, Ns, Nh, &c_ptr);
+        create_double_ptr_strmat(Ns, Nh, &work->sTmpLambdaD, &c_ptr);
+        create_double_ptr_strvec(Ns, Nh, &work->sxasPrev, &c_ptr);
+        create_double_ptr_strvec(Ns, Nh, &work->suasPrev, &c_ptr);
     }
 
     // move pointer for proper alignment of blasfeo matrices and vectors
