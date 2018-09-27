@@ -2060,6 +2060,31 @@ void tree_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, doub
 
 
 
+void tree_qp_in_set_ltv_bounds(double *xmin, double *xmax, double *umin, double *umax,
+    tree_qp_in *qp_in)
+{
+    int Nn = qp_in->N;
+
+    int idxx = 0;
+    int idxu = 0;
+
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        tree_qp_in_set_node_bounds(&xmin[idxx], &xmax[idxx], &umin[idxu], &umax[idxu], qp_in, ii);
+        idxx += sxmin[ii].m;
+        idxu += sumin[ii].m;
+    }
+    assert(idxx == total_number_of_states(qp_in));
+    assert(idxu == total_number_of_controls(qp_in));
+}
+
+
+
 void tree_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax,
     tree_qp_in *qp_in)
 {

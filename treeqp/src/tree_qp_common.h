@@ -303,6 +303,8 @@ void tree_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, doub
 void tree_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_qp_in *qp_in);
 
 
+void tree_qp_in_set_ltv_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_qp_in *qp_in);
+
 void tree_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_qp_in *qp_in);
 
 void tree_qp_in_set_inf_bounds(tree_qp_in *qp_in);

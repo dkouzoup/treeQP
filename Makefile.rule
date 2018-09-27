@@ -11,7 +11,7 @@ endif
 
 # Set default compiler
 ifeq ($(OS), MAC)
-CC="/usr/local/bin/gcc-7"
+CC="/usr/local/bin/gcc-8"
 #CC=clang
 else
 CC = gcc
