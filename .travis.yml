@@ -1,4 +1,14 @@
 
 script:
-  - make run_examples
-  - make run_unit_tests
+  - make deep_clean
+  - make run_examples BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=X64_INTEL_HASWELL
+  - make run_unit_tests BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=X64_INTEL_HASWELL
+  - make deep_clean
+  - make run_examples BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=GENERIC
+  - make run_unit_tests BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=GENERIC
+  - make deep_clean
+  - make run_examples BLASFEO_VERSION=REFERENCE BLASFEO_TARGET=X64_INTEL_HASWELL
+  - make run_unit_tests BLASFEO_VERSION=REFERENCE BLASFEO_TARGET=X64_INTEL_HASWELL
+  - make deep_clean
+  - make run_examples BLASFEO_VERSION=REFERENCE BLASFEO_TARGET=GENERIC
+  - make run_unit_tests BLASFEO_VERSION=REFERENCE BLASFEO_TARGET=GENERIC
