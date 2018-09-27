@@ -52,6 +52,8 @@ typedef struct treeqp_info_t_
 
 
 
+// TODO(dimitris): write calculate_size/create routines for qp_internal_t
+
 // internal memory to eliminate x0 from QP
 typedef struct qp_internal_t_
 {

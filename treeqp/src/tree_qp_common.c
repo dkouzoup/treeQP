@@ -43,6 +43,20 @@
 
 
 
+static int find_parent(int idx, const int *nk)
+{
+    if (idx == 0) return -1;  // root
+
+    int acc = 0;
+    for (int ii = 0; ii < idx; ii++)
+    {
+        acc += nk[ii];
+        if (acc >= idx) return ii;
+    }
+}
+
+
+
 int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
 {
     int bytes = 0;
@@ -70,23 +84,12 @@ int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int 
 
     int idx, nc_;
 
-    int idxp = 0;
+    int idxp;
     int counter = nk[idxp];
 
     for (idx = 0; idx < Nn; idx++)
     {
-        if (idx > 0)
-        {
-            if (counter > 0)
-            {
-                counter--;
-            }
-            else
-            {
-                idxp++;
-                counter = nk[idxp];
-            }
-        }
+        idxp = find_parent(idx, nk);
 
         if (nc == NULL)
         {
@@ -299,7 +302,7 @@ void tree_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  
 
     assert((char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, nk) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc,nk) - c_ptr);
     // exit(1);
 }
 

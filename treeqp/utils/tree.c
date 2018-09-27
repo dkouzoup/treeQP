@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
@@ -217,6 +218,7 @@ return_t tree_create(const int *nk, struct node *tree, void *ptr)
             }
         }
     }
+    assert((char *)ptr + tree_calculate_size(nk) == c_ptr);
     return_t TREEQP_OK;
 }
 
