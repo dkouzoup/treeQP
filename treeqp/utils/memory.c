@@ -67,51 +67,51 @@ int align_char_to(int num, char **c_ptr)
 
 
 
-void create_int(int n, int **v, char **ptr)
+void create_int(int m, int **v, char **ptr)
 {
 #ifdef _USE_VALGRIND_
-    *v = (int *)calloc(n, sizeof(int));
+    *v = (int *)calloc(m, sizeof(int));
     print_warning();
 #else
     *v = (int *)*ptr;
-    *ptr += sizeof(int) * n;
+    *ptr += sizeof(int) * m;
 #endif
 }
 
 
 
-void create_double(int n, double **v, char **ptr)
+void create_double(int m, double **v, char **ptr)
 {
     assert((size_t)*ptr % 8 == 0 && "double not 8-byte aligned!");
 
 #ifdef _USE_VALGRIND_
-    *v = (double *)calloc(n, sizeof(double));
+    *v = (double *)calloc(m, sizeof(double));
     print_warning();
 #else
     *v = (double *)*ptr;
-    *ptr += sizeof(double) * n;
+    *ptr += sizeof(double) * m;
 #endif
 }
 
 
 
 // wrappers to blasfeo create or allocate functions
-static void create_strvec(int rows, struct blasfeo_dvec *sV, char **ptr)
+void create_strvec(int m, struct blasfeo_dvec *sv, char **ptr)
 {
     assert((size_t)*ptr % 8 == 0 && "strvec not 8-byte aligned!");
 
 #ifdef _USE_VALGRIND_
-    blasfeo_allocate_dvec(rows, sV);
+    blasfeo_allocate_dvec(m, sv);
     print_warning();
 #else
-    blasfeo_create_dvec(rows, sV, *ptr);
-    *ptr += sV->memsize;
+    blasfeo_create_dvec(m, sv, *ptr);
+    *ptr += sv->memsize;
 #endif
 }
 
 
 
-static void create_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr)
+void create_strmat(int m, int n, struct blasfeo_dmat *sM, char **ptr)
 {
 #ifdef LA_HIGH_PERFORMANCE
     assert((size_t)*ptr % 64 == 0 && "strmat not 64-byte aligned!");
@@ -120,128 +120,17 @@ static void create_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **pt
 #endif
 
 #ifdef _USE_VALGRIND_
-    blasfeo_allocate_dmat(rows, cols, sA);
+    blasfeo_allocate_dmat(m, n, sM);
     print_warning();
 #else
-    blasfeo_create_dmat(rows, cols, sA, *ptr);
-    *ptr += sA->memsize;
+    blasfeo_create_dmat(m, n, sM, *ptr);
+    *ptr += sM->memsize;
 #endif
 }
 
 
 
-// create and initialize to input data
-void wrapper_vec_to_strvec(int rows, double *V, struct blasfeo_dvec *sV, char **ptr)
-{
-    create_strvec(rows, sV, ptr);
-    blasfeo_pack_dvec(rows, V, sV, 0);
-}
-
-
-
-void wrapper_mat_to_strmat(int rows, int cols, double *A, struct blasfeo_dmat *sA, char **ptr)
-{
-    create_strmat(rows, cols, sA, ptr);
-    blasfeo_pack_dmat(rows, cols, A, rows, sA, 0, 0);
-}
-
-
-
-// create and initialize to zero
-void init_strvec(int rows, struct blasfeo_dvec *sV, char **ptr)
-{
-    create_strvec(rows, sV, ptr);
-    blasfeo_dvecse(rows, 0.0, sV, 0);
-}
-
-
-
-void init_strmat(int rows, int cols, struct blasfeo_dmat *sA, char **ptr)
-{
-    create_strmat(rows, cols, sA, ptr);
-    blasfeo_dgese(rows, cols, 0.0, sA, 0, 0);
-}
-
-
-
-// allocate and free double pointers
-void malloc_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n)
-{
-    *arr = malloc(m * sizeof(struct blasfeo_dmat*));
-
-    for (int ii = 0; ii < m; ii++)
-    {
-        (*arr)[ii] = malloc(n * sizeof(struct blasfeo_dmat));
-    }
-}
-
-
-
-// TODO(dimitris): not used yet
-void malloc_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n)
-{
-    *arr = malloc(m * sizeof(struct blasfeo_dvec*));
-
-    for (int ii = 0; ii < m; ii++)
-    {
-        (*arr)[ii]= malloc(n * sizeof(struct blasfeo_dvec));
-    }
-}
-
-
-
-// TODO(dimitris): Check with valgrind
-void free_double_ptr_strmat(struct blasfeo_dmat **arr, int m)
-{
-    for (int ii = 0; ii < m; ii++)
-    {
-        free(arr[ii]);
-    }
-    free(arr);
-}
-
-
-
-void free_double_ptr_strvec(struct blasfeo_dvec **arr, int m)
-{
-    for (int ii = 0; ii < m; ii++)
-    {
-        free(arr[ii]);
-    }
-    free(arr);
-}
-
-
-
-void create_double_ptr_strmat(struct blasfeo_dmat ***arr, int m, int n, char **ptr)
-{
-    *arr = (struct blasfeo_dmat **) *ptr;
-    *ptr += m*sizeof(struct blasfeo_dmat*);
-
-    for (int ii = 0; ii < m; ii++)
-    {
-        (*arr)[ii] = (struct blasfeo_dmat *) *ptr;
-        *ptr += n*sizeof(struct blasfeo_dmat);
-    }
-}
-
-
-
-void create_double_ptr_strvec(struct blasfeo_dvec ***arr, int m, int n, char **ptr)
-{
-    *arr = (struct blasfeo_dvec **) *ptr;
-    *ptr += m*sizeof(struct blasfeo_dvec*);
-
-    for (int ii = 0; ii < m; ii++)
-    {
-        (*arr)[ii] = (struct blasfeo_dvec *) *ptr;
-        *ptr += n*sizeof(struct blasfeo_dvec);
-    }
-}
-
-
-
-void create_double_ptr_int(int ***arr, int m, int n, char **ptr)
+void create_double_ptr_int(int m, int n, int ***arr, char **ptr)
 {
     *arr = (int **) *ptr;
     *ptr += m*sizeof(int*);
@@ -256,4 +145,82 @@ void create_double_ptr_int(int ***arr, int m, int n, char **ptr)
             (*arr)[ii][jj] = 0;
         }
     }
+}
+
+
+
+void create_double_ptr_strvec(int m, int n, struct blasfeo_dvec ***arr, char **ptr)
+{
+#ifdef _USE_VALGRIND_
+    *arr = malloc(m * sizeof(struct blasfeo_dvec*));
+    print_warning();
+#else
+    *arr = (struct blasfeo_dvec **) *ptr;
+    *ptr += m*sizeof(struct blasfeo_dvec*);
+#endif
+
+    for (int ii = 0; ii < m; ii++)
+    {
+#ifdef _USE_VALGRIND_
+        (*arr)[ii]= malloc(n * sizeof(struct blasfeo_dvec));
+#else
+        (*arr)[ii] = (struct blasfeo_dvec *) *ptr;
+        *ptr += n*sizeof(struct blasfeo_dvec);
+#endif
+    }
+}
+
+
+
+void create_double_ptr_strmat(int m, int n, struct blasfeo_dmat ***arr, char **ptr)
+{
+#ifdef _USE_VALGRIND_
+    *arr = calloc(m * sizeof(struct blasfeo_dmat*));
+    print_warning();
+#else
+    *arr = (struct blasfeo_dmat **) *ptr;
+    *ptr += m*sizeof(struct blasfeo_dmat*);
+#endif
+
+    for (int ii = 0; ii < m; ii++)
+    {
+#ifdef _USE_VALGRIND_
+        (*arr)[ii] = calloc(n * sizeof(struct blasfeo_dmat));
+#else
+        (*arr)[ii] = (struct blasfeo_dmat *) *ptr;
+        *ptr += n*sizeof(struct blasfeo_dmat);
+#endif
+    }
+}
+
+
+
+void wrapper_vec_to_strvec(int m, const double *v, struct blasfeo_dvec *sv, char **ptr)
+{
+    create_strvec(m, sv, ptr);
+    blasfeo_pack_dvec(m, (double *)v, sv, 0);
+}
+
+
+
+void wrapper_mat_to_strmat(int m, int n, const double *M, struct blasfeo_dmat *sM, char **ptr)
+{
+    create_strmat(m, n, sM, ptr);
+    blasfeo_pack_dmat(m, n, (double *)M, m, sM, 0, 0);
+}
+
+
+
+void init_strvec(int m, struct blasfeo_dvec *sv, char **ptr)
+{
+    create_strvec(m, sv, ptr);
+    blasfeo_dvecse(m, 0.0, sv, 0);
+}
+
+
+
+void init_strmat(int m, int n, struct blasfeo_dmat *sM, char **ptr)
+{
+    create_strmat(m, n, sM, ptr);
+    blasfeo_dgese(m, n, 0.0, sM, 0, 0);
 }

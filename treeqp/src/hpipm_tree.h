@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/types.h"
 
 #include <blasfeo_target.h>
@@ -94,11 +94,11 @@ void treeqp_hpipm_opts_set_default(int Nn, treeqp_hpipm_opts_t *opts);
 
 
 
-int treeqp_hpipm_calculate_size(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts);
+int treeqp_hpipm_calculate_size(tree_qp_in *qp_in, treeqp_hpipm_opts_t *opts);
 
-void treeqp_hpipm_create(tree_ocp_qp_in *qp_in, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work, void *ptr);
+void treeqp_hpipm_create(tree_qp_in *qp_in, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work, void *ptr);
 
-return_t treeqp_hpipm_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work);
+return_t treeqp_hpipm_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpipm_opts_t *opts, treeqp_hpipm_workspace *work);
 
 
 

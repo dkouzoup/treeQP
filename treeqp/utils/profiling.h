@@ -35,42 +35,56 @@ extern "C" {
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/timing.h"
 
-// NOTE(dimitris): this has to be >= maxit
-#define kMax 200
-
+typedef struct treeqp_profiling_t_
+{
+    int num_iter;
+    int run_indx;
 // total cpu time and ls iterations
 #if PROFILE > 0
-treeqp_timer tot_tmr;
-double total_time;
-double min_total_time;
-int total_ls_iter;
+    double total_time;
+    double min_total_time;
+    int total_ls_iter;
 #endif
 
 // + cputime and ls iterations per iteration
 #if PROFILE > 1
-treeqp_timer iter_tmr;
-double iter_times[kMax];
-double min_iter_times[kMax];
-int ls_iters[kMax];
+    double *iter_times;
+    double *min_iter_times;
+    int *ls_iters;
 #endif
 
 // + time per key operation per iteration
 #if PROFILE > 2
-treeqp_timer tmr;
-double stage_qps_times[kMax];
-double min_stage_qps_times[kMax];
-double build_dual_times[kMax];
-double min_build_dual_times[kMax];
-double newton_direction_times[kMax];
-double min_newton_direction_times[kMax];
-double line_search_times[kMax];
-double min_line_search_times[kMax];
+    double *stage_qps_times;
+    double *min_stage_qps_times;
+    double *build_dual_times;
+    double *min_build_dual_times;
+    double *newton_direction_times;
+    double *min_newton_direction_times;
+    double *line_search_times;
+    double *min_line_search_times;
 #endif
 
-void initialize_timers(void);
-void update_min_timers(int iter);
-void print_timers(int newtonIter);
-void write_timers_to_txt(void);
+} treeqp_profiling_t;
+
+// TODO(dimitris): no need for global variables
+#if PROFILE > 1
+treeqp_timer iter_tmr;
+#endif
+
+#if PROFILE > 2
+treeqp_timer tmr;
+#endif
+
+int timers_calculate_size(int num_iter);
+
+void timers_create(int num_iter, treeqp_profiling_t *timings, void *ptr);
+
+void timers_initialize(treeqp_profiling_t *timings);
+
+void timers_update(treeqp_profiling_t *timings);
+
+void timers_print(treeqp_profiling_t *timings);
 
 #ifdef __cplusplus
 }  /* extern "C" */

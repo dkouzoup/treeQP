@@ -25,8 +25,8 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#ifndef TREEQP_UTILS_BLASFEO_UTILS_H_
-#define TREEQP_UTILS_BLASFEO_UTILS_H_
+#ifndef TREEQP_UTILS_BLASFEO_H_
+#define TREEQP_UTILS_BLASFEO_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,32 +38,30 @@ extern "C" {
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 
-void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v);
+void convert_strvecs_to_single_vec(int n, const struct blasfeo_dvec *sv, double *v);
 
-void convert_strmats_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat);
+void convert_strmats_to_single_vec(int n, const struct blasfeo_dmat *sM, double *M);
 
-void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat);
-
-
-
-double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2);
-
-double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2);
-
-double check_error_strvec_double(struct blasfeo_dvec *V1, double *V2);
+void convert_strmats_tran_to_single_vec(int n, const struct blasfeo_dmat *sM, double *M);
 
 
 
-answer_t is_strmat_symmetric(struct blasfeo_dmat *M);
+double check_error_strmat(const struct blasfeo_dmat *M1, const struct blasfeo_dmat *M2);
 
-answer_t is_strmat_diagonal(struct blasfeo_dmat *M);
+double check_error_strvec(const struct blasfeo_dvec *v1, const struct blasfeo_dvec *v2);
 
-answer_t is_strmat_zero(struct blasfeo_dmat *M);
+double check_error_strvec_double(const struct blasfeo_dvec *v1, const double *v2);
 
-void print_blasfeo_target();
+
+
+answer_t is_strmat_symmetric(const struct blasfeo_dmat *M);
+
+answer_t is_strmat_diagonal(const struct blasfeo_dmat *M);
+
+answer_t is_strmat_zero(const struct blasfeo_dmat *M);
 
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
 
-#endif  /*  TREEQP_UTILS_BLASFEO_UTILS_H_ */
+#endif  /*  TREEQP_UTILS_BLASFEO_H_ */

@@ -34,7 +34,7 @@ extern "C" {
 
 #include "treeqp/utils/types.h"
 
-// TODO(dimitris): MAKE INDEPENDENT OF ORDER (now HPIPM header must come first)
+// TODO(dimitris): make headers independent of order (now HPIPM header must come first)
 #ifndef TREE_MPC
 #ifndef HPIPM_TREE_H_
 
@@ -53,22 +53,22 @@ struct node
 #endif
 #endif
 
-int calculate_number_of_nodes(const int md, const int Nr, const int Nh);
+int calculate_number_of_nodes(int md, int Nr, int Nh);
 
-int get_number_of_parent_nodes(const int Nn, const struct node * const tree);
+int get_number_of_parent_nodes(int Nn, const struct node *tree);
 
-int get_robust_horizon(const int Nn, const struct node * const tree);
+int get_robust_horizon(int Nn, const struct node *tree);
 
-void setup_multistage_tree(const int md, const int Nr, const int Nh, const int Nn, struct node * const tree);
-
-return_t setup_tree(const int * const nkids, struct node * const tree);
-
-return_t free_tree(struct node * const tree);
-
-int number_of_nodes_from_nkids(const int * const nkids);
+int number_of_nodes_from_nkids(const int *nkids);
 
 // TODO(dimitris): use this to eliminate Nn from input arguments in several (non time critical) functions
-int number_of_nodes_from_tree(const struct node * const tree);
+int number_of_nodes_from_tree(const struct node *tree);
+
+int tree_calculate_size(const int *nk);
+
+return_t tree_create(const int *nk, struct node *tree, void *ptr);
+
+void setup_multistage_tree(int md, int Nr, int Nh, int *nk);
 
 #ifdef __cplusplus
 }  /* extern "C" */

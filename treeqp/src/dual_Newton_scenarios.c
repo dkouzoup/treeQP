@@ -37,7 +37,7 @@
 
 #include "treeqp/src/dual_Newton_common.h"
 #include "treeqp/src/dual_Newton_scenarios.h"
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 
 #include "treeqp/utils/blasfeo.h"
 #include "treeqp/utils/types.h"
@@ -46,6 +46,10 @@
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/utils.h"
 #include "treeqp/utils/timing.h"
+
+#if PROFILE > 0
+#include "treeqp/utils/print.h"
+#endif
 
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
@@ -235,7 +239,7 @@ void write_scenarios_solution_to_txt(int Ns, int Nh, int Nr, int md, int nx, int
     write_int_vector_to_txt(&NewtonIter, 1, "examples/spring_mass_utils/iter.txt");
 
     #if PROFILE > 0
-    write_timers_to_txt();
+    timers_write_to_txt(&work->timings);
     #endif
 
     free(muIter);
@@ -304,7 +308,7 @@ int compare_with_previous_active_set(int n, struct blasfeo_dvec *asNow, struct b
 
 
 // TODO(dimitris): avoid some ifs in the loop maybe?
-static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in *qp_in,
+static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_qp_in *qp_in,
     treeqp_sdunes_workspace *work, treeqp_sdunes_opts_t *opts) {
 
     int ii, kk, idx, idxp1, idxm1;
@@ -482,7 +486,7 @@ static void solve_stage_problems(int Ns, int Nh, int NewtonIter, tree_ocp_qp_in 
 }
 
 
-static void calculate_residuals(int Ns, int Nh, tree_ocp_qp_in *qp_in,
+static void calculate_residuals(int Ns, int Nh, tree_qp_in *qp_in,
     treeqp_sdunes_workspace *work) {
 
     int ii, kk, idx0, idxm1;
@@ -1222,7 +1226,7 @@ double gradient_trans_times_direction(int Ns, int Nh, treeqp_sdunes_workspace *w
 }
 
 
-double evaluate_dual_function(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_workspace *work) {
+double evaluate_dual_function(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_workspace *work) {
     int *commonNodes = work->commonNodes;
     double *fvals = work->fvals;
 
@@ -1378,7 +1382,7 @@ double evaluate_dual_function(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdun
 }
 
 
-int line_search(int Ns, int Nh, tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
+int line_search(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work) {
 
     int ii, jj, kk;
@@ -1488,7 +1492,7 @@ double calculate_error_in_residuals(int Ns, int Nh, termination_t condition,
 }
 
 
-int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
+int treeqp_sdunes_calculate_size(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts)
 {
     struct node *tree = qp_in->tree;
     int nx = qp_in->nx[1];
@@ -1589,6 +1593,10 @@ int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *op
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, Nh*nx);  // Ut
     bytes += Ns*blasfeo_memsize_dmat(nu*Nr, nu*Nr);  // K
 
+    #if PROFILE > 0
+    bytes += timers_calculate_size(opts->maxIter);
+    #endif
+
     make_int_multiple_of(64, &bytes);
     bytes += 1*64;
 
@@ -1596,7 +1604,7 @@ int treeqp_sdunes_calculate_size(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *op
 }
 
 
-void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
+void treeqp_sdunes_create(tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     treeqp_sdunes_workspace *work, void *ptr) {
 
     struct node *tree = qp_in->tree;
@@ -1639,8 +1647,8 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
     c_ptr += Ns*sizeof(double);
 
     // generate indexing of scenario nodes from tree and flags for removed bounds
-    create_double_ptr_int(&work->nodeIdx, Ns, Nh+1, &c_ptr);
-    create_double_ptr_int(&work->boundsRemoved, Ns, Nh+1, &c_ptr);
+    create_double_ptr_int(Ns, Nh+1, &work->nodeIdx, &c_ptr);
+    create_double_ptr_int(Ns, Nh+1, &work->boundsRemoved, &c_ptr);
 
     for (int ii = 0; ii < Ns; ii++) {
         node = tree[Nn-Ns+ii].idx;
@@ -1712,32 +1720,32 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 
     if (opts->checkLastActiveSet)
     {
-        create_double_ptr_int(&work->xasChanged, Ns, Nh+1, &c_ptr);
-        create_double_ptr_int(&work->uasChanged, Ns, Nh+1, &c_ptr);
+        create_double_ptr_int(Ns, Nh+1, &work->xasChanged, &c_ptr);
+        create_double_ptr_int(Ns, Nh+1, &work->uasChanged, &c_ptr);
     }
 
-    create_double_ptr_strvec(&work->sx, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->su, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sxas, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->suas, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sxUnc, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->suUnc, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sQinvCal, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sRinvCal, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sresk, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sreskMod, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->smu, Ns, Nh, &c_ptr);
-    create_double_ptr_strvec(&work->sDeltamu, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sZbar, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sLambdaD, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sCholLambdaD, Ns, Nh, &c_ptr);
-    create_double_ptr_strmat(&work->sLambdaL, Ns, Nh-1, &c_ptr);
-    create_double_ptr_strmat(&work->sCholLambdaL, Ns, Nh-1, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sx, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->su, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sxas, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->suas, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sxUnc, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->suUnc, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sQinvCal, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sRinvCal, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sresk, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sreskMod, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->smu, &c_ptr);
+    create_double_ptr_strvec(Ns, Nh, &work->sDeltamu, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sZbar, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sLambdaD, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh, &work->sCholLambdaD, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh-1, &work->sLambdaL, &c_ptr);
+    create_double_ptr_strmat(Ns, Nh-1, &work->sCholLambdaL, &c_ptr);
     if (opts->checkLastActiveSet)
     {
-        create_double_ptr_strmat(&work->sTmpLambdaD, Ns, Nh, &c_ptr);
-        create_double_ptr_strvec(&work->sxasPrev, Ns, Nh, &c_ptr);
-        create_double_ptr_strvec(&work->suasPrev, Ns, Nh, &c_ptr);
+        create_double_ptr_strmat(Ns, Nh, &work->sTmpLambdaD, &c_ptr);
+        create_double_ptr_strvec(Ns, Nh, &work->sxasPrev, &c_ptr);
+        create_double_ptr_strvec(Ns, Nh, &work->suasPrev, &c_ptr);
     }
 
     // move pointer for proper alignment of blasfeo matrices and vectors
@@ -1827,6 +1835,11 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 
     free(processedNodes);
 
+    #if PROFILE > 0
+    timers_create(opts->maxIter, &work->timings, c_ptr);
+    timers_initialize(&work->timings);
+    #endif
+
     assert((char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
     //     ptr, c_ptr, (char *)ptr + treeqp_sdunes_calculate_size(qp_in, opts) - c_ptr);
@@ -1834,7 +1847,7 @@ void treeqp_sdunes_create(tree_ocp_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
 }
 
 
-return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
+return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     treeqp_sdunes_opts_t *opts, treeqp_sdunes_workspace *work) {
 
     int NewtonIter, lsIter;
@@ -1857,12 +1870,20 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     struct blasfeo_dvec *sqnonScaled = (struct blasfeo_dvec*)qp_in->q;
     struct blasfeo_dvec *srnonScaled = (struct blasfeo_dvec*)qp_in->r;
 
+    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+
+    #if PROFILE > 0
+    treeqp_profiling_t *timings = &work->timings;
+    #endif
+
+    treeqp_tic(&total_tmr);
+
     // ------ initialization
-    treeqp_timer timer;
-    treeqp_tic(&timer);
+    treeqp_tic(&interface_tmr);
+
     double scalingFactor;
     for (int jj = 0; jj < Nn; jj++) {
-        // NOTE(dimitris): inverse of scaling factor in tree_ocp_qp_in_fill_lti_data
+        // NOTE(dimitris): inverse of scaling factor in tree_qp_in_fill_lti_data
         scalingFactor = (double)ipow(md, MIN(qp_in->tree[jj].stage, Nr))/ipow(md, Nr);
 
         blasfeo_ddiaex(qp_in->nx[jj], scalingFactor, &sQnonScaled[jj], 0, 0, &work->sQ[jj], 0);
@@ -1894,8 +1915,9 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
             }
         }
     }
-    double init_time = treeqp_toc(&timer);
-    // printf("init. time = %f ms\n", 1e3*init_time);
+
+    qp_out->info.interface_time = treeqp_toc(&interface_tmr);
+    treeqp_tic(&solver_tmr);
 
     work->reverseCholesky = opts->checkLastActiveSet;
 
@@ -1917,7 +1939,7 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         #endif
         solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work, opts);
         #if PROFILE > 2
-        stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- calculate dual gradient
@@ -1947,7 +1969,7 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         // NOTE(dimitris): inaccurate since part of dual Hessian is calculated while solving
         // the stage QPs
         #if PROFILE > 2
-        build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         #if PROFILE > 2
@@ -1967,7 +1989,7 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
-        newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- line search
@@ -1978,7 +2000,7 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         lsIter = line_search(Ns, Nh, qp_in, opts, work);
 
         #if PROFILE > 2
-        line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
         #endif
 
         // --- reset data for next iteration
@@ -1993,10 +2015,13 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
         printf("iteration #%d: %d ls iterations \t\t(error %5.2e)\n", NewtonIter, lsIter, error);
         #endif
         #if PROFILE > 1
-        iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
-        ls_iters[NewtonIter] = lsIter;
+        timings->iter_times[NewtonIter] = treeqp_toc(&iter_tmr);
+        timings->ls_iters[NewtonIter] = lsIter;
         #endif
     }
+
+    qp_out->info.solver_time = treeqp_toc(&solver_tmr);
+    treeqp_tic(&interface_tmr);
 
     // ------ copy solution to qp_out
 
@@ -2050,8 +2075,17 @@ return_t treeqp_sdunes_solve(tree_ocp_qp_in *qp_in, tree_ocp_qp_out *qp_out,
     }
     qp_out->info.iter = NewtonIter;
 
+    qp_out->info.interface_time += treeqp_toc(&interface_tmr);
+
     if (qp_out->info.iter == opts->maxIter)
         status = TREEQP_MAXIMUM_ITERATIONS_REACHED;
+
+    qp_out->info.total_time = treeqp_toc(&total_tmr);
+
+    #if PROFILE > 0
+    timings->total_time = qp_out->info.total_time;
+    timers_update(timings);
+    #endif
 
     return status;
 }

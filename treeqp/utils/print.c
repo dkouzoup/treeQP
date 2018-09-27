@@ -33,14 +33,17 @@
 #include <blasfeo_d_aux.h>
 #include <blasfeo_d_aux_ext_dep.h>
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/dual_Newton_common.h"
+#include "treeqp/src/tree_qp_common.h"
+#include "treeqp/utils/print.h"
 #include "treeqp/utils/tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/utils.h"
+#include "treeqp/utils/profiling.h"
 
 
 
-void print_node(const struct node * const tree)
+void node_print(const struct node *tree)
 {
     printf("\n");
     printf("idx    = \t%d\n", tree[0].idx);
@@ -61,7 +64,7 @@ void print_node(const struct node * const tree)
 
 
 
-void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
+void tree_qp_in_print_dims(const tree_qp_in *qp_in)
 {
     int N = qp_in->N;
     int *nx = qp_in->nx;
@@ -79,7 +82,7 @@ void tree_ocp_qp_in_print_dims(const tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_in_print(const tree_ocp_qp_in * const qp_in)
+void tree_qp_in_print(const tree_qp_in *qp_in)
 {
     int Nn = qp_in->N;
     double min, max;
@@ -198,7 +201,7 @@ void tree_ocp_qp_in_print(const tree_ocp_qp_in * const qp_in)
 
 
 
-void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out)
+void tree_qp_out_print(int Nn, const tree_qp_out *qp_out)
 {
     int nx, nu, nc;
 
@@ -237,7 +240,7 @@ void tree_ocp_qp_out_print(const int Nn, const tree_ocp_qp_out * const qp_out)
 
 
 
-void tree_ocp_qp_out_write_to_txt(const tree_ocp_qp_in * const qp_in, const tree_ocp_qp_out * const qp_out, const char *fpath)
+void tree_qp_out_write_to_txt(const tree_qp_in *qp_in, const tree_qp_out *qp_out, const char *fpath)
 {
     int Nn = qp_in->N;
     int dimx = total_number_of_states(qp_in);
@@ -271,4 +274,87 @@ void tree_ocp_qp_out_write_to_txt(const tree_ocp_qp_in * const qp_in, const tree
 
     free(x);
     free(u);
+}
+
+
+
+void regularization_print_status(regType_t reg_type, reg_result_t reg_res)
+{
+    switch (reg_type)
+    {
+        case TREEQP_NO_REGULARIZATION:
+            printf("NO REGULARIZATION: Hessian block never regularized\n");
+            break;
+        case TREEQP_ALWAYS_LEVENBERG_MARQUARDT:
+            printf("ALWAYS REGULARIZATION: Hessian block always regularized\n");
+            break;
+        case TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT:
+            // check result
+            switch (reg_res)
+            {
+                case TREEQP_NO_REGULARIZATION_ADDED:
+                    printf("ON-THE-FLY REGULARIZATION: Hessian block not regularized\n");
+                    break;
+                case TREEQP_REGULARIZATION_ADDED:
+                    printf("ON-THE-FLY REGULARIZATION: Hessian block regularized\n");
+                    break;
+            }
+            break;
+    }
+}
+
+
+
+#if PROFILE > 0
+
+void timers_write_to_txt(treeqp_profiling_t *timings)
+{
+    char fname[256];
+    char prefix[] = "examples/spring_mass_utils";
+
+    #if PROFILE > 1
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "ls_iters");
+    write_int_vector_to_txt(timings->ls_iters, timings->num_iter, fname);
+    #endif
+
+    // NOTE(dimitris): do not save cpu time if PROFILE is too high (inaccurate results)
+    #if PROFILE < 3
+
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "cputime");
+    write_double_vector_to_txt(&timings->min_total_time, 1, fname);
+
+    #if PROFILE > 1
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "iter_times");
+    write_double_vector_to_txt(timings->min_iter_times, timings->num_iter, fname);
+    #endif
+
+    #endif  /* PROFILE < 3 */
+
+    #if PROFILE > 2
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "stage_qps_times");
+    write_double_vector_to_txt(timings->min_stage_qps_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "build_dual_times");
+    write_double_vector_to_txt(timings->min_build_dual_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "newton_direction_times");
+    write_double_vector_to_txt(timings->min_newton_direction_times, timings->num_iter, fname);
+    snprintf(fname, sizeof(fname), "%s/%s.txt", prefix, "line_search_times");
+    write_double_vector_to_txt(timings->min_line_search_times, timings->num_iter, fname);
+    #endif
+}
+
+#endif  /* PROFILE > 0 */
+
+
+
+void blasfeo_print_target(void)
+{
+    printf("\n");
+    #if defined(LA_HIGH_PERFORMANCE)
+    printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");
+    #elif defined(LA_REFERENCE)
+    printf("blasfeo compiled with LA = REFERENCE\n");
+    #elif defined(LA_BLAS)
+    printf("blasfeo compiled with LA = BLAS\n");
+    #endif
+    printf("\n");
 }

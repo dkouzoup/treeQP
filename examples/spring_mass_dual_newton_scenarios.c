@@ -36,7 +36,7 @@
 // - not varying nx, nu
 // - no arbitrary trees
 
-#include "treeqp/src/tree_ocp_qp_common.h"
+#include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/memory.h"
@@ -85,21 +85,19 @@ int main() {
     status = read_double_vector_from_txt(x0, NX, "examples/spring_mass_utils/x0.txt");
     if (status != TREEQP_OK) return -1;
 
-    // setup scenario tree
-    struct node *tree = malloc(Nn*sizeof(struct node));
-    setup_multistage_tree(md, Nr, Nh, Nn, tree);
-
     // setup QP
-    tree_ocp_qp_in qp_in;
+    tree_qp_in qp_in;
 
     int *nx = malloc(Nn*sizeof(int));
     int *nu = malloc(Nn*sizeof(int));
+    int *nk = malloc(Nn*sizeof(int));
+    setup_multistage_tree(md, Nr, Nh, nk);
 
     for (int ii = 0; ii < Nn; ii++)
     {
         nx[ii] = NX;
 
-        if (tree[ii].nkids > 0)  // not a leaf
+        if (nk[ii] > 0)  // not a leaf
         {
             nu[ii] = NU;
         }
@@ -109,27 +107,27 @@ int main() {
         }
     }
 
-    int qp_in_size = tree_ocp_qp_in_calculate_size(Nn, nx, nu, NULL, tree);
+    int qp_in_size = tree_qp_in_calculate_size(Nn, nx, nu, NULL, nk);
     void *qp_in_memory = malloc(qp_in_size);
-    tree_ocp_qp_in_create(Nn, nx, nu, NULL, tree, &qp_in, qp_in_memory);
+    tree_qp_in_create(Nn, nx, nu, NULL, nk, &qp_in, qp_in_memory);
 
     // NOTE(dimitris): skipping first dynamics that represent the nominal ones
-    tree_ocp_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
+    tree_qp_in_fill_lti_data_diag_weights(&A[NX*NX], &B[NX*NU], &b[NX], dQ, q, dP, p, dR, r,
         xmin, xmax, umin, umax, x0, NULL, NULL, NULL, NULL, NULL, &qp_in);
 
-    // tree_ocp_qp_in_print(&qp_in);
+    // tree_qp_in_print(&qp_in);
     // exit(1);
 
     // setup QP solution
-    tree_ocp_qp_out qp_out;
+    tree_qp_out qp_out;
 
-    int qp_out_size = tree_ocp_qp_out_calculate_size(Nn, nx, nu, NULL);
+    int qp_out_size = tree_qp_out_calculate_size(Nn, nx, nu, NULL);
     void *qp_out_memory = malloc(qp_out_size);
-    tree_ocp_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
+    tree_qp_out_create(Nn, nx, nu, NULL, &qp_out, qp_out_memory);
 
     // eliminate x0 from QP
-    tree_ocp_qp_in_eliminate_x0(&qp_in);
-    tree_ocp_qp_out_eliminate_x0(&qp_out);
+    tree_qp_in_eliminate_x0(&qp_in);
+    tree_qp_out_eliminate_x0(&qp_out);
 
     // setup QP solver
     treeqp_sdunes_workspace work;
@@ -142,31 +140,16 @@ int main() {
     printf("\n-------- treeQP workspace requires %d bytes \n", treeqp_size);
     #endif
 
-    #if PROFILE > 0
-    initialize_timers();
-    #endif
-
     for (int jj = 0; jj < NREP; jj++)
     {
         treeqp_sdunes_set_dual_initialization(lambda, mu, &work);
-
-        #if PROFILE > 0
-        treeqp_tic(&tot_tmr);
-        #endif
-
         status = treeqp_sdunes_solve(&qp_in, &qp_out, &opts, &work);
-
         // printf("QP solver status at run %d: %d\n", jj, status);
-
-        #if PROFILE > 0
-        total_time = treeqp_toc(&tot_tmr);
-        update_min_timers(jj);
-        #endif
     }
     write_scenarios_solution_to_txt(Ns, Nh, Nr, md, NX, NU, qp_out.info.iter, &work);
 
     #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
+    timers_print(&work.timings);
     #endif
 
     #if PRINT_LEVEL > 0
@@ -175,7 +158,7 @@ int main() {
     }
     #endif
 
-    double kkt_err = tree_ocp_qp_out_max_KKT_res(&qp_in, &qp_out);
+    double kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
 
     #if PRINT_LEVEL > 0
     printf("Maximum error in KKT residuals (sdunes):\t\t %2.2e\n\n", kkt_err);
@@ -185,13 +168,11 @@ int main() {
     // Free allocated memory
     free(nx);
     free(nu);
+    free(nk);
 
     free(qp_in_memory);
     free(qp_solver_memory);
     free(qp_out_memory);
-
-    free_tree(tree);
-    free(tree);
 
     free(mu);
     free(lambda);
