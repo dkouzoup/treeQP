@@ -33,6 +33,7 @@ OBJS += spring_mass_dual_newton_tree.o
 OBJS += spring_mass.o
 OBJS += random_qp.o
 OBJS += thesis_example.o
+OBJS += solve_qp_json.o
 
 FAULT_TOLERANCE_OBJS =
 FAULT_TOLERANCE_OBJS += fault_tolerance.o
@@ -54,11 +55,14 @@ unit_tests:
 	$(CC) -o unit_test_5_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5
 	$(CC) -o unit_test_5_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5 -DUSE_HPMPC
 
-random_qp_example: random_qp.o
-	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+solve_qp_json:
+	g++-7 -o solve_qp_json.out solve_qp_json.cpp $(CFLAGS) $(LDFLAGS) -I../ -L../lib $(LIBS) -I/opt/blasfeo/include
 
 thesis_example: thesis_example.o
-	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS) 
+
+random_qp_example: random_qp.o
+	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)  
 
 spring_mass_tdunes_example: spring_mass_dual_newton_tree.o
 	$(CC) -o spring_mass_tdunes.out spring_mass_dual_newton_tree.o $(CFLAGS) $(LDFLAGS) $(LIBS)
@@ -79,6 +83,7 @@ fault_tolerance_example: $(FAULT_TOLERANCE_OBJS)
 
 examples:
 	$(MAKE) random_qp_example
+	$(MAKE) solve_qp_json
 	$(MAKE) thesis_example
 	$(MAKE) spring_mass_tdunes_example
 	$(MAKE) spring_mass_sdunes_example
