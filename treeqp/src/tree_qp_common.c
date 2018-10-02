@@ -85,7 +85,6 @@ int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int 
     int idx, nc_;
 
     int idxp;
-    int counter = nk[idxp];
 
     for (idx = 0; idx < Nn; idx++)
     {

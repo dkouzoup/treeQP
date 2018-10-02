@@ -94,7 +94,7 @@ void timers_create(int num_iter, treeqp_profiling_t *timings, void *ptr)
     c_ptr += num_iter*sizeof(int);
     #endif
 
-    assert((char *)ptr + timers_calculate_size(num_iter) >= c_ptr);
+    assert((char *)ptr + timers_calculate_size(num_iter) == c_ptr);
 }
 
 
@@ -160,6 +160,7 @@ void timers_update(treeqp_profiling_t *timings)
     }
     if (run_indx == 0)
     {
+        timings->total_ls_iter = 0;
         for (int ii = 0; ii < num_iter; ii++)
         {
             timings->total_ls_iter += timings->ls_iters[ii];

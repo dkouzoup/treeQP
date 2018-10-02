@@ -140,7 +140,9 @@ int main() {
 
     #endif
 
+    #if PROFILE > 0
     timers_print(&work.timings);
+    #endif
 
     tree_qp_out_print(6, &qp_out);
 

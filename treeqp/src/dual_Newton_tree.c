@@ -1090,6 +1090,8 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
     #if PROFILE > 0
     treeqp_profiling_t *timings = &work->timings;
+    assert(timings->num_iter == opts->maxIter &&
+        "Number of iterations cannot be changed after initializing solver (when PROFILE > 0)");
     #endif
 
     treeqp_tic(&total_tmr);
@@ -1610,6 +1612,7 @@ void treeqp_tdunes_create(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *o
 
     #if PROFILE > 0
     timers_create(opts->maxIter, &work->timings, c_ptr);
+    c_ptr += timers_calculate_size(opts->maxIter);
     timers_initialize(&work->timings);
     #endif
 

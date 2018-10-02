@@ -555,6 +555,7 @@ void stage_qp_qpoases_export_mu(tree_qp_out *qp_out, int idx, void *work_)
     {
         BLASFEO_DVECEL(&qp_out->mu_u[idx], ii) = - BLASFEO_DVECEL(&qp_out->mu_u[idx], ii);
     }
+    // TODO(dimitris): fix Valgrind error for uninitialized value when idx = 0
     if (QP != NULL)
     {
         for (int ii = 0; ii < nc; ii++)

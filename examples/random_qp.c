@@ -166,7 +166,9 @@ int main()
 
 #ifndef DATA
 #if PROFILE > 0 && PRINT_LEVEL > 0
+#ifndef USE_HPMPC
     timers_print(&work.timings);
+#endif
 #endif
     tree_qp_out_print(Nn, &qp_out);
     blasfeo_print_target();
