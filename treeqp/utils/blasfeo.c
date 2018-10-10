@@ -36,48 +36,49 @@
 #include <blasfeo_v_aux_ext_dep.h>
 
 
-void convert_strvecs_to_single_vec(int n, struct blasfeo_dvec sv[], double *v)
+void convert_strvecs_to_single_vec(int n, const struct blasfeo_dvec *sv, double *v)
 {
     int ind = 0;
     for (int i = 0; i < n; i++)
     {
-        blasfeo_unpack_dvec(sv[i].m, &sv[i], 0, &v[ind]);
+        blasfeo_unpack_dvec(sv[i].m, (struct blasfeo_dvec *)&sv[i], 0, &v[ind]);
         ind += sv[i].m;
     }
 }
 
 
 
-void convert_strmats_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat)
+void convert_strmats_to_single_vec(int n, const struct blasfeo_dmat *sM, double *M)
 {
     int ind = 0;
     for (int i = 0; i < n; i++)
     {
-        blasfeo_unpack_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].m);
-        ind += sMat[i].m*sMat[i].n;
+        blasfeo_unpack_dmat(sM[i].m, sM[i].n, (struct blasfeo_dmat *) &sM[i], 0, 0, &M[ind], sM[i].m);
+        ind += sM[i].m*sM[i].n;
     }
 }
 
 
 
-void convert_strmats_tran_to_single_vec(int n, struct blasfeo_dmat sMat[], double *mat)
+void convert_strmats_tran_to_single_vec(int n, const struct blasfeo_dmat *sM, double *M)
 {
     int ind = 0;
     for (int i = 0; i < n; i++)
     {
-        blasfeo_unpack_tran_dmat(sMat[i].m, sMat[i].n, &sMat[i], 0, 0, &mat[ind], sMat[i].n);
-        ind += sMat[i].m*sMat[i].n;
+        blasfeo_unpack_tran_dmat(sM[i].m, sM[i].n, (struct blasfeo_dmat *)&sM[i], 0, 0, &M[ind], sM[i].n);
+        ind += sM[i].m*sM[i].n;
     }
 }
 
 
 
-double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
+double check_error_strmat(const struct blasfeo_dmat *M1, const struct blasfeo_dmat *M2)
 {
     double err = 0;
 
     if ((M1->m != M2->m) || (M1->n != M2->n))
     {
+        // TODO(dimitris): proper error handling and remove stdio header
         printf("[TREEQP]: Error! Matrices do not have the same dimensions ");
         printf("(%d x %d) vs (%d x %d)\n", M1->m, M1->n, M2->m, M2->n);
         exit(1);
@@ -94,39 +95,40 @@ double check_error_strmat(struct blasfeo_dmat *M1, struct blasfeo_dmat *M2)
 
 
 
-double check_error_strvec(struct blasfeo_dvec *V1, struct blasfeo_dvec *V2)
+double check_error_strvec(const struct blasfeo_dvec *v1, const struct blasfeo_dvec *v2)
 {
     double err = 0;
 
-    if (V1->m != V2->m)
+    if (v1->m != v2->m)
     {
+        // TODO(dimitris): proper error handling and remove stdio header
         printf("[TREEQP]: Error! Vectors do not have the same dimensions ");
-        printf("(%d x 1) vs (%d x 1)\n", V1->m, V2->m);
+        printf("(%d x 1) vs (%d x 1)\n", v1->m, v2->m);
         exit(1);
     }
-    for (int ii = 0; ii < V1->m; ii++)
+    for (int ii = 0; ii < v1->m; ii++)
     {
-        err = MAX(ABS(BLASFEO_DVECEL(V1, ii) - BLASFEO_DVECEL(V2, ii)), err);
+        err = MAX(ABS(BLASFEO_DVECEL(v1, ii) - BLASFEO_DVECEL(v2, ii)), err);
     }
     return err;
 }
 
 
 
-double check_error_strvec_double(struct blasfeo_dvec *V1, double *V2)
+double check_error_strvec_double(const struct blasfeo_dvec *v1, const double *v2)
 {
     double err = 0;
 
-    for (int ii = 0; ii < V1->m; ii++)
+    for (int ii = 0; ii < v1->m; ii++)
     {
-        err = MAX(ABS(BLASFEO_DVECEL(V1, ii) - V2[ii]), err);
+        err = MAX(ABS(BLASFEO_DVECEL(v1, ii) - v2[ii]), err);
     }
     return err;
 }
 
 
 
-answer_t is_strmat_symmetric(struct blasfeo_dmat *M)
+answer_t is_strmat_symmetric(const struct blasfeo_dmat *M)
 {
     double tol = 1e-8;
     answer_t ans = YES;
@@ -149,7 +151,7 @@ answer_t is_strmat_symmetric(struct blasfeo_dmat *M)
 
 
 
-answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
+answer_t is_strmat_diagonal(const struct blasfeo_dmat *M)
 {
     answer_t ans = YES;
     assert(M->m == M->n);
@@ -171,7 +173,7 @@ answer_t is_strmat_diagonal(struct blasfeo_dmat *M)
 
 
 
-answer_t is_strmat_zero(struct blasfeo_dmat *M)
+answer_t is_strmat_zero(const struct blasfeo_dmat *M)
 {
     answer_t ans = YES;
     for (int ii = 0; ii < M->m; ii++)
@@ -185,19 +187,4 @@ answer_t is_strmat_zero(struct blasfeo_dmat *M)
         }
     }
     return ans;
-}
-
-
-
-void print_blasfeo_target()
-{
-    printf("\n");
-    #if defined(LA_HIGH_PERFORMANCE)
-    printf("blasfeo compiled with LA = HIGH_PERFORMANCE\n");
-    #elif defined(LA_REFERENCE)
-    printf("blasfeo compiled with LA = REFERENCE\n");
-    #elif defined(LA_BLAS)
-    printf("blasfeo compiled with LA = BLAS\n");
-    #endif
-    printf("\n");
 }

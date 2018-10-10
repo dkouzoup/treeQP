@@ -11,36 +11,39 @@ endif
 
 # Set default compiler
 ifeq ($(OS), MAC)
-CC="/usr/local/bin/gcc-7"
+CC="/usr/local/bin/gcc-8"
+CXX="/usr/local/bin/g++-8"
 #CC=clang
+#CXX=clang++
 else
-CC = gcc
+CC=gcc
+CXX=g++
 endif
 
 # Installation directory
 TOP = $(shell pwd)
 
 # BLASFEO path
-#BLASFEO_PATH = $(TOP)/external/blasfeo
+BLASFEO_PATH = $(TOP)/external/blasfeo
 #BLASFEO_PATH = $(TOP)/../blasfeo
-BLASFEO_PATH = /opt/blasfeo
+#BLASFEO_PATH = /opt/blasfeo
 
 # flag to directly use BLASFEO install dir instead of compiling it within treeQP
 # !!! USE WITH CAUTION !!!
 # BLASFEO_VERSION & BLASFEO_TARGET options below are not used if flag is enabled
 # treeQP should be deep_cleaned and recompiled if installed BLASFEO changes
-SKIP_BLASFEO_COMPILATION = ON
+SKIP_BLASFEO_COMPILATION = OFF
 
 # BLASFEO version
 BLASFEO_VERSION = HIGH_PERFORMANCE
 #BLASFEO_VERSION = REFERENCE
 
 # BLASFEO target
-#BLASFEO_TARGET = X64_INTEL_HASWELL
+BLASFEO_TARGET = X64_INTEL_HASWELL
 #BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
 #BLASFEO_TARGET = X64_INTEL_CORE
 #BLASFEO_TARGET = GENERIC
-BLASFEO_TARGET = X64_AMD_BULLDOZER
+#BLASFEO_TARGET = X64_AMD_BULLDOZER
 
 # HPMPC target
 HPMPC_TARGET = X64_AVX

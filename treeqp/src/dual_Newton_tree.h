@@ -36,6 +36,10 @@ extern "C" {
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/utils/types.h"
 
+#if PROFILE > 0
+#include "treeqp/utils/profiling.h"
+#endif
+
 #include <blasfeo_target.h>
 #include <blasfeo_common.h>
 
@@ -43,18 +47,18 @@ extern "C" {
 
 typedef struct stage_qp_fcn_ptrs_
 {
-    answer_t (*is_applicable)(tree_qp_in *qp_in, int idx);
+    answer_t (*is_applicable)(const tree_qp_in *qp_in, int idx);
     int (*calculate_size)(int nx, int nu, int nc);
     void (*assign_structs)(void **data, char **c_double_ptr);
     void (*assign_blasfeo_data)(int nx, int nu, void *data, char **c_double_ptr);
     void (*assign_data)(int nx, int nu, int nc, void *data, char **c_double_ptr);
-    return_t (*init)(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
-    return_t (*solve_extended)(tree_qp_in *qp_in, int idx, void *work);
-    return_t (*solve)(tree_qp_in *qp_in, int idx, void *work);
-    void (*set_CmPnCmT)(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
-    void (*add_EPmE)(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
-    void (*add_CmPnCkT)(tree_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
-    void (*eval_dual_term)(tree_qp_in *qp_in, int idx, void *work_);
+    return_t (*init)(const tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work);
+    return_t (*solve_extended)(const tree_qp_in *qp_in, int idx, void *work);
+    return_t (*solve)(const tree_qp_in *qp_in, int idx, void *work);
+    void (*set_CmPnCmT)(const tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_EPmE)(const tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+    void (*add_CmPnCkT)(const tree_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
+    void (*eval_dual_term)(const tree_qp_in *qp_in, int idx, void *work_);
     void (*export_mu)(tree_qp_out *qp_out, int idx, void *work_);
 } stage_qp_fcn_ptrs;
 
@@ -135,6 +139,11 @@ typedef struct treeqp_tdunes_workspace_
     struct blasfeo_dvec *sxasPrev;  // 1 x Nn
     struct blasfeo_dvec *suasPrev;  // 1 x Nn
     struct blasfeo_dmat *sWdiag;  // 1 x Nn
+
+    #if PROFILE > 0
+    treeqp_profiling_t timings;
+    #endif
+
 } treeqp_tdunes_workspace;
 
 
@@ -147,17 +156,17 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t *opts);
 
 
 
-int treeqp_tdunes_calculate_size(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts);
+int treeqp_tdunes_calculate_size(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *opts);
 
-void treeqp_tdunes_create(tree_qp_in *qp_in, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work, void *ptr);
+void treeqp_tdunes_create(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work, void *ptr);
 
-void treeqp_tdunes_set_dual_initialization(double *lambda, treeqp_tdunes_workspace *work);
+void treeqp_tdunes_set_dual_initialization(const double *lambda, treeqp_tdunes_workspace *work);
 
-return_t treeqp_tdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
+return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out, const treeqp_tdunes_opts_t *opts, treeqp_tdunes_workspace *work);
 
 
 // TODO(dimitris): move to utils!
-void write_solution_to_txt(tree_qp_in *qp_in, int Np, int iter, struct node *tree, treeqp_tdunes_workspace *work);
+void write_solution_to_txt(const tree_qp_in *qp_in, int Np, int iter, struct node *tree, treeqp_tdunes_workspace *work);
 
 #ifdef __cplusplus
 }  /* extern "C" */

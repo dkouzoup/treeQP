@@ -44,6 +44,7 @@
 #include <blasfeo_d_aux_ext_dep.h>
 #include <blasfeo_d_blas.h>
 
+#ifdef DATA
 #if DATA == 0
 #include "examples/random_qp_utils/data00.c"
 #elif DATA == 1
@@ -56,6 +57,7 @@
 #include "examples/random_qp_utils/data04.c"
 #elif DATA == 5
 #include "examples/random_qp_utils/data05.c"
+#endif
 #else
 #include "examples/random_qp_utils/data.c"
 #endif
@@ -86,7 +88,12 @@ int main()
 #else
     tree_qp_in_set_ltv_objective_colmajor(Q, R, S, q, r, &qp_in);
 #endif
+
+#ifdef UNCONSTRAINED
     tree_qp_in_set_inf_bounds(&qp_in);
+#else
+    tree_qp_in_set_ltv_bounds(xmin, xmax, umin, umax, &qp_in);
+#endif
 
 #if 0
     double x0[] = {1., 1.,};
@@ -150,24 +157,21 @@ int main()
 #endif  // USE_HPMPC
 
     // solve QP
-#if PROFILE > 0
-    initialize_timers( );
-#endif
+    int status;
 #ifndef USE_HPMPC
-    treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
+    status = treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 #else
-    treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
-#endif
-#if PROFILE > 0
-    update_min_timers(0);
+    status = treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 #endif
 
 #ifndef DATA
 #if PROFILE > 0 && PRINT_LEVEL > 0
-    print_timers(qp_out.info.iter);
+#ifndef USE_HPMPC
+    timers_print(&work.timings);
+#endif
 #endif
     tree_qp_out_print(Nn, &qp_out);
-    print_blasfeo_target();
+    blasfeo_print_target();
 #endif
 
     int indx = 0;
@@ -219,7 +223,10 @@ int main()
 
     assert(kkt_err < 1e-12 && "maximum KKT residual too high!");
     assert(max_err < 1e-12 && "deviation from given solution too high!");
+#ifdef UNCONSTRAINED
     assert(qp_out.info.iter == 1 || qp_out.info.iter == 0 && "Unconstrained QP did not converge in one iteration!");
+#endif
+    assert (status == 0 && "Solver did not converge");
 
     return 0;
 }

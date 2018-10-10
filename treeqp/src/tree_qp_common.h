@@ -44,12 +44,15 @@ typedef struct treeqp_info_t_
 {
     int Nn;
     int iter;
+    double total_time;
     double solver_time;
     double interface_time;
-    // TODO(dimitris): add total time and iteration logs
+    // TODO(dimitris): add iteration logs
 } treeqp_info_t;
 
 
+
+// TODO(dimitris): write calculate_size/create routines for qp_internal_t
 
 // internal memory to eliminate x0 from QP
 typedef struct qp_internal_t_
@@ -301,6 +304,8 @@ void tree_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, doub
 
 void tree_qp_in_set_ltv_objective_diag(double *Qd, double *Rd, double *q, double *r, tree_qp_in *qp_in);
 
+
+void tree_qp_in_set_ltv_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_qp_in *qp_in);
 
 void tree_qp_in_set_const_bounds(double *xmin, double *xmax, double *umin, double *umax, tree_qp_in *qp_in);
 

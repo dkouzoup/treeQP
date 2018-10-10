@@ -43,6 +43,20 @@
 
 
 
+static int find_parent(int idx, const int *nk)
+{
+    if (idx == 0) return -1;  // root
+
+    int acc = 0;
+    for (int ii = 0; ii < idx; ii++)
+    {
+        acc += nk[ii];
+        if (acc >= idx) return ii;
+    }
+}
+
+
+
 int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk)
 {
     int bytes = 0;
@@ -70,23 +84,11 @@ int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int 
 
     int idx, nc_;
 
-    int idxp = 0;
-    int counter = nk[idxp];
+    int idxp;
 
     for (idx = 0; idx < Nn; idx++)
     {
-        if (idx > 0)
-        {
-            if (counter > 0)
-            {
-                counter--;
-            }
-            else
-            {
-                idxp++;
-                counter = nk[idxp];
-            }
-        }
+        idxp = find_parent(idx, nk);
 
         if (nc == NULL)
         {
@@ -299,7 +301,7 @@ void tree_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  
 
     assert((char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, nk) >= c_ptr);
     // printf("memory starts at\t%p\nmemory ends at  \t%p\ndistance from the end\t%lu bytes\n",
-    //     ptr, c_ptr, (char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc, tree) - c_ptr);
+    //     ptr, c_ptr, (char *)ptr + tree_qp_in_calculate_size(Nn, nx, nu, nc,nk) - c_ptr);
     // exit(1);
 }
 
@@ -2056,6 +2058,31 @@ void tree_qp_in_set_ltv_objective_colmajor(double *Q, double *R, double *S, doub
         idxr += sr[ii].m;
         #endif
     }
+}
+
+
+
+void tree_qp_in_set_ltv_bounds(double *xmin, double *xmax, double *umin, double *umax,
+    tree_qp_in *qp_in)
+{
+    int Nn = qp_in->N;
+
+    int idxx = 0;
+    int idxu = 0;
+
+    struct blasfeo_dvec *sxmin = qp_in->xmin;
+    struct blasfeo_dvec *sxmax = qp_in->xmax;
+    struct blasfeo_dvec *sumin = qp_in->umin;
+    struct blasfeo_dvec *sumax = qp_in->umax;
+
+    for (int ii = 0; ii < Nn; ii++)
+    {
+        tree_qp_in_set_node_bounds(&xmin[idxx], &xmax[idxx], &umin[idxu], &umax[idxu], qp_in, ii);
+        idxx += sxmin[ii].m;
+        idxu += sumin[ii].m;
+    }
+    assert(idxx == total_number_of_states(qp_in));
+    assert(idxu == total_number_of_controls(qp_in));
 }
 
 

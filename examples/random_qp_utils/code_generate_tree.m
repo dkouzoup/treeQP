@@ -175,6 +175,50 @@ for kk = 1:Nnodes
 end
 fprintf(datafile,'};\n');
 
+% print bounds
+if isfield(agents, 'xmin')
+    
+    % print xmin
+    fprintf(datafile,'double xmin[%d] = { ', dimq);
+    for kk = 1:Nnodes
+        for ii = 1:size(agents(kk).xmin,1)
+            fprintf(datafile,'%1.15e, ', agents(kk).xmin(ii));
+        end
+    end
+    fprintf(datafile,'};\n');
+    
+    % print umin
+    fprintf(datafile,'double umin[%d] = { ', dimr);
+    for kk = 1:Nnodes
+        for ii = 1:size(agents(kk).umin,1)
+            fprintf(datafile,'%1.15e, ', agents(kk).umin(ii));
+        end
+    end
+    fprintf(datafile,'};\n');
+
+    
+    % print xmax
+    fprintf(datafile,'double xmax[%d] = { ', dimq);
+    for kk = 1:Nnodes
+        for ii = 1:size(agents(kk).xmax,1)
+            fprintf(datafile,'%1.15e, ', agents(kk).xmax(ii));
+        end
+    end
+    fprintf(datafile,'};\n');
+    
+    % print umin
+    fprintf(datafile,'double umax[%d] = { ', dimr);
+    for kk = 1:Nnodes
+        for ii = 1:size(agents(kk).umax,1)
+            fprintf(datafile,'%1.15e, ', agents(kk).umax(ii));
+        end
+    end
+    fprintf(datafile,'};\n');
+    
+else
+    fprintf(datafile,'\n\n#define UNCONSTRAINED\n\n');
+end
+
 %% optimal solution
 
 fprintf(datafile, '\n/* Optimal solution */\n\n');

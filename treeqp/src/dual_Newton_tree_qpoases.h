@@ -62,7 +62,7 @@ typedef struct treeqp_qpoases_data_
 
 
 
-answer_t stage_qp_qpoases_is_applicable(tree_qp_in *qp_in, int idx);
+answer_t stage_qp_qpoases_is_applicable(const tree_qp_in *qp_in, int idx);
 
 void stage_qp_qpoases_set_default_opts(stage_qp_qpoases_opts *opts);
 
@@ -74,18 +74,18 @@ void stage_qp_qpoases_assign_blasfeo_data(int nx, int nu, void *stage_qp_data, c
 
 void stage_qp_qpoases_assign_data(int nx, int nu, int nc, void *stage_qp_data, char **c_double_ptr);
 
-return_t stage_qp_qpoases_init(tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
+return_t stage_qp_qpoases_init(const tree_qp_in *qp_in, int idx, stage_qp_t solver_dad, void *work_);
 
-return_t stage_qp_qpoases_solve_extended(tree_qp_in *qp_in, int idx, void *work_);
+return_t stage_qp_qpoases_solve_extended(const tree_qp_in *qp_in, int idx, void *work_);
 
-return_t stage_qp_qpoases_solve(tree_qp_in *qp_in, int idx, void *work_);
+return_t stage_qp_qpoases_solve(const tree_qp_in *qp_in, int idx, void *work_);
 
-void stage_qp_qpoases_set_CmPnCmT(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+void stage_qp_qpoases_set_CmPnCmT(const tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
 
-void stage_qp_qpoases_add_EPmE(tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
+void stage_qp_qpoases_add_EPmE(const tree_qp_in *qp_in, int idx, int idxdad, int offset, void *work_);
 
-void stage_qp_qpoases_add_CmPnCkT(tree_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
+void stage_qp_qpoases_add_CmPnCkT(const tree_qp_in *qp_in, int idx, int idxsib, int idxdad, int row_offset, int col_offset, void *work_);
 
-void stage_qp_qpoases_eval_dual_term(tree_qp_in *qp_in, int idx, void *work_);
+void stage_qp_qpoases_eval_dual_term(const tree_qp_in *qp_in, int idx, void *work_);
 
 void stage_qp_qpoases_export_mu(tree_qp_out *qp_out, int idx, void *work_);

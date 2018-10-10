@@ -70,3 +70,9 @@ end
 
 code_generate_tree(agents, 'data.c', CLIPPING)
 code_generate_json(agents, 'data.json')
+
+if 0
+    qp = jsondecode(fileread('data.json'));
+    code_generate_tree_from_json(qp, 'new_data.c')
+    visdiff('data.c', 'new_data.c');
+end
