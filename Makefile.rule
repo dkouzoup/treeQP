@@ -12,9 +12,12 @@ endif
 # Set default compiler
 ifeq ($(OS), MAC)
 CC="/usr/local/bin/gcc-8"
+CXX="/usr/local/bin/g++-8"
 #CC=clang
+#CXX=clang++
 else
-CC = gcc
+CC=gcc
+CXX=g++
 endif
 
 # Installation directory
@@ -36,10 +39,11 @@ BLASFEO_VERSION = HIGH_PERFORMANCE
 #BLASFEO_VERSION = REFERENCE
 
 # BLASFEO target
-#BLASFEO_TARGET = X64_INTEL_HASWELL
-BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
+BLASFEO_TARGET = X64_INTEL_HASWELL
+#BLASFEO_TARGET = X64_INTEL_SANDY_BRIDGE
 #BLASFEO_TARGET = X64_INTEL_CORE
 #BLASFEO_TARGET = GENERIC
+#BLASFEO_TARGET = X64_AMD_BULLDOZER
 
 # HPMPC target
 HPMPC_TARGET = X64_AVX
@@ -87,7 +91,6 @@ PRINT_LEVEL = 1
 # Set compiler flags
 CFLAGS=
 CFLAGS+= -fPIC
-CFLAGS+= -std=c99
 
 ifeq ($(OPENMP), ON)
 CFLAGS+=-DPARALLEL
@@ -125,6 +128,10 @@ CFLAGS += -I$(TOP)/external
 CFLAGS += -I$(TOP)/external/qpoases/include
 CFLAGS += -I$(BLASFEO_PATH)/include
 CFLAGS += -I$(HPIPM_PATH)/include
+
+# Distinguish between CXX and purely C flags
+CXXFLAGS:=$(CFLAGS)
+CFLAGS+= -std=c99
 
 # Lib dirs
 LDFLAGS =

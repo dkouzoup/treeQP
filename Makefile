@@ -102,6 +102,9 @@ spring_mass_debug_example: treeqp_static
 fault_tolerance_example: treeqp_static # code-generate data in python first first
 	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
 
+solve_qp_json: treeqp_static
+	( cd examples; $(MAKE) solve_qp_json TOP=$(TOP) )
+
 run_fault_tolerance_example: fault_tolerance_example
 	./examples/fault_tolerance.out
 
