@@ -15,8 +15,17 @@ for ii = 1:N
     treeqp.nodes{ii}.q = agents(ii).q;
     treeqp.nodes{ii}.r = agents(ii).r;
     
-    treeqp.nodes{ii}.xopt = agents(ii).xopt;
-    treeqp.nodes{ii}.uopt = agents(ii).uopt;
+    if isfield(agents, 'xopt')
+        treeqp.nodes{ii}.xopt = agents(ii).xopt;
+        treeqp.nodes{ii}.uopt = agents(ii).uopt;
+    end
+    
+    if isfield(agents, 'xmin')
+        treeqp.nodes{ii}.lx = agents(ii).xmin;
+        treeqp.nodes{ii}.ux = agents(ii).xmax;
+        treeqp.nodes{ii}.lu = agents(ii).umin;
+        treeqp.nodes{ii}.uu = agents(ii).umax;   
+    end
 end
 
 
