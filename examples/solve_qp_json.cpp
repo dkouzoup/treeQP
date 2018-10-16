@@ -49,6 +49,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 // #define USE_HPMPC
 
@@ -120,11 +121,11 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
     }
 
     // process edges
-    for (size_t i = 1; i < n_nodes; ++i)
+    for (size_t i = 0; i + 1 < n_nodes; ++i)
     {
-        auto& j_edge = j_sol["edges"][i - 1];
+        auto& j_edge = j_sol["edges"][i];
 
-        std::vector<double> buf(nx[i]);
+        std::vector<double> buf(nx[i + 1]);
         tree_qp_out_get_edge_lam(buf.data(), &qp_out, i);
         j_edge["lam"] = buf;
     }
@@ -135,8 +136,6 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
 int main(int argc, char * argv[])
 {
-    printf("hello hangover\n");
-
     json j;
 
     if (argc > 1)
@@ -152,9 +151,9 @@ int main(int argc, char * argv[])
 
     // Fill nx, nu, nc
     std::vector<int> nx, nu, nc;
-    nx.reserve(nodes.size());
-    nu.reserve(nodes.size());
-    nc.reserve(nodes.size());
+    nx.reserve(num_nodes);
+    nu.reserve(num_nodes);
+    nc.reserve(num_nodes);
     for (auto const& node : nodes)
     {
         nx.push_back(node.at("q").size());
@@ -165,38 +164,17 @@ int main(int argc, char * argv[])
     }
 
     // Fill nk
-    std::vector<int> nk(nodes.size(), 0);
+    std::vector<int> nk(num_nodes, 0);
 
     for (auto const& edge : edges)
         ++nk.at(edge.at("from"));
 
-    std::cout << "nk=\t";
-    for (auto n : nk)
-        std::cout << n << "\t";
-    std::cout << std::endl;
-
-    std::cout << "nx=\t";
-    for (auto n : nx)
-        std::cout << n << "\t";
-    std::cout << std::endl;
-
-    std::cout << "nu=\t";
-    for (auto n : nu)
-        std::cout << n << "\t";
-    std::cout << std::endl;
-
-    std::cout << "nc=\t";
-    for (auto n : nc)
-        std::cout << n << "\t";
-    std::cout << std::endl;
-
-
     // set up QP data
     tree_qp_in qp_in;
 
-    int qp_in_size = tree_qp_in_calculate_size(nodes.size(), nx.data(), nu.data(), nc.data(), nk.data());
+    int qp_in_size = tree_qp_in_calculate_size(num_nodes, nx.data(), nu.data(), nc.data(), nk.data());
     void *qp_in_memory = malloc(qp_in_size);
-    tree_qp_in_create(nodes.size(), nx.data(), nu.data(), nc.data(), nk.data(), &qp_in, qp_in_memory);
+    tree_qp_in_create(num_nodes, nx.data(), nu.data(), nc.data(), nk.data(), &qp_in, qp_in_memory);
 
     for (auto const& edge : edges)
     {
@@ -212,7 +190,7 @@ int main(int argc, char * argv[])
         tree_qp_in_set_edge_b(b.data(), &qp_in, to - 1);
     }
 
-    for (size_t i = 0; i < nodes.size(); ++i)
+    for (size_t i = 0; i < num_nodes; ++i)
     {
         auto const node = nodes.at(i);
 
@@ -246,9 +224,9 @@ int main(int argc, char * argv[])
     // set up QP solution
     tree_qp_out qp_out;
 
-    int qp_out_size = tree_qp_out_calculate_size(nodes.size(), nx.data(), nu.data(), nc.data());
+    int qp_out_size = tree_qp_out_calculate_size(num_nodes, nx.data(), nu.data(), nc.data());
     void *qp_out_memory = malloc(qp_out_size);
-    tree_qp_out_create(nodes.size(), nx.data(), nu.data(), nc.data(), &qp_out, qp_out_memory);
+    tree_qp_out_create(num_nodes, nx.data(), nu.data(), nc.data(), &qp_out, qp_out_memory);
 
 #if 0
     // eliminate x0 variable
@@ -260,17 +238,18 @@ int main(int argc, char * argv[])
 #ifndef USE_HPMPC
 
     treeqp_tdunes_opts_t opts;
-    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(nodes.size());
+    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
     void *opts_memory = malloc(tdunes_opts_size);
-    treeqp_tdunes_opts_create(nodes.size(), &opts, opts_memory);
-    treeqp_tdunes_opts_set_default(nodes.size(), &opts);
+    treeqp_tdunes_opts_create(num_nodes, &opts, opts_memory);
+    treeqp_tdunes_opts_set_default(num_nodes, &opts);
 
     opts.maxIter = 1000;
     opts.stationarityTolerance = 1.0e-6;
     opts.lineSearchMaxIter = 100;  
     // opts.regType  = TREEQP_NO_REGULARIZATION;
 
-    for (int ii = 0; ii < nodes.size(); ii++) opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+    for (int ii = 0; ii < num_nodes; ii++) 
+        opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
 
     treeqp_tdunes_workspace work;
 
@@ -283,10 +262,10 @@ int main(int argc, char * argv[])
 
 #else
     treeqp_hpmpc_opts_t opts;
-    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(nodes.size());
+    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
     void *opts_memory = malloc(hpmpc_opts_size);
-    treeqp_hpmpc_opts_create(nodes.size(), &opts, opts_memory);
-    treeqp_hpmpc_opts_set_default(nodes.size(), &opts);
+    treeqp_hpmpc_opts_create(num_nodes, &opts, opts_memory);
+    treeqp_hpmpc_opts_set_default(num_nodes, &opts);
 
     treeqp_hpmpc_workspace work;
 
@@ -304,29 +283,38 @@ int main(int argc, char * argv[])
 
     json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
-    std::cout << std::setw(4) << j_out << std::endl;
 
+    // TODO: write correct values here
+    j_out["cputime"] = 0.;
+    j_out["status"] = -1;
+
+#if 0 // exclude this from compilation, because we write json to stdout
 #ifndef DATA
-    tree_qp_out_print(nodes.size(), &qp_out);
+    tree_qp_out_print(num_nodes, &qp_out);
+#endif
 #endif
 
 #ifndef USE_HPMPC
-    printf("SOLVER:\ttdunes\n");
+    j_out["SOLVER"] = "tdunes";
 #else
-    printf("SOLVER:\thpmpc\n");
+    j_out["SOLVER"] = "hpmpc";
 #endif
 
-    printf("ITERS:\t%d\n", qp_out.info.iter);
+    j_out["niter"] = qp_out.info.iter;
 
-    double kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
-    printf("KKT:\t%2.2e\n", kkt_err);
+    double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
+    j_out["KKT"] = kkt_err;
 
     free(qp_solver_memory);
     free(opts_memory);
     free(qp_out_memory);
     free(qp_in_memory);
 
-    assert(kkt_err < 1e-6 && "maximum KKT residual too high!");
+    if (kkt_err >= 1e-6)
+        std::cerr << "maximum KKT residual too high!" << std::endl;
+
+    // Write json to stdout
+    std::cout << std::setw(4) << j_out << std::endl;
 
     return 0;
 }
