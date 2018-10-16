@@ -136,17 +136,17 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
 int main(int argc, char * argv[])
 {
-    json j;
+    json j_in;
 
     if (argc > 1)
         // If a file name argument is specified, read from a file
-        std::ifstream(argv[1]) >> j;
+        std::ifstream(argv[1]) >> j_in;
     else
         // Otherwise, read from the stdin.
-        std::cin >> j;
+        std::cin >> j_in;
 
-    auto const& nodes = j.at("nodes");
-    auto const& edges = j.at("edges");
+    auto const& nodes = j_in.at("nodes");
+    auto const& edges = j_in.at("edges");
     size_t const num_nodes = nodes.size();
 
     // Fill nx, nu, nc
@@ -242,6 +242,13 @@ int main(int argc, char * argv[])
     void *opts_memory = malloc(tdunes_opts_size);
     treeqp_tdunes_opts_create(num_nodes, &opts, opts_memory);
     treeqp_tdunes_opts_set_default(num_nodes, &opts);
+
+    if (j_in.count("options"))
+    {
+        auto const& options = j_in.at("options");
+        // TODO: process json options.
+        // Access options as options["option_name"]
+    }
 
     opts.maxIter = 1000;
     opts.stationarityTolerance = 1.0e-6;
