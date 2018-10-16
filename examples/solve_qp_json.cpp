@@ -79,7 +79,7 @@ std::vector<double> readVector(json const& js, size_t N)
 }
 
 
-json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx, 
+json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
     std::vector<int> const& nu, std::vector<int> const& nc)
 {
     size_t const n_nodes = nx.size();
@@ -92,10 +92,10 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
     for (size_t i = 0; i < n_nodes; ++i)
     {
         auto& j_node = j_sol["nodes"][i];
-        
+
         {
             std::vector<double> buf(nx[i]);
-            
+
             tree_qp_out_get_node_x(buf.data(), &qp_out, i);
             j_node["x"] = buf;
 
@@ -105,7 +105,7 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
         {
             std::vector<double> buf(nu[i]);
-            
+
             tree_qp_out_get_node_u(buf.data(), &qp_out, i);
             j_node["u"] = buf;
 
@@ -252,10 +252,10 @@ int main(int argc, char * argv[])
 
     opts.maxIter = 1000;
     opts.stationarityTolerance = 1.0e-6;
-    opts.lineSearchMaxIter = 100;  
+    opts.lineSearchMaxIter = 100;
     // opts.regType  = TREEQP_NO_REGULARIZATION;
 
-    for (int ii = 0; ii < num_nodes; ii++) 
+    for (int ii = 0; ii < num_nodes; ii++)
         opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
 
     treeqp_tdunes_workspace work;
@@ -282,35 +282,28 @@ int main(int argc, char * argv[])
 #endif  // USE_HPMPC
 
     // solve QP
+    int status;
 #ifndef USE_HPMPC
-    treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
+    status = treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
 #else
-    treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
+    status = treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 #endif
 
     json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
-
-    // TODO: write correct values here
-    j_out["cputime"] = 0.;
-    j_out["status"] = -1;
-
-#if 0 // exclude this from compilation, because we write json to stdout
-#ifndef DATA
-    tree_qp_out_print(num_nodes, &qp_out);
-#endif
-#endif
-
 #ifndef USE_HPMPC
-    j_out["SOLVER"] = "tdunes";
+    j_out["info"]["solver"] = "tdunes";
+    j_out["info"]["cpu_time"] = qp_out.info.total_time;
 #else
-    j_out["SOLVER"] = "hpmpc";
+    j_out["solver"] = "hpmpc";
+    // NOTE(dimitris): do not take into account interface overhead for HPMPC
+    j_out["cputime"] = qp_out.info.solver_time;
 #endif
-
-    j_out["niter"] = qp_out.info.iter;
+    j_out["info"]["status"] = status;
+    j_out["info"]["num_iter"] = qp_out.info.iter;
 
     double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
-    j_out["KKT"] = kkt_err;
+    j_out["info"]["kkt_tol"] = kkt_err;
 
     free(qp_solver_memory);
     free(opts_memory);
