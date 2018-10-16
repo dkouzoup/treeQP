@@ -52,8 +52,10 @@
 
 // #define USE_HPMPC
 
+using nlohmann::json;
 
-std::vector<double> readColMajorMatrix(nlohmann::json const& js, size_t M, size_t N)
+
+std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
 {
     std::vector<double> v(M * N);
 
@@ -65,7 +67,7 @@ std::vector<double> readColMajorMatrix(nlohmann::json const& js, size_t M, size_
 }
 
 
-std::vector<double> readVector(nlohmann::json const& js, size_t N)
+std::vector<double> readVector(json const& js, size_t N)
 {
     std::vector<double> v(N);
 
@@ -76,11 +78,66 @@ std::vector<double> readVector(nlohmann::json const& js, size_t N)
 }
 
 
+json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx, 
+    std::vector<int> const& nu, std::vector<int> const& nc)
+{
+    size_t const n_nodes = nx.size();
+    assert(nu.size() == n_nodes);
+    assert(nc.size() == n_nodes);
+
+    json j_sol;
+
+    // process nodes
+    for (size_t i = 0; i < n_nodes; ++i)
+    {
+        auto& j_node = j_sol["nodes"][i];
+        
+        {
+            std::vector<double> buf(nx[i]);
+            
+            tree_qp_out_get_node_x(buf.data(), &qp_out, i);
+            j_node["x"] = buf;
+
+            tree_qp_out_get_node_mu_x(buf.data(), &qp_out, i);
+            j_node["mu_x"] = buf;
+        }
+
+        {
+            std::vector<double> buf(nu[i]);
+            
+            tree_qp_out_get_node_u(buf.data(), &qp_out, i);
+            j_node["u"] = buf;
+
+            tree_qp_out_get_node_mu_u(buf.data(), &qp_out, i);
+            j_node["mu_u"] = buf;
+        }
+
+        {
+            std::vector<double> buf(nc[i]);
+            tree_qp_out_get_node_mu_d(buf.data(), &qp_out, i);
+            j_node["mu_d"] = buf;
+        }
+    }
+
+    // process edges
+    for (size_t i = 1; i < n_nodes; ++i)
+    {
+        auto& j_edge = j_sol["edges"][i - 1];
+
+        std::vector<double> buf(nx[i]);
+        tree_qp_out_get_edge_lam(buf.data(), &qp_out, i);
+        j_edge["lam"] = buf;
+    }
+
+    return j_sol;
+}
+
+
 int main(int argc, char * argv[])
 {
     printf("hello hangover\n");
 
-    nlohmann::json j;
+    json j;
 
     if (argc > 1)
         // If a file name argument is specified, read from a file
@@ -91,6 +148,7 @@ int main(int argc, char * argv[])
 
     auto const& nodes = j.at("nodes");
     auto const& edges = j.at("edges");
+    size_t const num_nodes = nodes.size();
 
     // Fill nx, nu, nc
     std::vector<int> nx, nu, nc;
@@ -243,6 +301,10 @@ int main(int argc, char * argv[])
 #else
     treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
 #endif
+
+    json j_out;
+    j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
+    std::cout << std::setw(4) << j_out << std::endl;
 
 #ifndef DATA
     tree_qp_out_print(nodes.size(), &qp_out);
