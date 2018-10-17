@@ -50,6 +50,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <string>
 
 // #define USE_HPMPC
 
@@ -234,78 +235,104 @@ int main(int argc, char * argv[])
     tree_qp_out_eliminate_x0(&qp_out);
 #endif
 
-    // set up QP solver
-#ifndef USE_HPMPC
-
-    treeqp_tdunes_opts_t opts;
-    int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
-    void *opts_memory = malloc(tdunes_opts_size);
-    treeqp_tdunes_opts_create(num_nodes, &opts, opts_memory);
-    treeqp_tdunes_opts_set_default(num_nodes, &opts);
+    // read options
+    int maxit;
+    std::string solver;
 
     if (j_in.count("options"))
     {
         auto const& options = j_in.at("options");
-        // TODO: process json options.
-        // Access options as options["option_name"]
+
+        // common options
+        maxit = options["maxit"];
+
+        // solver
+        solver = options["solver"];
+    }
+    else
+    {
+        // TODO: set default if opts don't exist
+        maxit = 1000;
+        solver = "tdunes";
     }
 
-    opts.maxIter = 1000;
-    opts.stationarityTolerance = 1.0e-6;
-    opts.lineSearchMaxIter = 100;
-    // opts.regType  = TREEQP_NO_REGULARIZATION;
-
-    for (int ii = 0; ii < num_nodes; ii++)
-        opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
-
-    treeqp_tdunes_workspace work;
-
-    int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
-    void *qp_solver_memory = malloc(treeqp_size);
-    treeqp_tdunes_create(&qp_in, &opts, &work, qp_solver_memory);
-
-    // tree_qp_in_print(&qp_in);
-    // return 0;
-
-#else
-    treeqp_hpmpc_opts_t opts;
-    int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
-    void *opts_memory = malloc(hpmpc_opts_size);
-    treeqp_hpmpc_opts_create(num_nodes, &opts, opts_memory);
-    treeqp_hpmpc_opts_set_default(num_nodes, &opts);
-
-    treeqp_hpmpc_workspace work;
-
-    int treeqp_size = treeqp_hpmpc_calculate_size(&qp_in, &opts);
-    void *qp_solver_memory = malloc(treeqp_size);
-    treeqp_hpmpc_create(&qp_in, &opts, &work, qp_solver_memory);
-#endif  // USE_HPMPC
-
-    // solve QP
     int status;
-#ifndef USE_HPMPC
-    status = treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
-#else
-    status = treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
-#endif
 
+    void *opts_memory;
+    void *solver_memory;
+
+    // set up QP solver and solve QP
+    if (solver.compare("tdunes") == 0)
+    {
+        treeqp_tdunes_opts_t tdunes_opts;
+        int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
+        void *opts_memory = malloc(tdunes_opts_size);
+        treeqp_tdunes_opts_create(num_nodes, &tdunes_opts, opts_memory);
+        treeqp_tdunes_opts_set_default(num_nodes, &tdunes_opts);
+
+        tdunes_opts.maxIter = maxit;
+        tdunes_opts.stationarityTolerance = 1.0e-6;
+        tdunes_opts.lineSearchMaxIter = 100;
+        // tdunes_opts.regType  = TREEQP_NO_REGULARIZATION;
+
+        for (int ii = 0; ii < num_nodes; ii++)
+            tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+
+        treeqp_tdunes_workspace tdunes_work;
+
+        int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
+        solver_memory = malloc(tdunes_solver_size);
+        treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, solver_memory);
+
+        status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+
+    }
+    else if (solver.compare("hpmpc") == 0)
+    {
+        treeqp_hpmpc_opts_t hpmpc_opts;
+        int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
+        void *opts_memory = malloc(hpmpc_opts_size);
+        treeqp_hpmpc_opts_create(num_nodes, &hpmpc_opts, opts_memory);
+        treeqp_hpmpc_opts_set_default(num_nodes, &hpmpc_opts);
+
+        hpmpc_opts.maxIter = maxit;
+
+        treeqp_hpmpc_workspace hpmpc_work;
+
+        int hpmpc_solver_size = treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts);
+        solver_memory = malloc(hpmpc_solver_size);
+        treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, solver_memory);
+
+        status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+    }
+    else
+    {
+        return -1;
+    }
+
+    // write output to json file
     json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
-#ifndef USE_HPMPC
-    j_out["info"]["solver"] = "tdunes";
-    j_out["info"]["cpu_time"] = qp_out.info.total_time;
-#else
-    j_out["solver"] = "hpmpc";
-    // NOTE(dimitris): do not take into account interface overhead for HPMPC
-    j_out["cputime"] = qp_out.info.solver_time;
-#endif
+    if (solver.compare("tdunes") == 0)
+    {
+        j_out["info"]["solver"] = "tdunes";
+        j_out["info"]["cpu_time"] = qp_out.info.total_time;
+    }
+    else if (solver.compare("hpmpc") == 0)
+    {
+        j_out["info"]["solver"] = "hpmpc";
+        // NOTE(dimitris): do not take into account interface overhead for HPMPC
+        j_out["info"]["cputime"] = qp_out.info.solver_time;
+    }
+
     j_out["info"]["status"] = status;
     j_out["info"]["num_iter"] = qp_out.info.iter;
 
     double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
     j_out["info"]["kkt_tol"] = kkt_err;
 
-    free(qp_solver_memory);
+
+    free(solver_memory);
     free(opts_memory);
     free(qp_out_memory);
     free(qp_in_memory);
