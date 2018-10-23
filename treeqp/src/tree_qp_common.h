@@ -277,7 +277,7 @@ void tree_qp_out_set_node_u(const double * const u, tree_qp_out * const qp_out, 
 
 void tree_qp_out_get_node_u(double * const u, const tree_qp_out * const qp_out, const int indx);
 
-// set/get dual solution of edge connecting nodes [indx+1] and [p(indx+1)]
+// set/get dual solution of edge connecting nodes [indx] and [p(indx)] - always zero for root
 void tree_qp_out_set_edge_lam(const double * const lam, tree_qp_out * const qp_out, const int indx);
 
 void tree_qp_out_get_edge_lam(double * const lam, const tree_qp_out * const qp_out, const int indx);

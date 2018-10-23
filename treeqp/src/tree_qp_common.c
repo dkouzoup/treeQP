@@ -2293,7 +2293,7 @@ void tree_qp_out_set_edge_lam(const double * const lam, tree_qp_out * const qp_o
     int Nn = qp_out->info.Nn;
 
     assert(indx >= 0);
-    assert(indx < Nn-1);
+    assert(indx < Nn);
 
     int nx = qp_out->lam[indx].m;
 
@@ -2309,7 +2309,7 @@ void tree_qp_out_get_edge_lam(double * const lam, const tree_qp_out * const qp_o
     int Nn = qp_out->info.Nn;
 
     assert(indx >= 0);
-    assert(indx < Nn-1);
+    assert(indx < Nn);
 
     int nx = qp_out->lam[indx].m;
 

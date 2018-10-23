@@ -52,8 +52,6 @@
 #include <iomanip>
 #include <string>
 
-// #define USE_HPMPC
-
 using nlohmann::json;
 
 
@@ -124,10 +122,11 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
     // process edges
     for (size_t i = 0; i + 1 < n_nodes; ++i)
     {
+        // TODO(dimitris): rather the edge that connects node i+1 with its parent
         auto& j_edge = j_sol["edges"][i];
 
-        std::vector<double> buf(nx[i + 1]);
-        tree_qp_out_get_edge_lam(buf.data(), &qp_out, i);
+        std::vector<double> buf(nx[i+1]);
+        tree_qp_out_get_edge_lam(buf.data(), &qp_out, i+1);
         j_edge["lam"] = buf;
     }
 
