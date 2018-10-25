@@ -122,11 +122,10 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
     // process edges
     for (size_t i = 0; i + 1 < n_nodes; ++i)
     {
-        // TODO(dimitris): rather the edge that connects node i+1 with its parent
         auto& j_edge = j_sol["edges"][i];
 
         std::vector<double> buf(nx[i+1]);
-        tree_qp_out_get_edge_lam(buf.data(), &qp_out, i+1);
+        tree_qp_out_get_edge_lam(buf.data(), &qp_out, i);
         j_edge["lam"] = buf;
     }
 
@@ -251,7 +250,7 @@ int main(int argc, char * argv[])
     else
     {
         // TODO: set default if opts don't exist
-        maxit = 1000;
+        maxit = 200;
         solver = "tdunes";
     }
 
@@ -271,7 +270,11 @@ int main(int argc, char * argv[])
 
         tdunes_opts.maxIter = maxit;
         tdunes_opts.stationarityTolerance = 1.0e-6;
+
         tdunes_opts.lineSearchMaxIter = 100;
+        tdunes_opts.lineSearchBeta = 0.6;
+        tdunes_opts.lineSearchGamma = 0.01;
+
         // tdunes_opts.regType  = TREEQP_NO_REGULARIZATION;
 
         for (int ii = 0; ii < num_nodes; ii++)

@@ -67,6 +67,7 @@ typedef struct treeqp_hpmpc_workspace_
 
     struct blasfeo_dvec *sux;
     struct blasfeo_dvec *slam;
+    struct blasfeo_dvec *spi;
     struct blasfeo_dvec *sst;
 
     struct blasfeo_dmat *sRSQrq;

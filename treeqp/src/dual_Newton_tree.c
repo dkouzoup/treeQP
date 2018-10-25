@@ -1215,7 +1215,7 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
         if (kk > 0)
         {
             blasfeo_dveccp(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
-                &qp_out->lam[kk], 0);
+                &qp_out->lam[kk-1], 0);
         }
 
         work->stage_qp_ptrs[kk].export_mu(qp_out, kk, work);
@@ -1630,7 +1630,8 @@ void treeqp_tdunes_set_dual_initialization(const double *lambda, treeqp_tdunes_w
 {
     int indx = 0;
 
-    for (int ii = 0; ii < work->Np; ii++) {
+    for (int ii = 0; ii < work->Np; ii++)
+    {
         blasfeo_pack_dvec(work->slambda[ii].m, (double *)&lambda[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }

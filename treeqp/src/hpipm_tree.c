@@ -512,6 +512,11 @@ return_t treeqp_hpipm_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpipm
         blasfeo_dveccp(nu[ii], &sux[ii], 0, &qp_out->u[ii], 0);
         blasfeo_dveccp(nx[ii], &sux[ii], nu[ii], &qp_out->x[ii], 0);
 
+        if (ii > 0)
+        {
+            blasfeo_dveccp(nx[ii], &work->hpipm_qp_out.pi[ii-1], 0, &qp_out->lam[ii-1], 0);
+        }
+
         blasfeo_dvecse(nx[ii], 0.0, &qp_out->mu_x[ii], 0);
         blasfeo_dvecse(nu[ii], 0.0, &qp_out->mu_u[ii], 0);
         for (int jj = 0; jj < nb[ii]; jj++)

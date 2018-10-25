@@ -179,7 +179,7 @@ int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
     bytes += Nn*sizeof(int*);  // idxb
     bytes += get_size_idxb(qp_in)*sizeof(int);
 
-    bytes += 3*Nn*sizeof(struct blasfeo_dvec);  // sux, slam, sst
+    bytes += 4*Nn*sizeof(struct blasfeo_dvec);  // sux, slam, spi, sst
 
     bytes += Nn*sizeof(struct blasfeo_dmat);  // sRSQrq
     bytes += (Nn-1)*sizeof(struct blasfeo_dmat);  // sBAbt
@@ -191,6 +191,7 @@ int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
     {
         bytes += blasfeo_memsize_dvec(nx[ii] + nu[ii]);  // sux
         bytes += 2*blasfeo_memsize_dvec(2*nb[ii] + 2*nc[ii]);  // slam, sst
+        bytes += blasfeo_memsize_dvec(nx[ii]);  // slam
 
         bytes += blasfeo_memsize_dmat(nx[ii] + nu[ii] + 1, nx[ii] + nu[ii]);  // sRSQrq
 
@@ -250,6 +251,9 @@ void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
     work->slam = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
+    work->spi = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += Nn*sizeof(struct blasfeo_dvec);
+
     work->sst = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
 
@@ -286,6 +290,7 @@ void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
     {
         init_strvec(nx[ii] + nu[ii], &work->sux[ii], &c_ptr);
         init_strvec(2*work->nb[ii]+2*nc[ii], &work->slam[ii], &c_ptr);
+        init_strvec(nx[ii], &work->spi[ii], &c_ptr);
         init_strvec(2*work->nb[ii]+2*nc[ii], &work->sst[ii], &c_ptr);
         init_strvec(2*work->nb[ii]+2*nc[ii], &work->sd[ii], &c_ptr);
     }
@@ -372,7 +377,6 @@ return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc
     qp_out->info.interface_time = treeqp_toc(&interface_tmr);
     treeqp_tic(&solver_tmr);
 
-
     // // TODO(dimitris): fix bug in general constraints and remove those prints
     // for (int ii = 0; ii < qp_in->N; ii++)
     // {
@@ -391,7 +395,7 @@ return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc
     int status = d_tree_ip2_res_mpc_hard_libstr(&qp_out->info.iter, opts->maxIter, opts->mu0,
             opts->mu_tol, opts->alpha_min, opts->warm_start, work->status, qp_in->N, tree,
             nx, nu, nb, work->idxb, nc, sBAbt, sRSQrq, sDCt, work->sd,
-            work->sux, opts->compute_mult, qp_out->lam, work->slam, work->sst, work->internal);
+            work->sux, opts->compute_mult, work->spi, work->slam, work->sst, work->internal);
 
     qp_out->info.solver_time = treeqp_toc(&solver_tmr);
 
@@ -402,6 +406,11 @@ return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc
     {
         blasfeo_dveccp(nu[ii], &work->sux[ii], 0, &qp_out->u[ii], 0);
         blasfeo_dveccp(nx[ii], &work->sux[ii], nu[ii], &qp_out->x[ii], 0);
+
+        if (ii > 0)
+        {
+            blasfeo_dveccp(nx[ii], &work->spi[ii], 0, &qp_out->lam[ii-1], 0);
+        }
 
         blasfeo_dvecse(nx[ii], 0.0, &qp_out->mu_x[ii], 0);
         blasfeo_dvecse(nu[ii], 0.0, &qp_out->mu_u[ii], 0);

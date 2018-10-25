@@ -2025,7 +2025,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
 
     // ------ copy solution to qp_out
 
-    for (int ii = 0; ii < qp_in->N; ii++) {
+    for (int ii = 0; ii < qp_in->N-1; ii++) {
         blasfeo_dvecse(nx, 0.0, &qp_out->lam[ii], 0);
     }
 
@@ -2034,7 +2034,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
             idx = work->nodeIdx[ii][kk+1];
             idxm1 = work->nodeIdx[ii][kk];
             idxp1 = work->nodeIdx[ii][kk+2];
-            blasfeo_daxpy(nx, 1.0, &work->smu[ii][kk], 0, &qp_out->lam[idx], 0, &qp_out->lam[idx], 0);
+            blasfeo_daxpy(nx, 1.0, &work->smu[ii][kk], 0, &qp_out->lam[idx-1], 0, &qp_out->lam[idx-1], 0);
             if (work->boundsRemoved[ii][kk+1] == 0) {
                 // printf("saving node (%d, %d) to node %d\n", ii, kk+1, work->nodeIdx[ii][kk+1]);
                 blasfeo_dveccp(nx, &work->sx[ii][kk], 0, &qp_out->x[idx], 0);

@@ -126,16 +126,22 @@ run_examples: examples
 run_unit_tests: unit_tests
 	./examples/unit_test_0_tdunes.out
 	./examples/unit_test_0_hpmpc.out
+	./examples/unit_test_0_hpipm.out
 	./examples/unit_test_1_tdunes.out
 	./examples/unit_test_1_hpmpc.out
+	./examples/unit_test_1_hpipm.out
 	./examples/unit_test_2_tdunes.out
 	./examples/unit_test_2_hpmpc.out
+	./examples/unit_test_2_hpipm.out
 	./examples/unit_test_3_tdunes.out
 	./examples/unit_test_3_hpmpc.out
+	./examples/unit_test_3_hpipm.out
 	./examples/unit_test_4_tdunes.out
 	./examples/unit_test_4_hpmpc.out
+	./examples/unit_test_4_hpipm.out
 	./examples/unit_test_5_tdunes.out
 	./examples/unit_test_5_hpmpc.out
+	./examples/unit_test_5_hpipm.out
 	@echo
 	@echo " All unit tests were executed succesfully!"
 	@echo

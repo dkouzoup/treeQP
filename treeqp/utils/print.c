@@ -223,9 +223,11 @@ void tree_qp_out_print(int Nn, const tree_qp_out *qp_out)
         printf("u[%d] = \n", ii);
         blasfeo_print_tran_dvec(nu, &qp_out->u[ii], 0);
 
-        // NOTE(dimitris): always zero at root node
-        printf("lam[%d] = \n", ii);
-        blasfeo_print_tran_dvec(qp_out->lam[ii].m, &qp_out->lam[ii], 0);
+        if (ii > 0)
+        {
+            printf("lam[%d] = \n", ii-1);
+            blasfeo_print_tran_dvec(qp_out->lam[ii-1].m, &qp_out->lam[ii-1], 0);
+        }
 
         printf("mu_x[%d] = \n", ii);
         blasfeo_print_tran_dvec(nx, &qp_out->mu_x[ii], 0);

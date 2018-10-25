@@ -309,7 +309,10 @@ void tree_qp_in_create(int Nn, const int * nx, const int * nu, const int * nc,  
 
 int tree_qp_out_calculate_size(const int Nn, const int * const nx, const int * const nu, const int * const nc)
 {
-    int bytes = 6*Nn*sizeof(struct blasfeo_dvec);  // x, u, lam, mu_x, mu_u, mu_d
+    int bytes = 0;
+
+    bytes += 5*Nn*sizeof(struct blasfeo_dvec);  // x, u, mu_x, mu_u, mu_d
+    bytes += (Nn-1)*sizeof(struct blasfeo_dvec);  // lam
 
     int nc_;
 
@@ -324,9 +327,14 @@ int tree_qp_out_calculate_size(const int Nn, const int * const nx, const int * c
             nc_ = nc[idx];
         }
 
-        bytes += 3*blasfeo_memsize_dvec(nx[idx]);  // x, lam, mu_x
+        bytes += 2*blasfeo_memsize_dvec(nx[idx]);  // x, mu_x
         bytes += 2*blasfeo_memsize_dvec(nu[idx]);  // u, mu_u
         bytes += 1*blasfeo_memsize_dvec(nc_);  // mu_d
+
+        if (idx > 0)
+        {
+            bytes += 1*blasfeo_memsize_dvec(nx[idx]);  // lam
+        }
     }
 
     make_int_multiple_of(64, &bytes);
@@ -347,14 +355,14 @@ void tree_qp_out_create(const int Nn, const int * const nx, const int * const nu
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
     qp_out->u = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
-    qp_out->lam = (struct blasfeo_dvec *) c_ptr;
-    c_ptr += Nn*sizeof(struct blasfeo_dvec);
     qp_out->mu_x = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
     qp_out->mu_u = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
     qp_out->mu_d = (struct blasfeo_dvec *) c_ptr;
     c_ptr += Nn*sizeof(struct blasfeo_dvec);
+    qp_out->lam = (struct blasfeo_dvec *) c_ptr;
+    c_ptr += (Nn-1)*sizeof(struct blasfeo_dvec);
 
     align_char_to(64, &c_ptr);
 
@@ -373,10 +381,14 @@ void tree_qp_out_create(const int Nn, const int * const nx, const int * const nu
 
         init_strvec(nx[kk], &qp_out->x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->u[kk], &c_ptr);
-        init_strvec(nx[kk], &qp_out->lam[kk], &c_ptr);
         init_strvec(nx[kk], &qp_out->mu_x[kk], &c_ptr);
         init_strvec(nu[kk], &qp_out->mu_u[kk], &c_ptr);
         init_strvec(nc_, &qp_out->mu_d[kk], &c_ptr);
+
+        if (kk > 0)
+        {
+            init_strvec(nx[kk], &qp_out->lam[kk-1], &c_ptr);
+        }
     }
 
     qp_out->info.Nn = Nn;
@@ -587,8 +599,11 @@ void tree_qp_out_calculate_KKT_res(const tree_qp_in * const qp_in,
         blasfeo_daxpy(nx[ii], 1.0, &qp_out->mu_x[ii], 0, &tmp_x, 0, &tmp_x, 0);
         // tmp_x += C[ii]'*mu_d[ii]
         blasfeo_dgemv_t(nc[ii], nx[ii], 1.0, &sC[ii], 0, 0, &qp_out->mu_d[ii], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
-        // tmp_x += lam[ii]
-        blasfeo_daxpy(nx[ii], -1.0, &qp_out->lam[ii], 0, &tmp_x, 0, &tmp_x, 0);
+        if (ii > 0)
+        {
+            // tmp_x += lam[ii]
+            blasfeo_daxpy(nx[ii], -1.0, &qp_out->lam[ii-1], 0, &tmp_x, 0, &tmp_x, 0);
+        }
         // tmp_u = R[ii]*u[ii] + r[ii]
         blasfeo_dgemv_n(nu[ii], nu[ii], 1.0, &sR[ii], 0, 0, &su[ii], 0, 1.0, &sr[ii], 0, &tmp_u, 0);
         // tmp_u += S[ii]*x[ii]
@@ -602,9 +617,9 @@ void tree_qp_out_calculate_KKT_res(const tree_qp_in * const qp_in,
         {
             idxkid = tree[ii].kids[jj];
             // tmp_x -= A[s(ii)]' * lam[s(ii)]
-            blasfeo_dgemv_t(nx[idxkid], nx[ii], 1.0, &sA[idxkid-1], 0, 0, &qp_out->lam[idxkid], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
+            blasfeo_dgemv_t(nx[idxkid], nx[ii], 1.0, &sA[idxkid-1], 0, 0, &qp_out->lam[idxkid-1], 0, 1.0, &tmp_x, 0, &tmp_x, 0);
             // tmp_u -= B[s(ii)]' * lam[s(ii)]
-            blasfeo_dgemv_t(nx[idxkid], nu[ii], 1.0, &sB[idxkid-1], 0, 0, &qp_out->lam[idxkid], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
+            blasfeo_dgemv_t(nx[idxkid], nu[ii], 1.0, &sB[idxkid-1], 0, 0, &qp_out->lam[idxkid-1], 0, 1.0, &tmp_u, 0, &tmp_u, 0);
         }
 
         blasfeo_unpack_dvec(nx[ii], &tmp_x, 0, &res[pos]);
@@ -2293,7 +2308,7 @@ void tree_qp_out_set_edge_lam(const double * const lam, tree_qp_out * const qp_o
     int Nn = qp_out->info.Nn;
 
     assert(indx >= 0);
-    assert(indx < Nn);
+    assert(indx < Nn-1);
 
     int nx = qp_out->lam[indx].m;
 
@@ -2309,7 +2324,7 @@ void tree_qp_out_get_edge_lam(double * const lam, const tree_qp_out * const qp_o
     int Nn = qp_out->info.Nn;
 
     assert(indx >= 0);
-    assert(indx < Nn);
+    assert(indx < Nn-1);
 
     int nx = qp_out->lam[indx].m;
 

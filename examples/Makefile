@@ -36,16 +36,22 @@ LIBS = -ltreeqp -lhpmpc -lhpipm -lblasfeo -lqpoases -lm -ldl
 unit_tests:
 	$(CC) -o unit_test_0_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0
 	$(CC) -o unit_test_0_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0 -DUSE_HPMPC
+	$(CC) -o unit_test_0_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=0 -DUSE_HPIPM
 	$(CC) -o unit_test_1_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1
 	$(CC) -o unit_test_1_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1 -DUSE_HPMPC
+	$(CC) -o unit_test_1_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=1 -DUSE_HPIPM
 	$(CC) -o unit_test_2_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2
 	$(CC) -o unit_test_2_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2 -DUSE_HPMPC
+	$(CC) -o unit_test_2_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=2 -DUSE_HPIPM
 	$(CC) -o unit_test_3_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3
 	$(CC) -o unit_test_3_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3 -DUSE_HPMPC
+	$(CC) -o unit_test_3_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=3 -DUSE_HPIPM
 	$(CC) -o unit_test_4_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4
 	$(CC) -o unit_test_4_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4 -DUSE_HPMPC
+	$(CC) -o unit_test_4_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=4 -DUSE_HPIPM
 	$(CC) -o unit_test_5_tdunes.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5
 	$(CC) -o unit_test_5_hpmpc.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5 -DUSE_HPMPC
+	$(CC) -o unit_test_5_hpipm.out random_qp.c $(CFLAGS) $(LDFLAGS) $(LIBS) -DDATA=5 -DUSE_HPIPM
 
 thesis_example: thesis_example.o
 	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS)
