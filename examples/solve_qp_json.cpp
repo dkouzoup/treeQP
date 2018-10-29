@@ -54,6 +54,19 @@
 
 using nlohmann::json;
 
+regType_t convert_reg_type(const std::string& str)
+{
+    if (str == "TREEQP_NO_REGULARIZATION")
+        return TREEQP_NO_REGULARIZATION;
+    else if (str == "TREEQP_ALWAYS_LEVENBERG_MARQUARDT")
+        return TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+    else if (str == "TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT")
+        return TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
+    else
+        return TREEQP_UNKNOWN_REGULARIZATION;
+}
+
+
 
 std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
 {
@@ -67,6 +80,7 @@ std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
 }
 
 
+
 std::vector<double> readVector(json const& js, size_t N)
 {
     std::vector<double> v(N);
@@ -76,6 +90,7 @@ std::vector<double> readVector(json const& js, size_t N)
 
     return v;
 }
+
 
 
 json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
@@ -131,6 +146,7 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
     return j_sol;
 }
+
 
 
 int main(int argc, char * argv[])
@@ -233,7 +249,7 @@ int main(int argc, char * argv[])
     tree_qp_out_eliminate_x0(&qp_out);
 #endif
 
-    // read options
+    // read common options from json file
     int maxit;
     std::string solver;
 
@@ -241,23 +257,25 @@ int main(int argc, char * argv[])
     {
         auto const& options = j_in.at("options");
 
-        // common options
-        maxit = options["maxit"];
-
         // solver
         solver = options["solver"];
+
+        // common options
+        maxit = options["maxit"];
     }
     else
     {
-        // TODO: set default if opts don't exist
-        maxit = 200;
         solver = "tdunes";
     }
 
-    int status;
+    int status, prev_status, num_iter;
+    double min_time;
 
     void *opts_memory;
     void *solver_memory;
+
+    treeqp_tdunes_workspace tdunes_work;
+    treeqp_hpmpc_workspace hpmpc_work;
 
     // set up QP solver and solve QP
     if (solver.compare("tdunes") == 0)
@@ -268,26 +286,81 @@ int main(int argc, char * argv[])
         treeqp_tdunes_opts_create(num_nodes, &tdunes_opts, opts_memory);
         treeqp_tdunes_opts_set_default(num_nodes, &tdunes_opts);
 
-        tdunes_opts.maxIter = maxit;
-        tdunes_opts.stationarityTolerance = 1.0e-6;
+        // read solver-specific options from json file
+        if (j_in.count("options"))
+        {
+            auto const& options = j_in.at("options");
 
-        tdunes_opts.lineSearchMaxIter = 100;
-        tdunes_opts.lineSearchBeta = 0.6;
-        tdunes_opts.lineSearchGamma = 0.01;
+            tdunes_opts.maxIter = options["maxit"];
+            tdunes_opts.stationarityTolerance = options["stationarityTolerance"];
 
-        // tdunes_opts.regType  = TREEQP_NO_REGULARIZATION;
+            tdunes_opts.lineSearchMaxIter = options["lineSearchMaxIter"];
+            tdunes_opts.lineSearchBeta = options["lineSearchBeta"];
+            tdunes_opts.lineSearchGamma = options["lineSearchGamma"];
 
-        for (int ii = 0; ii < num_nodes; ii++)
-            tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+            tdunes_opts.checkLastActiveSet = options["checkLastActiveSet"];
 
-        treeqp_tdunes_workspace tdunes_work;
+            for (int ii = 0; ii < num_nodes; ii++)
+            {
+                if (options["clipping"])
+                {
+                    tdunes_opts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+                }
+                else
+                {
+                    tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+                }
+            }
+
+            tdunes_opts.regType = convert_reg_type(options["regType"]);
+            tdunes_opts.regTol = options["regTol"];
+            tdunes_opts.regValue = options["regValue"];
+        }
+
+        // read initialization if available
+        int indx = 0;
+        double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
+
+        for (auto const& edge : edges)
+        {
+            int const to = edge.at("to");
+
+            if (edge.count("lam0"))
+            {
+                std::vector<double> const lam0 = readVector(edge.at("lam0"), nx.at(to));
+                // TODO: make nicer
+                for (int j = 0; j < nx.at(to); j++)
+                {
+                    lambda_warm[indx+j] = lam0[j];
+                }
+            }
+            indx += nx.at(to);
+        }
 
         int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
         solver_memory = malloc(tdunes_solver_size);
         treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, solver_memory);
 
-        status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+        for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
+        {
+            treeqp_tdunes_set_dual_initialization(lambda_warm, &tdunes_work);
 
+            status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
+
+            if (ii == 0)
+            {
+                min_time = qp_out.info.total_time;
+                num_iter = qp_out.info.iter;
+            }
+            else
+            {
+                min_time = MIN(min_time, qp_out.info.total_time);
+                assert(status == prev_status);
+                assert(num_iter == qp_out.info.iter);
+            }
+            prev_status = status;
+        }
+        // min_time = tdunes_work.timings.min_total_time;
     }
     else if (solver.compare("hpmpc") == 0)
     {
@@ -297,14 +370,11 @@ int main(int argc, char * argv[])
         treeqp_hpmpc_opts_create(num_nodes, &hpmpc_opts, opts_memory);
         treeqp_hpmpc_opts_set_default(num_nodes, &hpmpc_opts);
 
-        hpmpc_opts.maxIter = maxit;
-
-        treeqp_hpmpc_workspace hpmpc_work;
-
         int hpmpc_solver_size = treeqp_hpmpc_calculate_size(&qp_in, &hpmpc_opts);
         solver_memory = malloc(hpmpc_solver_size);
         treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, solver_memory);
 
+        // TODO: options, NREP, etc
         status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
     }
     else
@@ -318,7 +388,18 @@ int main(int argc, char * argv[])
     if (solver.compare("tdunes") == 0)
     {
         j_out["info"]["solver"] = "tdunes";
-        j_out["info"]["cpu_time"] = qp_out.info.total_time;
+        j_out["info"]["cpu_time"] = min_time;
+
+        #if PROFILE > 1
+        // TODO(dimitris): how does it know size?
+        std::vector<double> buf(num_iter);
+        for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.ls_iters[jj];
+        j_out["info"]["ls_iters"] = buf;
+
+        // double *iter_times;
+        // double *min_iter_times;
+        // int *ls_iters;
+        #endif
     }
     else if (solver.compare("hpmpc") == 0)
     {

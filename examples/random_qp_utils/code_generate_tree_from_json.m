@@ -1,4 +1,4 @@
-function agents = code_generate_tree_from_json(qp, fname)
+function agents = code_generate_tree_from_json(fname, qp)
 
 Nn = length(qp.nodes);
 
@@ -114,7 +114,7 @@ for ii = 1:Nn
     end    
 end
 
-code_generate_tree(agents, fname, CLIPPING)
+code_generate_tree(fname, agents, CLIPPING)
 
 
 end

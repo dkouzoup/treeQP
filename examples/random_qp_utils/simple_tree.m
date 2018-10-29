@@ -68,11 +68,11 @@ end
 
 %% code generate data for c
 
-code_generate_tree(agents, 'data.c', CLIPPING)
-code_generate_json(agents, 'data.json')
+code_generate_tree('data.c', agents, CLIPPING)
+code_generate_json('data.json', agents)
 
 if 0
     qp = jsondecode(fileread('data.json'));
-    code_generate_tree_from_json(qp, 'new_data.c')
+    code_generate_tree_from_json('new_data.c', qp);
     visdiff('data.c', 'new_data.c');
 end

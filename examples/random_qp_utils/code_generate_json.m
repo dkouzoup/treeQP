@@ -1,4 +1,4 @@
-function code_generate_json( agents, fname )
+function code_generate_json(fname, agents, opts)
 
 if ~strcmp(fname(end-4:end), '.json')
     fname = [fname '.json'];
@@ -6,7 +6,7 @@ end
 
 N = length(agents); % number of nodes
 
-treeqp = struct('edges', [], 'nodes', []);
+treeqp = struct;
 
 for ii = 1:N
     treeqp.nodes{ii}.Q = agents(ii).Q;
@@ -38,6 +38,13 @@ for ii = 2:N
     treeqp.edges{ii-1}.from = agents(ii).dad-1;
     treeqp.edges{ii-1}.to = ii-1;
     
+    if opts.warmstart
+        treeqp.edges{ii-1}.lam0 = agents(ii).lambda;
+    end
+end
+
+if nargin > 2
+    treeqp.options = opts;
 end
 
 content = jsonencode(treeqp);
