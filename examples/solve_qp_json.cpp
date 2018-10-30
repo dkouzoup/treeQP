@@ -30,6 +30,7 @@
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
+// TODO(dimitris): only #if defined (USE_HPMPC)
 #include "treeqp/src/hpmpc_tree.h"
 
 #include "treeqp/utils/types.h"
@@ -46,6 +47,7 @@
 #include <blasfeo_d_blas.h>
 
 #include <nlohmann/json.hpp>
+#include <boost/range/iterator_range.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -323,18 +325,12 @@ int main(int argc, char * argv[])
 
         for (auto const& edge : edges)
         {
-            int const to = edge.at("to");
-
             if (edge.count("lam0"))
             {
-                std::vector<double> const lam0 = readVector(edge.at("lam0"), nx.at(to));
-                // TODO: make nicer
-                for (int j = 0; j < nx.at(to); j++)
-                {
-                    lambda_warm[indx+j] = lam0[j];
-                }
+                auto const& lam = edge.at("lam0");
+                std::copy(lam.begin(), lam.end(), lambda_warm + indx);
             }
-            indx += nx.at(to);
+            indx += edge.at("lam0").size();
         }
 
         int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
@@ -391,14 +387,23 @@ int main(int argc, char * argv[])
         j_out["info"]["cpu_time"] = min_time;
 
         #if PROFILE > 1
-        // TODO(dimitris): how does it know size?
         std::vector<double> buf(num_iter);
         for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.ls_iters[jj];
         j_out["info"]["ls_iters"] = buf;
+        #endif
+        #if PROFILE > 2
+            // TODO: do the same for the rest
+            j_out["info"]["cpu_times_stage_qps"] = boost::make_iterator_range(
+                tdunes_work.timings.min_stage_qps_times, tdunes_work.timings.min_stage_qps_times + num_iter);
 
-        // double *iter_times;
-        // double *min_iter_times;
-        // int *ls_iters;
+            for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.min_stage_qps_times[jj];
+            j_out["info"]["cpu_times_stage_qps"] = buf;
+            for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.min_build_dual_times[jj];
+            j_out["info"]["cpu_times_dual_system"] = buf;
+            for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.min_newton_direction_times[jj];
+            j_out["info"]["cpu_times_newton_direction"] = buf;
+            for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.min_line_search_times[jj];
+            j_out["info"]["cpu_times_line_search"] = buf;
         #endif
     }
     else if (solver.compare("hpmpc") == 0)
