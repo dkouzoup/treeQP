@@ -210,6 +210,82 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
 
 
 
+int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
+{
+    if (SolverName == "tdunes")
+    {
+        if (field == "maxIter")
+        {
+            TdunesOpts.maxIter = val;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+        if (field == "maxIter")
+        {
+            HpmpcOpts.maxIter = val;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+#endif
+    else
+    {
+        return -1;
+    }
+
+    CreateWorkspace(QpIn);
+
+    return 0;
+}
+
+
+
+int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, double val)
+{
+    if (SolverName == "tdunes")
+    {
+        if (field == "stationarityTolerance")
+        {
+            TdunesOpts.stationarityTolerance = val;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+        if (field == "alpha_min")
+        {
+            HpmpcOpts.alpha_min = val;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+#endif
+    else
+    {
+        return -1;
+    }
+
+    CreateWorkspace(QpIn);
+
+    return 0;
+}
+
+
+
 // TODO(dimitris): throw error if vectors are not of the same size
 TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
@@ -323,6 +399,20 @@ void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int
 
 
 void TreeQp::SetOption(std::string field, bool val)
+{
+    QpSolver.ChangeOption(&QpIn, field, val);
+}
+
+
+
+void TreeQp::SetOption(std::string field, int val)
+{
+    QpSolver.ChangeOption(&QpIn, field, val);
+}
+
+
+
+void TreeQp::SetOption(std::string field, double val)
 {
     QpSolver.ChangeOption(&QpIn, field, val);
 }

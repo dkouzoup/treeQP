@@ -58,9 +58,9 @@ public:
     // destroy and re-create solver based on current options
     int ChangeOption(tree_qp_in *QpIn, std::string field, bool val);
 
-    int ChangeOption(std::string field, int val);
+    int ChangeOption(tree_qp_in *QpIn, std::string field, int val);
 
-    int ChangeOption(std::string field, double val);
+    int ChangeOption(tree_qp_in *QpIn, std::string field, double val);
 
 private:
 

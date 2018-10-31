@@ -107,6 +107,10 @@ int main(int argc, char ** argv)
     QP.SolverName("tdunes");
     QP.SetOption("clipping", true);
 
+    // changed your mind? used another solver
+    QP.SolverName("hpmpc");
+    QP.SetOption("maxIter", 20);
+
     // solve QP and print solution
 
     QP.Solve();
