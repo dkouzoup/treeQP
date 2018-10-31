@@ -153,17 +153,32 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
 int main(int argc, char * argv[])
 {
+    // json file with qp_in in form of nodes and edges
     json j_in;
 
+    // optional json file to overwrite constraint on x0 and initialization of lam0
+    bool overwrite = false;
+    json j_x0;
+
+    if (argc > 2)
+    {
+        std::ifstream(argv[2]) >> j_x0;
+        overwrite = true;
+    }
+
     if (argc > 1)
+    {
         // If a file name argument is specified, read from a file
         std::ifstream(argv[1]) >> j_in;
+    }
     else
+    {
         // Otherwise, read from the stdin.
         std::cin >> j_in;
+    }
 
     auto const& nodes = j_in.at("nodes");
-    auto const& edges = j_in.at("edges");
+    auto & edges = j_in.at("edges");
     size_t const num_nodes = nodes.size();
 
     // Fill nx, nu, nc
@@ -234,6 +249,21 @@ int main(int argc, char * argv[])
         tree_qp_in_set_node_xmax(ux.data(), &qp_in, i);
         tree_qp_in_set_node_umax(uu.data(), &qp_in, i);
 
+    }
+
+    if (overwrite)
+    {
+        if (nx.at(0) > 0)
+        {
+            std::vector<double> const x0 = readVector(j_x0.at("x0"), nx.at(0));
+
+            tree_qp_in_set_node_xmin(x0.data(), &qp_in, 0);
+            tree_qp_in_set_node_xmax(x0.data(), &qp_in, 0);
+        }
+        else
+        {
+            // TODO(dimitris): should instead change b0
+        }
     }
 
     // tree_qp_in_print(&qp_in);
@@ -322,6 +352,13 @@ int main(int argc, char * argv[])
         // read initialization if available
         int indx = 0;
         double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
+
+
+        if (overwrite && j_x0.count("edges"))
+        {
+            // read lam0 from j_x0 instead of j_in
+            edges = j_x0.at("edges");
+        }
 
         for (auto const& edge : edges)
         {
