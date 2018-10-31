@@ -102,16 +102,18 @@ int main(int argc, char ** argv)
     }
 
 
-    // set up solver and options
-    QP.SetSolver("tdunes");
-    QP.ChangeOption("clipping", true);
+    // set up solver and adapt options
+
+    QP.SolverName("tdunes");
+    QP.SetOption("clipping", true);
+
+    // QP.CreateSolver("hpmpc");
 
     // solve QP and print solution
 
-    QP.CreateSolver();
-
     QP.Solve();
 
+    // TODO(dimitris): fix valgrind errors in printing when I use hpmpc
     QP.PrintOutput();
 
     return 0;

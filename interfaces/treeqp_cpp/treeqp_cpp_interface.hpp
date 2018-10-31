@@ -49,14 +49,14 @@ public:
 
     ~Solver();
 
-    int Set(int N, std::string SolverName);
+    // create solver with default options
+    int Create(std::string SolverName, tree_qp_in *QpIn);
 
-    // TODO(dimitris): merge Set/Create and re-create solver if ChangeOption is called?
-    int Create(tree_qp_in *QpIn);
-
+    // solve QP
     int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
 
-    int ChangeOption(std::string field, bool val);
+    // destroy and re-create solver based on current options
+    int ChangeOption(tree_qp_in *QpIn, std::string field, bool val);
 
     int ChangeOption(std::string field, int val);
 
@@ -78,6 +78,11 @@ private:
     treeqp_hpmpc_opts_t HpmpcOpts;
     treeqp_hpmpc_workspace HpmpcWork;
 #endif
+
+    int CreateOptions(int N, std::string SolverName);
+
+    int CreateWorkspace(tree_qp_in *QpIn);
+
 };
 
 
@@ -89,12 +94,6 @@ public:
 
     ~TreeQp();
 
-    // choose solver and create default options
-    int SetSolver(std::string SolverName);
-
-    // initialize solver (NOTE: options _cannot_ be changed upon initialization)
-    int CreateSolver();
-
     // set fields of QpIn
     void SetVector(std::string FieldName, std::vector<double> v, int indx);
 
@@ -102,12 +101,15 @@ public:
 
     void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int lda, int indx);
 
-    // change options
-    void ChangeOption(std::string field, bool val);
+    // choose solver and create solver instance with default options
+    void SolverName(std::string SolverName);
 
-    void ChangeOption(std::string field, int val);
+    // change an option, destroy and re-create solver based on current options
+    void SetOption(std::string field, bool val);
 
-    void ChangeOption(std::string field, double val);
+    void SetOption(std::string field, int val);
+
+    void SetOption(std::string field, double val);
 
     // solve QP
     void Solve();

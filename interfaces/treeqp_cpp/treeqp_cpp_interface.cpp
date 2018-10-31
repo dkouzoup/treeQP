@@ -41,11 +41,11 @@ Solver::Solver()
 
 Solver::~Solver()
 {
-    if (OptsCreated)
+    if (OptsCreated == true)
     {
         free(OptsMem);
     }
-    if (WorkCreated)
+    if (WorkCreated == true)
     {
         free(WorkMem);
     }
@@ -53,12 +53,27 @@ Solver::~Solver()
 
 
 
-int Solver::Set(int N, std::string SolverName)
+int Solver::Create(std::string SolverName, tree_qp_in *QpIn)
+{
+    int status;
+
+    status = CreateOptions(QpIn->N, SolverName);
+    if (status == -1) return status;
+
+    status = CreateWorkspace(QpIn);
+    if (status == -1) return status;
+
+    return 0;
+}
+
+
+
+int Solver::CreateOptions(int N, std::string SolverName)
 {
     NumNodes = N;
 
     // free memory of previous solver (if applicable)
-    if (OptsCreated)
+    if (OptsCreated == true)
     {
         free(OptsMem);
         OptsCreated = false;
@@ -96,9 +111,13 @@ int Solver::Set(int N, std::string SolverName)
 
 
 
-int Solver::Create(tree_qp_in *QpIn)
+int Solver::CreateWorkspace(tree_qp_in *QpIn)
 {
-    if (WorkCreated)
+    if (OptsCreated == false)
+    {
+        return -1;
+    }
+    if (WorkCreated == true)
     {
         free(WorkMem);
         WorkCreated = false;
@@ -150,7 +169,7 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
 
 
 
-int Solver::ChangeOption(std::string field, bool val)
+int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
 {
     if (SolverName == "tdunes")
     {
@@ -183,6 +202,8 @@ int Solver::ChangeOption(std::string field, bool val)
     {
         return -1;
     }
+
+    CreateWorkspace(QpIn);
 
     return 0;
 }
@@ -226,20 +247,9 @@ TreeQp::~TreeQp()
 
 
 
-int TreeQp::SetSolver(std::string SolverName)
+void TreeQp::SolverName(std::string SolverName)
 {
-    int status = QpSolver.Set(NumNodes, SolverName);
-
-    return status;
-}
-
-
-
-int TreeQp::CreateSolver()
-{
-    int status = QpSolver.Create(&QpIn);
-
-    return status;
+    int status = QpSolver.Create(SolverName, &QpIn);
 }
 
 
@@ -312,9 +322,9 @@ void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int
 
 
 
-void TreeQp::ChangeOption(std::string field, bool val)
+void TreeQp::SetOption(std::string field, bool val)
 {
-    QpSolver.ChangeOption(field, val);
+    QpSolver.ChangeOption(&QpIn, field, val);
 }
 
 
