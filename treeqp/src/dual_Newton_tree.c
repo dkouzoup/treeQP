@@ -1086,7 +1086,7 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
-    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+    treeqp_timer solver_tmr, interface_tmr, total_tmr, iter_tmr, op_tmr;
 
     #if PROFILE > 0
     treeqp_profiling_t *timings = &work->timings;
@@ -1146,22 +1146,22 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
         // solve stage QPs, update active sets, calculate elimination matrices
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         status = solve_stage_problems(qp_in, work);
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // calculate gradient and Hessian of the dual problem
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         status = build_dual_problem(qp_in, &idxFactorStart, opts, work);
         #if PROFILE > 2
-        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
         if (status == TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
@@ -1173,24 +1173,24 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
         // factorize Newton matrix and calculate step direction
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         calculate_delta_lambda(qp_in, idxFactorStart, work, opts);
         #if PROFILE > 2
-        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // line-search
         // NOTE: line-search overwrites xas, uas (used as workspace)
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         status = line_search(qp_in, opts, work);
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         #if PRINT_LEVEL > 1

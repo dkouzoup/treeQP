@@ -67,15 +67,6 @@ typedef struct treeqp_profiling_t_
 
 } treeqp_profiling_t;
 
-// TODO(dimitris): no need for global variables
-#if PROFILE > 1
-treeqp_timer iter_tmr;
-#endif
-
-#if PROFILE > 2
-treeqp_timer tmr;
-#endif
-
 int timers_calculate_size(int num_iter);
 
 void timers_create(int num_iter, treeqp_profiling_t *timings, void *ptr);

@@ -1870,7 +1870,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     struct blasfeo_dvec *sqnonScaled = (struct blasfeo_dvec*)qp_in->q;
     struct blasfeo_dvec *srnonScaled = (struct blasfeo_dvec*)qp_in->r;
 
-    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+    treeqp_timer solver_tmr, interface_tmr, total_tmr, iter_tmr, op_tmr;
 
     #if PROFILE > 0
     treeqp_profiling_t *timings = &work->timings;
@@ -1935,16 +1935,16 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         // - calculate Zbar
         // - calculate LambdaD and LambdaL
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work, opts);
         #if PROFILE > 2
-        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- calculate dual gradient
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         // TODO(dimitris): benchmark in linux, see if I can avoid some ifs
         calculate_residuals(Ns, Nh, qp_in, work);
@@ -1969,11 +1969,11 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         // NOTE(dimitris): inaccurate since part of dual Hessian is calculated while solving
         // the stage QPs
         #if PROFILE > 2
-        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         // --- factorize Newton system
@@ -1989,18 +1989,18 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
-        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- line search
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         lsIter = line_search(Ns, Nh, qp_in, opts, work);
 
         #if PROFILE > 2
-        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- reset data for next iteration
