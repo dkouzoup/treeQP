@@ -103,9 +103,8 @@ int main(int argc, char ** argv)
 
 
     // set up solver and options
-    QP.SetSolver("hpmpc");
-
-    // TODO(dimitris): change some options here
+    QP.SetSolver("tdunes");
+    QP.ChangeOption("clipping", true);
 
     // solve QP and print solution
 

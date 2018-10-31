@@ -51,12 +51,20 @@ public:
 
     int Set(int N, std::string SolverName);
 
+    // TODO(dimitris): merge Set/Create and re-create solver if ChangeOption is called?
     int Create(tree_qp_in *QpIn);
 
     int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
 
+    int ChangeOption(std::string field, bool val);
+
+    int ChangeOption(std::string field, int val);
+
+    int ChangeOption(std::string field, double val);
+
 private:
 
+    int NumNodes;
     std::string SolverName;
 
     bool OptsCreated;
@@ -93,6 +101,13 @@ public:
     void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int indx);
 
     void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int lda, int indx);
+
+    // change options
+    void ChangeOption(std::string field, bool val);
+
+    void ChangeOption(std::string field, int val);
+
+    void ChangeOption(std::string field, double val);
 
     // solve QP
     void Solve();

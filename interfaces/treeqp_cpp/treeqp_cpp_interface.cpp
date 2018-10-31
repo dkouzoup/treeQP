@@ -55,6 +55,8 @@ Solver::~Solver()
 
 int Solver::Set(int N, std::string SolverName)
 {
+    NumNodes = N;
+
     // free memory of previous solver (if applicable)
     if (OptsCreated)
     {
@@ -67,18 +69,18 @@ int Solver::Set(int N, std::string SolverName)
 
     if (SolverName == "tdunes")
     {
-        size = treeqp_tdunes_opts_calculate_size(N);
+        size = treeqp_tdunes_opts_calculate_size(NumNodes);
         OptsMem = malloc(size);
-        treeqp_tdunes_opts_create(N, &TdunesOpts, OptsMem);
-        treeqp_tdunes_opts_set_default(N, &TdunesOpts);
+        treeqp_tdunes_opts_create(NumNodes, &TdunesOpts, OptsMem);
+        treeqp_tdunes_opts_set_default(NumNodes, &TdunesOpts);
     }
 #if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
-        size = treeqp_hpmpc_opts_calculate_size(N);
+        size = treeqp_hpmpc_opts_calculate_size(NumNodes);
         OptsMem = malloc(size);
-        treeqp_hpmpc_opts_create(N, &HpmpcOpts, OptsMem);
-        treeqp_hpmpc_opts_set_default(N, &HpmpcOpts);
+        treeqp_hpmpc_opts_create(NumNodes, &HpmpcOpts, OptsMem);
+        treeqp_hpmpc_opts_set_default(NumNodes, &HpmpcOpts);
     }
 #endif
     else
@@ -144,6 +146,45 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
     }
 #endif
     return status;
+}
+
+
+
+int Solver::ChangeOption(std::string field, bool val)
+{
+    if (SolverName == "tdunes")
+    {
+        if (field == "clipping")
+        {
+            for (int ii = 0; ii < NumNodes; ii++)
+            {
+                if (val == true)
+                {
+                    TdunesOpts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+                }
+                else
+                {
+                    TdunesOpts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+                }
+            }
+        }
+        else
+        {
+            return -1;
+        }
+    }
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+
+    }
+#endif
+    else
+    {
+        return -1;
+    }
+
+    return 0;
 }
 
 
@@ -267,6 +308,13 @@ void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int
     {
         tree_qp_in_set_edge_B_colmajor(v.data(), lda, &QpIn, indx);
     }
+}
+
+
+
+void TreeQp::ChangeOption(std::string field, bool val)
+{
+    QpSolver.ChangeOption(field, val);
 }
 
 
