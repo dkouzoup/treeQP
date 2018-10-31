@@ -106,6 +106,7 @@ int main(int argc, char ** argv)
 
     QP.SolverName("tdunes");
     QP.SetOption("clipping", true);
+    QP.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
 
     // changed your mind? used another solver
     QP.SolverName("hpmpc");

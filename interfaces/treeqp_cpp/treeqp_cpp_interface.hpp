@@ -36,10 +36,7 @@
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_newton_tree.h"
-
-#if defined(TREEQP_WITH_HPMPC)
 #include "treeqp/src/hpmpc_tree.h"
-#endif
 
 struct Solver
 {
@@ -56,6 +53,8 @@ public:
     int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
 
     // destroy and re-create solver based on current options
+    int ChangeOption(tree_qp_in *QpIn, std::string field, std::string val);
+
     int ChangeOption(tree_qp_in *QpIn, std::string field, bool val);
 
     int ChangeOption(tree_qp_in *QpIn, std::string field, int val);
@@ -74,10 +73,9 @@ private:
 
     treeqp_tdunes_opts_t TdunesOpts;
     treeqp_tdunes_workspace TdunesWork;
-#if defined(TREEQP_WITH_HPMPC)
+
     treeqp_hpmpc_opts_t HpmpcOpts;
     treeqp_hpmpc_workspace HpmpcWork;
-#endif
 
     int CreateOptions(int N, std::string SolverName);
 
@@ -105,6 +103,8 @@ public:
     void SolverName(std::string SolverName);
 
     // change an option, destroy and re-create solver based on current options
+    void SetOption(std::string field, std::string val);
+
     void SetOption(std::string field, bool val);
 
     void SetOption(std::string field, int val);

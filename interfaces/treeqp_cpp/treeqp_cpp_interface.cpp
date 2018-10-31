@@ -32,6 +32,30 @@
 
 #include "treeqp/utils/print.h"
 
+
+// TODO(dimitris): code duplicated in solve_qp_json
+static regType_t string_to_reg_type(const std::string& str)
+{
+    if (str == "TREEQP_NO_REGULARIZATION")
+    {
+        return TREEQP_NO_REGULARIZATION;
+    }
+    else if (str == "TREEQP_ALWAYS_LEVENBERG_MARQUARDT")
+    {
+        return TREEQP_ALWAYS_LEVENBERG_MARQUARDT;
+    }
+    else if (str == "TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT")
+    {
+        return TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
+    }
+    else
+    {
+        return TREEQP_UNKNOWN_REGULARIZATION;
+    }
+}
+
+
+
 Solver::Solver()
 {
     OptsCreated = false;
@@ -89,7 +113,6 @@ int Solver::CreateOptions(int N, std::string SolverName)
         treeqp_tdunes_opts_create(NumNodes, &TdunesOpts, OptsMem);
         treeqp_tdunes_opts_set_default(NumNodes, &TdunesOpts);
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
         size = treeqp_hpmpc_opts_calculate_size(NumNodes);
@@ -97,7 +120,6 @@ int Solver::CreateOptions(int N, std::string SolverName)
         treeqp_hpmpc_opts_create(NumNodes, &HpmpcOpts, OptsMem);
         treeqp_hpmpc_opts_set_default(NumNodes, &HpmpcOpts);
     }
-#endif
     else
     {
         return -1;
@@ -131,14 +153,12 @@ int Solver::CreateWorkspace(tree_qp_in *QpIn)
         WorkMem = malloc(size);
         treeqp_tdunes_create(QpIn, &TdunesOpts, &TdunesWork, WorkMem);
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
         size = treeqp_hpmpc_calculate_size(QpIn, &HpmpcOpts);
         WorkMem = malloc(size);
         treeqp_hpmpc_create(QpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
     }
-#endif
     else
     {
         return -1;
@@ -158,13 +178,40 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
     {
         status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
         status = treeqp_hpmpc_solve(QpIn, QpOut, &HpmpcOpts, &HpmpcWork);
     }
-#endif
     return status;
+}
+
+
+
+int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, std::string val)
+{
+    if (SolverName == "tdunes")
+    {
+        if (field == "regType")
+        {
+            TdunesOpts.regType = string_to_reg_type(val);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    else if (SolverName == "hpmpc")
+    {
+
+    }
+    else
+    {
+        return -1;
+    }
+
+    CreateWorkspace(QpIn);
+
+    return 0;
 }
 
 
@@ -192,12 +239,10 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
             return -1;
         }
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
 
     }
-#endif
     else
     {
         return -1;
@@ -223,7 +268,6 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
             return -1;
         }
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
         if (field == "maxIter")
@@ -235,7 +279,6 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
             return -1;
         }
     }
-#endif
     else
     {
         return -1;
@@ -256,12 +299,19 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, double val)
         {
             TdunesOpts.stationarityTolerance = val;
         }
+        else if (field == "regValue")
+        {
+            TdunesOpts.regValue = val;
+        }
+        else if (field == "regTol")
+        {
+            TdunesOpts.regTol = val;
+        }
         else
         {
             return -1;
         }
     }
-#if defined (TREEQP_WITH_HPMPC)
     else if (SolverName == "hpmpc")
     {
         if (field == "alpha_min")
@@ -273,7 +323,6 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, double val)
             return -1;
         }
     }
-#endif
     else
     {
         return -1;
@@ -394,6 +443,13 @@ void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int
     {
         tree_qp_in_set_edge_B_colmajor(v.data(), lda, &QpIn, indx);
     }
+}
+
+
+
+void TreeQp::SetOption(std::string field, std::string val)
+{
+    QpSolver.ChangeOption(&QpIn, field, val);
 }
 
 
