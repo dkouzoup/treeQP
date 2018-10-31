@@ -34,8 +34,6 @@
 
 Solver::Solver()
 {
-    std::cout << "\n\ninside Solver constructor\n\n";
-
     OptsCreated = false;
     WorkCreated = false;
 }
@@ -43,8 +41,6 @@ Solver::Solver()
 
 Solver::~Solver()
 {
-    std::cout << "\n\ninside Solver destructor\n\n";
-
     if (OptsCreated)
     {
         free(OptsMem);
@@ -67,13 +63,24 @@ int Solver::Set(int N, std::string SolverName)
     }
 
     // create default options of selected solver
-    if (SolverName =="tdunes")
+    int size;
+
+    if (SolverName == "tdunes")
     {
-        int opts_size = treeqp_tdunes_opts_calculate_size(N);
-        OptsMem = malloc(opts_size);
+        size = treeqp_tdunes_opts_calculate_size(N);
+        OptsMem = malloc(size);
         treeqp_tdunes_opts_create(N, &TdunesOpts, OptsMem);
         treeqp_tdunes_opts_set_default(N, &TdunesOpts);
     }
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+        size = treeqp_hpmpc_opts_calculate_size(N);
+        OptsMem = malloc(size);
+        treeqp_hpmpc_opts_create(N, &HpmpcOpts, OptsMem);
+        treeqp_hpmpc_opts_set_default(N, &HpmpcOpts);
+    }
+#endif
     else
     {
         return -1;
@@ -87,7 +94,7 @@ int Solver::Set(int N, std::string SolverName)
 
 
 
-int Solver::Initialize(tree_qp_in *QpIn)
+int Solver::Create(tree_qp_in *QpIn)
 {
     if (WorkCreated)
     {
@@ -103,6 +110,14 @@ int Solver::Initialize(tree_qp_in *QpIn)
         WorkMem = malloc(size);
         treeqp_tdunes_create(QpIn, &TdunesOpts, &TdunesWork, WorkMem);
     }
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+        size = treeqp_hpmpc_calculate_size(QpIn, &HpmpcOpts);
+        WorkMem = malloc(size);
+        treeqp_hpmpc_create(QpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
+    }
+#endif
     else
     {
         return -1;
@@ -122,7 +137,12 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
     {
         status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
     }
-
+#if defined (TREEQP_WITH_HPMPC)
+    else if (SolverName == "hpmpc")
+    {
+        status = treeqp_hpmpc_solve(QpIn, QpOut, &HpmpcOpts, &HpmpcWork);
+    }
+#endif
     return status;
 }
 
@@ -131,8 +151,6 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
 // TODO(dimitris): throw error if vectors are not of the same size
 TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
-    std::cout << "\n\ninside TreeQp constructor\n\n";
-
     int *nc_ptr;
     if (nc.empty())
     {
@@ -161,7 +179,6 @@ TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, st
 
 TreeQp::~TreeQp()
 {
-    std::cout << "\n\ninside TreeQp destructor\n\n";
     free(QpInMem);
     free(QpOutMem);
 }
@@ -177,9 +194,9 @@ int TreeQp::SetSolver(std::string SolverName)
 
 
 
-int TreeQp::InitializeSolver()
+int TreeQp::CreateSolver()
 {
-    int status = QpSolver.Initialize(&QpIn);
+    int status = QpSolver.Create(&QpIn);
 
     return status;
 }

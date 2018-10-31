@@ -103,19 +103,15 @@ int main(int argc, char ** argv)
 
 
     // set up solver and options
-
-    QP.SetSolver("tdunes");
+    QP.SetSolver("hpmpc");
 
     // TODO(dimitris): change some options here
 
-    QP.InitializeSolver();
-
-
     // solve QP and print solution
 
-    QP.Solve();
+    QP.CreateSolver();
 
-    // TODO(dimitris): try to change solver and re-solve
+    QP.Solve();
 
     QP.PrintOutput();
 

@@ -28,22 +28,18 @@
 #ifndef TREEQP_CPP_INTERFACE_HPP_
 #define TREEQP_CPP_INTERFACE_HPP_
 
-// typedef enum {
-//     TREEQP_TDUNES,
-//     TREEQP_SDUNES,
-// #ifdef TREEQP_WITH_HPMPC
-//     TREEQP_HPMPC,
-// #endif
-// #ifdef TREEQP_WITH_HPIPM
-//     TREEQP_HPIPM,
-// #endif
-// } treeqp_solver_t;
+// TODO(dimitris): move to Makefile.rule
+#define TREEQP_WITH_HPMPC
 
 #include <vector>
 #include <string>
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_newton_tree.h"
+
+#if defined(TREEQP_WITH_HPMPC)
+#include "treeqp/src/hpmpc_tree.h"
+#endif
 
 struct Solver
 {
@@ -55,7 +51,7 @@ public:
 
     int Set(int N, std::string SolverName);
 
-    int Initialize(tree_qp_in *QpIn);  // TODO: rename to create
+    int Create(tree_qp_in *QpIn);
 
     int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
 
@@ -70,7 +66,10 @@ private:
 
     treeqp_tdunes_opts_t TdunesOpts;
     treeqp_tdunes_workspace TdunesWork;
-
+#if defined(TREEQP_WITH_HPMPC)
+    treeqp_hpmpc_opts_t HpmpcOpts;
+    treeqp_hpmpc_workspace HpmpcWork;
+#endif
 };
 
 
@@ -86,7 +85,7 @@ public:
     int SetSolver(std::string SolverName);
 
     // initialize solver (NOTE: options _cannot_ be changed upon initialization)
-    int InitializeSolver();
+    int CreateSolver();
 
     // set fields of QpIn
     void SetVector(std::string FieldName, std::vector<double> v, int indx);
@@ -115,7 +114,6 @@ private:
     tree_qp_out QpOut;
     void *QpOutMem;
 
-    bool SolverInitialized;
     Solver QpSolver;
 };
 
