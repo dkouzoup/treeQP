@@ -40,16 +40,83 @@
 // } treeqp_solver_t;
 
 #include <vector>
+#include <string>
 
-// int tree_qp_in_calculate_size(int Nn, const int * nx, const int * nu, const int * nc, const int * nk);
+#include "treeqp/src/tree_qp_common.h"
+#include "treeqp/src/dual_newton_tree.h"
+
+struct Solver
+{
+public:
+
+    Solver();
+
+    ~Solver();
+
+    int Set(int N, std::string SolverName);
+
+    int Initialize(tree_qp_in *QpIn);  // TODO: rename to create
+
+    int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
+
+private:
+
+    std::string SolverName;
+
+    bool OptsCreated;
+    bool WorkCreated;
+    void *OptsMem;
+    void *WorkMem;
+
+    treeqp_tdunes_opts_t TdunesOpts;
+    treeqp_tdunes_workspace TdunesWork;
+
+};
+
 
 struct TreeQp
 {
 public:
+
     TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk);
+
+    ~TreeQp();
+
+    // choose solver and create default options
+    int SetSolver(std::string SolverName);
+
+    // initialize solver (NOTE: options _cannot_ be changed upon initialization)
+    int InitializeSolver();
+
+    // set fields of QpIn
+    void SetVector(std::string FieldName, std::vector<double> v, int indx);
+
+    void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int indx);
+
+    void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int lda, int indx);
+
+    // solve QP
+    void Solve();
+
+    // utils
+    void PrintInput();
+
+    void PrintOutput();
+
+    void PrintOutput(int NumNodes);
 
 private:
 
+    int NumNodes;
+
+    tree_qp_in QpIn;
+    void *QpInMem;
+
+    tree_qp_out QpOut;
+    void *QpOutMem;
+
+    bool SolverInitialized;
+    Solver QpSolver;
 };
 
 #endif  /* TREEQP_CPP_INTERFACE_HPP_ */

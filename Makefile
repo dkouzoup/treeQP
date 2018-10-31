@@ -164,6 +164,7 @@ clean:
 	( cd examples; $(MAKE) clean )
 	( cd interfaces/treeqp_cpp; $(MAKE) clean )
 	rm -f lib/libtreeqp.a
+	rm -f lib/libtreeqp_cpp_interface.a
 
 ifeq ($(SKIP_BLASFEO_COMPILATION), ON)
 

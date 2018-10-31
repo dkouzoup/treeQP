@@ -27,9 +27,255 @@
 #include "interfaces/treeqp_cpp/treeqp_cpp_interface.hpp"
 
 #include <vector>
+#include <string>
 #include <iostream>
 
+#include "treeqp/utils/print.h"
+
+Solver::Solver()
+{
+    std::cout << "\n\ninside Solver constructor\n\n";
+
+    OptsCreated = false;
+    WorkCreated = false;
+}
+
+
+Solver::~Solver()
+{
+    std::cout << "\n\ninside Solver destructor\n\n";
+
+    if (OptsCreated)
+    {
+        free(OptsMem);
+    }
+    if (WorkCreated)
+    {
+        free(WorkMem);
+    }
+}
+
+
+
+int Solver::Set(int N, std::string SolverName)
+{
+    // free memory of previous solver (if applicable)
+    if (OptsCreated)
+    {
+        free(OptsMem);
+        OptsCreated = false;
+    }
+
+    // create default options of selected solver
+    if (SolverName =="tdunes")
+    {
+        int opts_size = treeqp_tdunes_opts_calculate_size(N);
+        OptsMem = malloc(opts_size);
+        treeqp_tdunes_opts_create(N, &TdunesOpts, OptsMem);
+        treeqp_tdunes_opts_set_default(N, &TdunesOpts);
+    }
+    else
+    {
+        return -1;
+    }
+
+    this->SolverName = SolverName;
+
+    OptsCreated = true;
+    return 0;
+}
+
+
+
+int Solver::Initialize(tree_qp_in *QpIn)
+{
+    if (WorkCreated)
+    {
+        free(WorkMem);
+        WorkCreated = false;
+    }
+
+    int size;
+
+    if (SolverName == "tdunes")
+    {
+        size = treeqp_tdunes_calculate_size(QpIn, &TdunesOpts);
+        WorkMem = malloc(size);
+        treeqp_tdunes_create(QpIn, &TdunesOpts, &TdunesWork, WorkMem);
+    }
+    else
+    {
+        return -1;
+    }
+
+    WorkCreated = true;
+    return 0;
+}
+
+
+
+int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
+{
+    int status = -1;
+
+    if (SolverName == "tdunes")
+    {
+        status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
+    }
+
+    return status;
+}
+
+
+
+// TODO(dimitris): throw error if vectors are not of the same size
 TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
-    std::cout << "called TreeQp creator\n";
+    std::cout << "\n\ninside TreeQp constructor\n\n";
+
+    int *nc_ptr;
+    if (nc.empty())
+    {
+        nc_ptr = NULL;
+    }
+    else
+    {
+        nc_ptr = nc.data();
+    }
+
+    NumNodes = nx.size();
+
+    // create qp_in
+    int in_size = tree_qp_in_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data());
+    QpInMem = malloc(in_size);
+    tree_qp_in_create(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data(), &QpIn, QpInMem);
+
+    // create qp_out
+    int out_size = tree_qp_out_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr);
+    QpOutMem = malloc(out_size);
+    tree_qp_out_create(NumNodes, nx.data(), nu.data(), nc_ptr, &QpOut, QpOutMem);
+
+}
+
+
+
+TreeQp::~TreeQp()
+{
+    std::cout << "\n\ninside TreeQp destructor\n\n";
+    free(QpInMem);
+    free(QpOutMem);
+}
+
+
+
+int TreeQp::SetSolver(std::string SolverName)
+{
+    int status = QpSolver.Set(NumNodes, SolverName);
+
+    return status;
+}
+
+
+
+int TreeQp::InitializeSolver()
+{
+    int status = QpSolver.Initialize(&QpIn);
+
+    return status;
+}
+
+
+// TODO(dimitris): proper error handling
+
+void TreeQp::SetVector(std::string FieldName, std::vector<double> v, int indx)
+{
+    if (FieldName == "q")
+    {
+        tree_qp_in_set_node_q(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "r")
+    {
+        tree_qp_in_set_node_r(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "xmin")
+    {
+        tree_qp_in_set_node_xmin(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "xmax")
+    {
+        tree_qp_in_set_node_xmax(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "umin")
+    {
+        tree_qp_in_set_node_umin(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "umax")
+    {
+        tree_qp_in_set_node_umax(v.data(), &QpIn, indx);
+    }
+    else if (FieldName == "b")
+    {
+        tree_qp_in_set_edge_b(v.data(), &QpIn, indx);
+    }
+}
+
+
+
+void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int indx)
+{
+    SetMatrixColMajor(FieldName, v, -1, indx);
+}
+
+
+
+void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int lda, int indx)
+{
+    if (FieldName == "Q")
+    {
+        tree_qp_in_set_node_Q_colmajor(v.data(), lda, &QpIn, indx);
+    }
+    else if (FieldName == "R")
+    {
+        tree_qp_in_set_node_R_colmajor(v.data(), lda, &QpIn, indx);
+    }
+    else if (FieldName == "S")
+    {
+        tree_qp_in_set_node_S_colmajor(v.data(), lda, &QpIn, indx);
+    }
+    else if (FieldName == "A")
+    {
+        tree_qp_in_set_edge_A_colmajor(v.data(), lda, &QpIn, indx);
+    }
+    else if (FieldName == "B")
+    {
+        tree_qp_in_set_edge_B_colmajor(v.data(), lda, &QpIn, indx);
+    }
+}
+
+
+
+void TreeQp::Solve()
+{
+    QpSolver.Solve(&QpIn, &QpOut);
+}
+
+
+
+void TreeQp::PrintInput()
+{
+    tree_qp_in_print(&QpIn);
+}
+
+
+
+void TreeQp::PrintOutput()
+{
+    tree_qp_out_print(NumNodes, &QpOut);
+}
+
+
+
+void TreeQp::PrintOutput(int NumNodes)
+{
+    tree_qp_out_print(NumNodes, &QpOut);
 }
