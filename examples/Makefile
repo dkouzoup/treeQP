@@ -56,6 +56,9 @@ unit_tests:
 thesis_example: thesis_example.o
 	$(CC) -o thesis_example.out thesis_example.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
+thesis_example_cpp_interface: thesis_example_cpp_interface.o
+	$(CXX) -o thesis_example_cpp_interface.out thesis_example_cpp_interface.o $(CXXFLAGS) $(LDFLAGS) $(LIBS) -ltreeqp_cpp_interface
+
 random_qp_example: random_qp.o
 	$(CC) -o random_qp.out random_qp.o $(CFLAGS) $(LDFLAGS) $(LIBS)
 
