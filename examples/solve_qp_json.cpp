@@ -30,7 +30,7 @@
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
-// TODO(dimitris): only #if defined (USE_HPMPC)
+#include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/src/hpmpc_tree.h"
 
 #include "treeqp/utils/types.h"
@@ -173,8 +173,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-        // Otherwise, read from the stdin.
-        std::cin >> j_in;
+        throw std::invalid_argument("no input files");
     }
 
     auto const& nodes = j_in.at("nodes");
@@ -301,6 +300,7 @@ int main(int argc, char * argv[])
     void *solver_memory;
 
     treeqp_tdunes_workspace tdunes_work;
+    treeqp_sdunes_workspace sdunes_work;
     treeqp_hpmpc_workspace hpmpc_work;
 
     // eliminate x0 for some solvers
@@ -372,6 +372,7 @@ int main(int argc, char * argv[])
             edges = j_x0.at("edges");
         }
 
+        int jj = 1;
         for (auto const& edge : edges)
         {
             if (edge.count("lam0"))
@@ -379,7 +380,8 @@ int main(int argc, char * argv[])
                 auto const& lam = edge.at("lam0");
                 std::copy(lam.begin(), lam.end(), lambda_warm + indx);
             }
-            indx += edge.at("lam0").size();
+            // indx += edge.at("lam0").size();
+            indx += qp_in.nx[jj++];
         }
 
         int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
@@ -407,6 +409,8 @@ int main(int argc, char * argv[])
         }
         // min_time = tdunes_work.timings.min_total_time;
     }
+    else if (solver == "sdunes")
+
     else if (solver == "hpmpc")
     {
         treeqp_hpmpc_opts_t hpmpc_opts;
@@ -419,8 +423,26 @@ int main(int argc, char * argv[])
         solver_memory = malloc(hpmpc_solver_size);
         treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, solver_memory);
 
-        // TODO: options, NREP, etc
-        status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+        // TODO: read solver-specific options
+
+        for (int ii = 0; ii < NREP; ii++)
+        {
+            status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+
+            if (ii == 0)
+            {
+                // NOTE(dimitris): do not take into account interface overhead for HPMPC
+                min_time = qp_out.info.solver_time;
+                num_iter = qp_out.info.iter;
+            }
+            else
+            {
+                min_time = MIN(min_time, qp_out.info.solver_time);
+                assert(status == prev_status);
+                assert(num_iter == qp_out.info.iter);
+            }
+            prev_status = status;
+        }
     }
     else
     {
@@ -441,11 +463,16 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (solver.compare("tdunes") == 0)
-    {
-        j_out["info"]["solver"] = "tdunes";
-        j_out["info"]["cpu_time"] = min_time;
+    double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
 
+    j_out["info"]["solver"] = solver;
+    j_out["info"]["cpu_time"] = min_time;
+    j_out["info"]["status"] = status;
+    j_out["info"]["num_iter"] = qp_out.info.iter;
+    j_out["info"]["kkt_tol"] = kkt_err;
+
+    if (solver == "tdunes")
+    {
         #if PROFILE > 1
         std::vector<double> buf(num_iter);
         for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.ls_iters[jj];
@@ -466,19 +493,6 @@ int main(int argc, char * argv[])
             j_out["info"]["cpu_times_line_search"] = buf;
         #endif
     }
-    else if (solver.compare("hpmpc") == 0)
-    {
-        j_out["info"]["solver"] = "hpmpc";
-        // NOTE(dimitris): do not take into account interface overhead for HPMPC
-        j_out["info"]["cpu_time"] = qp_out.info.solver_time;
-    }
-
-    j_out["info"]["status"] = status;
-    j_out["info"]["num_iter"] = qp_out.info.iter;
-
-    double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
-    j_out["info"]["kkt_tol"] = kkt_err;
-
 
     free(solver_memory);
     free(opts_memory);
