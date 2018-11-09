@@ -151,18 +151,44 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
 
 
+void sdunes_update_multipliers(double *lam_scen, double *mu_scen, treeqp_sdunes_workspace *work)
+{
+    int ind_mu = 0;
+    int ind_lam = 0;
+
+    int nu = work->su[0][0].m;
+    int nx = work->sx[0][0].m;
+    int Ns = work->Ns;
+    int Nh = work->Nh;
+
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        for (int kk = 0; kk < Nh; kk++)
+        {
+            blasfeo_unpack_dvec(nx, &work->smu[ii][kk], 0, &mu_scen[ind_mu]);
+            ind_mu += nx;
+        }
+        if (ii < Ns-1)
+        {
+            blasfeo_unpack_dvec(work->slambda[ii].m, &work->slambda[ii], 0, &lam_scen[ind_lam]);
+            ind_lam += work->slambda[ii].m;
+        }
+    }
+}
+
+
+
 int main(int argc, char * argv[])
 {
-    // json file with qp_in in form of nodes and edges
-    json j_in;
+    json j_in, j_out;
 
     // optional json file to overwrite constraint on x0 and initialization of lam0
     bool overwrite = false;
-    json j_x0;
+    json j_init;
 
     if (argc > 2)
     {
-        std::ifstream(argv[2]) >> j_x0;
+        std::ifstream(argv[2]) >> j_init;
         overwrite = true;
     }
 
@@ -214,7 +240,7 @@ int main(int argc, char * argv[])
 
         std::vector<double> const A = readColMajorMatrix(edge.at("A"), nx.at(to), nx.at(from));
         std::vector<double> const B = readColMajorMatrix(edge.at("B"), nx.at(to), nu.at(from));
-        std::vector<double> const b = readVector(edge.at("b"), nx.at(to));
+        std::vector<double> const b = readVector(edge.at("b"), nx.at(to)); // TODO(dimitris): why do we need readVector at all?
 
         tree_qp_in_set_edge_A_colmajor(A.data(), -1, &qp_in, to - 1);
         tree_qp_in_set_edge_B_colmajor(B.data(), -1, &qp_in, to - 1);
@@ -254,7 +280,7 @@ int main(int argc, char * argv[])
     {
         if (nx.at(0) > 0)
         {
-            std::vector<double> const x0 = readVector(j_x0.at("x0"), nx.at(0));
+            std::vector<double> const x0 = readVector(j_init.at("x0"), nx.at(0));
 
             tree_qp_in_set_node_xmin(x0.data(), &qp_in, 0);
             tree_qp_in_set_node_xmax(x0.data(), &qp_in, 0);
@@ -365,12 +391,13 @@ int main(int argc, char * argv[])
         double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
 
 
-        if (overwrite && j_x0.count("edges"))
+        if (overwrite && j_init.count("edges"))
         {
-            // read lam0 from j_x0 instead of j_in
-            edges = j_x0.at("edges");
+            // read lam0 from j_init instead of j_in
+            edges = j_init.at("edges");
         }
 
+        // TODO(dimitris): simplify as in scenarios and DO NOT read lam from qp_in (only init)
         int indx = 0;
         int jj = 1;
         for (auto const& edge : edges)
@@ -437,46 +464,26 @@ int main(int argc, char * argv[])
             sdunes_opts.regValue = options["regValue"];
         }
 
-        // read initialization if available
-        // TODO(dimitris): warmstart nonanticipativity multipliers
-
-        // NOTE(dimitris): sdunes assumes standard multi-stage trees with constant dimensions
-        int md = nk[0];
-        int Nr = get_robust_horizon(qp_in.N, qp_in.tree);
-        int nu = qp_in.nu[0];
-        int nx = qp_in.nx[1];
-        int Ns = ipow(md, Nr);
-        int Nh = get_prediction_horizon(qp_in.N, qp_in.tree);
-        int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
-
-        double *mu_warm = (double *) calloc(Ns*Nh*nx, sizeof(double));
-        double *lambda_warm = (double *)calloc(nl, sizeof(double));
-
-        if (overwrite && j_x0.count("edges"))
-        {
-            edges = j_x0.at("edges");
-        }
-
-        // TODO(dimitris): THIS IS NOT CORRECT FOR SCENARIOS!!!! AND IT SHOULD BE ABOUT MUs
-        int indx = 0;
-        int jj = 1;
-        for (auto const& edge : edges)
-        {
-            if (edge.count("lam0"))
-            {
-                auto const& lam = edge.at("lam0");
-                std::copy(lam.begin(), lam.end(), mu_warm + indx);
-            }
-            indx += qp_in.nx[jj++];
-        }
-
         int sdunes_solver_size = treeqp_sdunes_calculate_size(&qp_in, &sdunes_opts);
         solver_memory = malloc(sdunes_solver_size);
         treeqp_sdunes_create(&qp_in, &sdunes_opts, &sdunes_work, solver_memory);
 
+        int dim_lam = treeqp_sdunes_calculate_dual_dimension(sdunes_work.Nr, sdunes_work.md, sdunes_work.su[0][0].m);
+        int dim_mu  = sdunes_work.Ns*sdunes_work.Nh*sdunes_work.sx[0][0].m;
+
+        std::vector<double> lam0_scen(dim_lam, 0.0);
+        std::vector<double> mu0_scen(dim_mu, 0.0);
+
+        // TODO(dimitris): check that size in json is the same as calc. here
+        if (overwrite)
+        {
+            lam0_scen = readVector(j_init.at("lam0_scen"), dim_lam);
+            mu0_scen  = readVector(j_init.at("mu0_scen"), dim_mu);
+        }
+
         for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
         {
-            treeqp_sdunes_set_dual_initialization(lambda_warm, mu_warm, &sdunes_work);
+            treeqp_sdunes_set_dual_initialization(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
 
             status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
 
@@ -493,8 +500,9 @@ int main(int argc, char * argv[])
             }
             prev_status = status;
         }
-        free(lambda_warm);
-        free(mu_warm);
+        sdunes_update_multipliers(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
+        j_out["init"]["lam0_scen"] = lam0_scen;
+        j_out["init"]["mu0_scen"] = mu0_scen;
     }
     else if (solver == "hpmpc")
     {
@@ -535,7 +543,6 @@ int main(int argc, char * argv[])
     }
 
     // write output to json file
-    json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
 
     // restore x0 if eliminated
