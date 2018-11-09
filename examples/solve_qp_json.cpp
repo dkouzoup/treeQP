@@ -410,7 +410,9 @@ int main(int argc, char * argv[])
         // min_time = tdunes_work.timings.min_total_time;
     }
     else if (solver == "sdunes")
-
+    {
+        // TODO
+    }
     else if (solver == "hpmpc")
     {
         treeqp_hpmpc_opts_t hpmpc_opts;
