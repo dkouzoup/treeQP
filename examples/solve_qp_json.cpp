@@ -309,7 +309,7 @@ int main(int argc, char * argv[])
     double *stored_x0_data;
     int stored_x0_size;
 
-    if (solver == "hpmpc")
+    if (solver == "hpmpc" || solver == "sdunes")
     {
         // TODO(dimiris): clean this up
         eliminated_x0 = true;
@@ -362,7 +362,6 @@ int main(int argc, char * argv[])
         }
 
         // read initialization if available
-        int indx = 0;
         double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
 
 
@@ -372,6 +371,7 @@ int main(int argc, char * argv[])
             edges = j_x0.at("edges");
         }
 
+        int indx = 0;
         int jj = 1;
         for (auto const& edge : edges)
         {
@@ -408,10 +408,93 @@ int main(int argc, char * argv[])
             prev_status = status;
         }
         // min_time = tdunes_work.timings.min_total_time;
+         free(lambda_warm);
     }
     else if (solver == "sdunes")
     {
-        // TODO
+        treeqp_sdunes_opts_t sdunes_opts;
+        int sdunes_opts_size = treeqp_sdunes_opts_calculate_size(num_nodes);
+        void *opts_memory = malloc(sdunes_opts_size);
+        treeqp_sdunes_opts_create(num_nodes, &sdunes_opts, opts_memory);
+        treeqp_sdunes_opts_set_default(num_nodes, &sdunes_opts);
+
+        // read solver-specific options from json file
+        if (j_in.count("options"))
+        {
+            auto const& options = j_in.at("options");
+
+            sdunes_opts.maxIter = options["maxit"];
+            sdunes_opts.stationarityTolerance = options["stationarityTolerance"];
+
+            sdunes_opts.lineSearchMaxIter = options["lineSearchMaxIter"];
+            sdunes_opts.lineSearchBeta = options["lineSearchBeta"];
+            sdunes_opts.lineSearchGamma = options["lineSearchGamma"];
+
+            sdunes_opts.checkLastActiveSet = options["checkLastActiveSet"];
+
+            sdunes_opts.regType = convert_reg_type(options["regType"]);
+            sdunes_opts.regTol = options["regTol"];
+            sdunes_opts.regValue = options["regValue"];
+        }
+
+        // read initialization if available
+        // TODO(dimitris): warmstart nonanticipativity multipliers
+
+        // NOTE(dimitris): sdunes assumes standard multi-stage trees with constant dimensions
+        int md = nk[0];
+        int Nr = get_robust_horizon(qp_in.N, qp_in.tree);
+        int nu = qp_in.nu[0];
+        int nx = qp_in.nx[1];
+        int Ns = ipow(md, Nr);
+        int Nh = get_prediction_horizon(qp_in.N, qp_in.tree);
+        int nl = treeqp_sdunes_calculate_dual_dimension(Nr, md, nu);
+
+        double *mu_warm = (double *) calloc(Ns*Nh*nx, sizeof(double));
+        double *lambda_warm = (double *)calloc(nl, sizeof(double));
+
+        if (overwrite && j_x0.count("edges"))
+        {
+            edges = j_x0.at("edges");
+        }
+
+        // TODO(dimitris): THIS IS NOT CORRECT FOR SCENARIOS!!!! AND IT SHOULD BE ABOUT MUs
+        int indx = 0;
+        int jj = 1;
+        for (auto const& edge : edges)
+        {
+            if (edge.count("lam0"))
+            {
+                auto const& lam = edge.at("lam0");
+                std::copy(lam.begin(), lam.end(), mu_warm + indx);
+            }
+            indx += qp_in.nx[jj++];
+        }
+
+        int sdunes_solver_size = treeqp_sdunes_calculate_size(&qp_in, &sdunes_opts);
+        solver_memory = malloc(sdunes_solver_size);
+        treeqp_sdunes_create(&qp_in, &sdunes_opts, &sdunes_work, solver_memory);
+
+        for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
+        {
+            treeqp_sdunes_set_dual_initialization(lambda_warm, mu_warm, &sdunes_work);
+
+            status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
+
+            if (ii == 0)
+            {
+                min_time = qp_out.info.total_time;
+                num_iter = qp_out.info.iter;
+            }
+            else
+            {
+                min_time = MIN(min_time, qp_out.info.total_time);
+                assert(status == prev_status);
+                assert(num_iter == qp_out.info.iter);
+            }
+            prev_status = status;
+        }
+        free(lambda_warm);
+        free(mu_warm);
     }
     else if (solver == "hpmpc")
     {
