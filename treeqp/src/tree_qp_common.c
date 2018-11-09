@@ -411,9 +411,6 @@ void tree_qp_in_eliminate_x0(tree_qp_in * const qp_in)
         return;
     }
 
-    // NOTE(dimitris): put it further down for now
-    // qp_in->nx[0] = 0;
-
     struct node *tree = qp_in->tree;
 
     struct blasfeo_dmat *sA;
@@ -531,6 +528,7 @@ void tree_qp_in_eliminate_x0(tree_qp_in * const qp_in)
 
 void tree_qp_out_eliminate_x0(tree_qp_out * const qp_out)
 {
+    // TODO(dimitris): check and fix memleaks here and above
     qp_out->x[0].pa = NULL;
     qp_out->x[0].m = 0;
 

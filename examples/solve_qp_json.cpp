@@ -275,12 +275,6 @@ int main(int argc, char * argv[])
     void *qp_out_memory = malloc(qp_out_size);
     tree_qp_out_create(num_nodes, nx.data(), nu.data(), nc.data(), &qp_out, qp_out_memory);
 
-#if 0
-    // eliminate x0 variable
-    tree_qp_in_eliminate_x0(&qp_in);
-    tree_qp_out_eliminate_x0(&qp_out);
-#endif
-
     // read common options from json file
     int maxit;
     std::string solver;
@@ -309,8 +303,26 @@ int main(int argc, char * argv[])
     treeqp_tdunes_workspace tdunes_work;
     treeqp_hpmpc_workspace hpmpc_work;
 
+    // eliminate x0 for some solvers
+    // TODO(dimitris): check if it also helps tdunes
+    bool eliminated_x0 = false;
+    double *stored_x0_data;
+    int stored_x0_size;
+
+    if (solver == "hpmpc")
+    {
+        // TODO(dimiris): clean this up
+        eliminated_x0 = true;
+        stored_x0_size = qp_in.nx[0];
+        stored_x0_data = (double*) malloc(stored_x0_size*sizeof(double));
+        tree_qp_in_get_node_xmin(stored_x0_data, &qp_in, 0);
+
+        tree_qp_in_eliminate_x0(&qp_in);
+        // tree_qp_out_eliminate_x0(&qp_out);
+    }
+
     // set up QP solver and solve QP
-    if (solver.compare("tdunes") == 0)
+    if (solver == "tdunes")
     {
         treeqp_tdunes_opts_t tdunes_opts;
         int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
@@ -395,7 +407,7 @@ int main(int argc, char * argv[])
         }
         // min_time = tdunes_work.timings.min_total_time;
     }
-    else if (solver.compare("hpmpc") == 0)
+    else if (solver == "hpmpc")
     {
         treeqp_hpmpc_opts_t hpmpc_opts;
         int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
@@ -418,6 +430,17 @@ int main(int argc, char * argv[])
     // write output to json file
     json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
+
+    // restore x0 if eliminated
+    if (eliminated_x0 == true)
+    {
+        // TODO(dimitris): make it one-liner
+        for (int ii = 0; ii < stored_x0_size; ii++)
+        {
+            j_out["solution"]["nodes"][0]["x"][ii] = stored_x0_data[ii];
+        }
+    }
+
     if (solver.compare("tdunes") == 0)
     {
         j_out["info"]["solver"] = "tdunes";
@@ -447,7 +470,7 @@ int main(int argc, char * argv[])
     {
         j_out["info"]["solver"] = "hpmpc";
         // NOTE(dimitris): do not take into account interface overhead for HPMPC
-        j_out["info"]["cputime"] = qp_out.info.solver_time;
+        j_out["info"]["cpu_time"] = qp_out.info.solver_time;
     }
 
     j_out["info"]["status"] = status;
