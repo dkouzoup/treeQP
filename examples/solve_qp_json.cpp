@@ -177,6 +177,20 @@ void sdunes_update_multipliers(double *lam_scen, double *mu_scen, treeqp_sdunes_
 }
 
 
+// TODO(dimitris): check niters against old code again
+void tdunes_update_multipliers(double *lam_tree, tree_qp_out *qp_out)
+{
+    int num_nodes = qp_out->info.Nn;
+    int idx = 0;
+
+    for (int ii = 0; ii < num_nodes-1; ii++)
+    {
+        tree_qp_out_get_edge_lam(&lam_tree[idx], qp_out, ii);
+        idx += qp_out->lam[ii].m;
+    }
+}
+
+
 
 int main(int argc, char * argv[])
 {
@@ -387,37 +401,22 @@ int main(int argc, char * argv[])
             tdunes_opts.regValue = options["regValue"];
         }
 
-        // read initialization if available
-        double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
-
-
-        if (overwrite && j_init.count("edges"))
-        {
-            // read lam0 from j_init instead of j_in
-            edges = j_init.at("edges");
-        }
-
-        // TODO(dimitris): simplify as in scenarios and DO NOT read lam from qp_in (only init)
-        int indx = 0;
-        int jj = 1;
-        for (auto const& edge : edges)
-        {
-            if (edge.count("lam0"))
-            {
-                auto const& lam = edge.at("lam0");
-                std::copy(lam.begin(), lam.end(), lambda_warm + indx);
-            }
-            // indx += edge.at("lam0").size();
-            indx += qp_in.nx[jj++];
-        }
-
         int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
         solver_memory = malloc(tdunes_solver_size);
         treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, solver_memory);
 
+        int dim_lam = total_number_of_dynamic_constraints(&qp_in);
+        std::vector<double> lam0_tree(dim_lam, 0.0);
+
+        // TODO(dimitris): check that size in json is the same as calc. here
+        if (overwrite)
+        {
+            lam0_tree = readVector(j_init.at("lam0_tree"), dim_lam);
+        }
+
         for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
         {
-            treeqp_tdunes_set_dual_initialization(lambda_warm, &tdunes_work);
+            treeqp_tdunes_set_dual_initialization(lam0_tree.data(), &tdunes_work);
 
             status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
 
@@ -435,7 +434,8 @@ int main(int argc, char * argv[])
             prev_status = status;
         }
         // min_time = tdunes_work.timings.min_total_time;
-         free(lambda_warm);
+        tdunes_update_multipliers(lam0_tree.data(), &qp_out);
+        j_out["init"]["lam0_tree"] = lam0_tree;
     }
     else if (solver == "sdunes")
     {
