@@ -528,7 +528,6 @@ void tree_qp_in_eliminate_x0(tree_qp_in * const qp_in)
 
 void tree_qp_out_eliminate_x0(tree_qp_out * const qp_out)
 {
-    // TODO(dimitris): check and fix memleaks here and above
     qp_out->x[0].pa = NULL;
     qp_out->x[0].m = 0;
 

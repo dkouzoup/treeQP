@@ -177,7 +177,7 @@ void sdunes_update_multipliers(double *lam_scen, double *mu_scen, treeqp_sdunes_
 }
 
 
-// TODO(dimitris): check niters against old code again
+
 void tdunes_update_multipliers(double *lam_tree, tree_qp_out *qp_out)
 {
     int num_nodes = qp_out->info.Nn;
@@ -254,7 +254,7 @@ int main(int argc, char * argv[])
 
         std::vector<double> const A = readColMajorMatrix(edge.at("A"), nx.at(to), nx.at(from));
         std::vector<double> const B = readColMajorMatrix(edge.at("B"), nx.at(to), nu.at(from));
-        std::vector<double> const b = readVector(edge.at("b"), nx.at(to)); // TODO(dimitris): why do we need readVector at all?
+        std::vector<double> const b = readVector(edge.at("b"), nx.at(to));
 
         tree_qp_in_set_edge_A_colmajor(A.data(), -1, &qp_in, to - 1);
         tree_qp_in_set_edge_B_colmajor(B.data(), -1, &qp_in, to - 1);
@@ -314,19 +314,12 @@ int main(int argc, char * argv[])
     void *qp_out_memory = malloc(qp_out_size);
     tree_qp_out_create(num_nodes, nx.data(), nu.data(), nc.data(), &qp_out, qp_out_memory);
 
-    // read common options from json file
-    int maxit;
+    // read solver name from json file
     std::string solver;
 
     if (j_in.count("options"))
     {
-        auto const& options = j_in.at("options");
-
-        // solver
-        solver = options["solver"];
-
-        // common options
-        maxit = options["maxit"];
+        solver = j_in.at("options").at("solver");
     }
     else
     {
@@ -343,32 +336,25 @@ int main(int argc, char * argv[])
     treeqp_sdunes_workspace sdunes_work;
     treeqp_hpmpc_workspace hpmpc_work;
 
-    // eliminate x0 for some solvers
-    // TODO(dimitris): check if it also helps tdunes
-    bool eliminated_x0 = false;
-    double *stored_x0_data;
-    int stored_x0_size;
-
-    if (solver == "hpmpc" || solver == "sdunes")
-    {
-        // TODO(dimiris): clean this up
-        eliminated_x0 = true;
-        stored_x0_size = qp_in.nx[0];
-        stored_x0_data = (double*) malloc(stored_x0_size*sizeof(double));
-        tree_qp_in_get_node_xmin(stored_x0_data, &qp_in, 0);
-
-        tree_qp_in_eliminate_x0(&qp_in);
-        // tree_qp_out_eliminate_x0(&qp_out);
-    }
+    // eliminate x0
+    std::vector<double> x0_bkp(qp_in.nx[0]);
+    tree_qp_in_get_node_xmin(x0_bkp.data(), &qp_in, 0);
+    tree_qp_in_eliminate_x0(&qp_in);
+    // tree_qp_out_eliminate_x0(&qp_out);
 
     // set up QP solver and solve QP
     if (solver == "tdunes")
     {
         treeqp_tdunes_opts_t tdunes_opts;
         int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
-        void *opts_memory = malloc(tdunes_opts_size);
+        opts_memory = malloc(tdunes_opts_size);
         treeqp_tdunes_opts_create(num_nodes, &tdunes_opts, opts_memory);
         treeqp_tdunes_opts_set_default(num_nodes, &tdunes_opts);
+
+        for (int ii = 0; ii < num_nodes; ii++)
+        {
+            tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        }
 
         // read solver-specific options from json file
         if (j_in.count("options"))
@@ -441,7 +427,7 @@ int main(int argc, char * argv[])
     {
         treeqp_sdunes_opts_t sdunes_opts;
         int sdunes_opts_size = treeqp_sdunes_opts_calculate_size(num_nodes);
-        void *opts_memory = malloc(sdunes_opts_size);
+        opts_memory = malloc(sdunes_opts_size);
         treeqp_sdunes_opts_create(num_nodes, &sdunes_opts, opts_memory);
         treeqp_sdunes_opts_set_default(num_nodes, &sdunes_opts);
 
@@ -481,7 +467,7 @@ int main(int argc, char * argv[])
             mu0_scen  = readVector(j_init.at("mu0_scen"), dim_mu);
         }
 
-        for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
+        for (int ii = 0; ii < NREP; ii++)
         {
             treeqp_sdunes_set_dual_initialization(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
 
@@ -508,7 +494,7 @@ int main(int argc, char * argv[])
     {
         treeqp_hpmpc_opts_t hpmpc_opts;
         int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
-        void *opts_memory = malloc(hpmpc_opts_size);
+        opts_memory = malloc(hpmpc_opts_size);
         treeqp_hpmpc_opts_create(num_nodes, &hpmpc_opts, opts_memory);
         treeqp_hpmpc_opts_set_default(num_nodes, &hpmpc_opts);
 
@@ -516,7 +502,27 @@ int main(int argc, char * argv[])
         solver_memory = malloc(hpmpc_solver_size);
         treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, solver_memory);
 
-        // TODO: read solver-specific options
+        // read solver-specific options from json file
+        if (j_in.count("options"))
+        {
+            auto const& options = j_in.at("options");
+
+            hpmpc_opts.maxIter = options.at("maxit");
+
+            // TODO(dimitris): do this check also in tdunes/sdunes
+            if (options.count("mu0"))
+            {
+                hpmpc_opts.mu0 = options["mu0"];
+            }
+            if (options.count("mu_tol"))
+            {
+                hpmpc_opts.mu_tol = options["mu_tol"];
+            }
+            if (options.count("alpha_min"))
+            {
+                hpmpc_opts.alpha_min = options["alpha_min"];
+            }
+        }
 
         for (int ii = 0; ii < NREP; ii++)
         {
@@ -545,15 +551,8 @@ int main(int argc, char * argv[])
     // write output to json file
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
 
-    // restore x0 if eliminated
-    if (eliminated_x0 == true)
-    {
-        // TODO(dimitris): make it one-liner
-        for (int ii = 0; ii < stored_x0_size; ii++)
-        {
-            j_out["solution"]["nodes"][0]["x"][ii] = stored_x0_data[ii];
-        }
-    }
+    // restore x0
+    j_out["solution"]["nodes"][0]["x"] = x0_bkp;
 
     double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
 

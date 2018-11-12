@@ -82,6 +82,26 @@ int get_robust_horizon(int Nn, const struct node *tree)
 
 
 
+// TODO(dimitris): check that result is correct for nominal MPC tree
+int get_prediction_horizon(int Nn, const struct node *tree)
+{
+    int Nh = 0;
+    int ii = Nn-1;
+
+    for (int jj = 0; jj < Nn; jj++)
+    {
+        if (ii == 0)
+        {
+            return Nh;
+        }
+        ii = tree[ii].dad;
+        Nh++;
+    }
+    return -1;
+}
+
+
+
 int number_of_nodes_from_nkids(const int *nkids)
 {
     int indx = 0;
