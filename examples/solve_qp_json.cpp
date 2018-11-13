@@ -70,25 +70,36 @@ regType_t convert_reg_type(const std::string& str)
 
 
 
-std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
+std::vector<double> readVector(json const& js, size_t N)
 {
-    std::vector<double> v(M * N);
+    std::vector<double> v(N);
 
-    for (size_t i = 0; i < M; ++i)
-        for (size_t j = 0; j < N; ++j)
-            v[i + j * M] = js.at(i).at(j);
-
+    if (N == 1)
+    {
+        v[0] = js;
+    }
+    else
+    {
+        for (size_t i = 0; i < N; ++i)
+            v[i] = js.at(i);
+    }
     return v;
 }
 
 
 
-std::vector<double> readVector(json const& js, size_t N)
+std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
 {
-    std::vector<double> v(N);
+    std::vector<double> v(M * N);
 
-    for (size_t i = 0; i < N; ++i)
-        v[i] = js.at(i);
+    if (M == 1)
+        return readVector(js, N);
+    if (N == 1)
+        return readVector(js, M);
+
+    for (size_t i = 0; i < M; ++i)
+        for (size_t j = 0; j < N; ++j)
+            v[i + j * M] = js.at(i).at(j);
 
     return v;
 }
