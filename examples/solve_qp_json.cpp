@@ -445,6 +445,8 @@ int main(int argc, char * argv[])
         // read solver-specific options from json file
         if (j_in.count("options"))
         {
+            // TODO(dimitris): throw error if warmstart = 1 and init json is not provided
+
             auto const& options = j_in.at("options");
 
             sdunes_opts.maxIter = options["maxit"];
@@ -483,6 +485,8 @@ int main(int argc, char * argv[])
             treeqp_sdunes_set_dual_initialization(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
 
             status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
+
+            // timers_print(&sdunes_work.timings);
 
             if (ii == 0)
             {
