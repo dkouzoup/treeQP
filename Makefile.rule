@@ -73,7 +73,7 @@ DEBUG = OFF
 # 1: save only (min) total time
 # 2: save also (min) time per iteration (and LS iterations)
 # 3: save also (min) time per operation per iteration
-PROFILING_LEVEL = 3
+PROFILING_LEVEL = 0
 
 # Define number of runs in examples (to take min. execution time)
 NREP = 20
