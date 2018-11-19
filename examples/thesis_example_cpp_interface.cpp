@@ -101,22 +101,20 @@ int main(int argc, char ** argv)
         QP.SetVector("umax", umax, ii);
     }
 
-
     // set up solvers and adapt options
     // TODO(dimitris): use appropriate creator instead of passing string
 
-    TdunesSolver TDUNES_NEW(&QP);
-    HpmpcSolver HPMPC_NEW(&QP);
+    TdunesSolver TDUNES(&QP);
+    HpmpcSolver HPMPC(&QP);
 
-    // TDUNES.SetOption("clipping", false);
-    // TDUNES.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
+    TDUNES.SetOption("clipping", false);
+    TDUNES.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
 
-    // HPMPC.SetOption("maxIter", 20);
+    HPMPC.SetOption("maxIter", 20);
 
     // solve QP and print solution
-    // TDUNES_NEW.Solve(&QP);
-    // HPMPC_NEW.Solve(&QP);
-    // HPMPC.Solve(&QP);
+    TDUNES.Solve(&QP);
+    HPMPC.Solve(&QP);
 
     // TODO(dimitris): fix valgrind errors in printing when I use hpmpc
     QP.PrintOutput();

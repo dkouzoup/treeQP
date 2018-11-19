@@ -174,6 +174,102 @@ void TdunesSolver::CreateWorkspace()
 
 
 
+int TdunesSolver::SetOption(std::string field, std::string val)
+{
+    if (field == "regType")
+    {
+        TdunesOpts.regType = string_to_reg_type(val);
+    }
+    else
+    {
+        return -1;
+    }
+
+    FreeWorkspace();
+    CreateWorkspace();
+
+    return 0;
+}
+
+
+
+int TdunesSolver::SetOption(std::string field, bool val)
+{
+    int NumNodes = DummyQpIn.N;
+
+    if (field == "clipping")
+    {
+        for (int ii = 0; ii < NumNodes; ii++)
+        {
+            if (val == true)
+            {
+                TdunesOpts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
+            }
+            else
+            {
+                TdunesOpts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+            }
+        }
+    }
+    else
+    {
+        return -1;
+    }
+
+    FreeWorkspace();
+    CreateWorkspace();
+
+    return 0;
+}
+
+
+
+int TdunesSolver::SetOption(std::string field, int val)
+{
+    if (field == "maxIter")
+    {
+        TdunesOpts.maxIter = val;
+    }
+    else
+    {
+        return -1;
+    }
+
+    FreeWorkspace();
+    CreateWorkspace();
+
+    return 0;
+}
+
+
+
+int TdunesSolver::SetOption(std::string field, double val)
+{
+    if (field == "stationarityTolerance")
+    {
+        TdunesOpts.stationarityTolerance = val;
+    }
+    else if (field == "regValue")
+    {
+        TdunesOpts.regValue = val;
+    }
+    else if (field == "regTol")
+    {
+        TdunesOpts.regTol = val;
+    }
+    else
+    {
+        return -1;
+    }
+
+    FreeWorkspace();
+    CreateWorkspace();
+
+    return 0;
+}
+
+
+
 int TdunesSolver::Solve(struct TreeQp *Qp)
 {
     int status = -1;
@@ -187,6 +283,7 @@ int TdunesSolver::Solve(struct TreeQp *Qp)
 }
 
 
+// TODO: CheckDims fun that throws error if QP of solve has different dims
 
 HpmpcSolver::HpmpcSolver(struct TreeQp *Qp)
 {
@@ -254,194 +351,37 @@ int HpmpcSolver::Solve(struct TreeQp *Qp)
 
 
 
-// TODO: CheckDims fun that throws error if QP of solve has different dims
-
-Solver::Solver(std::string SolverName, struct TreeQp *Qp)
+int HpmpcSolver::SetOption(std::string field, std::string val)
 {
-    int status;
+    return -1;
 
-    // TODO(dimitris): replace with inheritance
-    this->SolverName = SolverName;
+    // FreeWorkspace();
+    // CreateWorkspace();
 
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
-
-    // create dummy qp_in to store dimensions
-    int *nk = (int *) malloc(QpIn->N*sizeof(int));
-    for (int ii = 0; ii < QpIn->N; ii++)
-    {
-        nk[ii] = QpIn->tree[ii].nkids;
-    }
-    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
-
-    // copy constraints (needed to infer number of bounds in hpmpc)
-    for (int ii = 0; ii < QpIn->N; ii++)
-    {
-        blasfeo_dveccp(QpIn->xmin[ii].m, &QpIn->xmin[ii], 0, &DummyQpIn.xmin[ii], 0);
-        blasfeo_dveccp(QpIn->xmax[ii].m, &QpIn->xmax[ii], 0, &DummyQpIn.xmax[ii], 0);
-        blasfeo_dveccp(QpIn->umin[ii].m, &QpIn->umin[ii], 0, &DummyQpIn.umin[ii], 0);
-        blasfeo_dveccp(QpIn->umax[ii].m, &QpIn->umax[ii], 0, &DummyQpIn.umax[ii], 0);
-    }
-
-    status = CreateOptions();
-
-    status = CreateWorkspace();
-
-    free(nk);
+    // return 0;
 }
 
 
 
-Solver::~Solver()
+int HpmpcSolver::SetOption(std::string field, bool val)
 {
-    free(OptsMem);
-    free(WorkMem);
-    free(DummyQpInMem);
+    return -1;
+
+    // int NumNodes = DummyQpIn.N;
+
+    // FreeWorkspace();
+    // CreateWorkspace();
+
+    // return 0;
 }
 
 
 
-int Solver::CreateOptions()
+int HpmpcSolver::SetOption(std::string field, int val)
 {
-    int NumNodes = DummyQpIn.N;
-
-    // create default options of selected solver
-    int size;
-
-    if (SolverName == "tdunes")
+    if (field == "maxIter")
     {
-        size = treeqp_tdunes_opts_calculate_size(NumNodes);
-        OptsMem = malloc(size);
-        treeqp_tdunes_opts_create(NumNodes, &TdunesOpts, OptsMem);
-        treeqp_tdunes_opts_set_default(NumNodes, &TdunesOpts);
-    }
-    else if (SolverName == "hpmpc")
-    {
-        size = treeqp_hpmpc_opts_calculate_size(NumNodes);
-        OptsMem = malloc(size);
-        treeqp_hpmpc_opts_create(NumNodes, &HpmpcOpts, OptsMem);
-        treeqp_hpmpc_opts_set_default(NumNodes, &HpmpcOpts);
-    }
-    else
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-
-
-int Solver::CreateWorkspace()
-{
-    int size;
-
-    if (SolverName == "tdunes")
-    {
-        size = treeqp_tdunes_calculate_size(&DummyQpIn, &TdunesOpts);
-        WorkMem = malloc(size);
-        treeqp_tdunes_create(&DummyQpIn, &TdunesOpts, &TdunesWork, WorkMem);
-    }
-    else if (SolverName == "hpmpc")
-    {
-        size = treeqp_hpmpc_calculate_size(&DummyQpIn, &HpmpcOpts);
-        WorkMem = malloc(size);
-        treeqp_hpmpc_create(&DummyQpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
-    }
-    else
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-
-
-void Solver::FreeWorkspace()
-{
-    free(WorkMem);
-}
-
-
-
-int Solver::Solve(struct TreeQp *Qp)
-{
-    int status = -1;
-
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
-    tree_qp_out *QpOut = Qp->GetQpOutPtr();
-
-    if (SolverName == "tdunes")
-    {
-        status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
-    }
-    else if (SolverName == "hpmpc")
-    {
-        status = treeqp_hpmpc_solve(QpIn, QpOut, &HpmpcOpts, &HpmpcWork);
-    }
-    return status;
-}
-
-
-
-int Solver::SetOption(std::string field, std::string val)
-{
-    if (SolverName == "tdunes")
-    {
-        if (field == "regType")
-        {
-            TdunesOpts.regType = string_to_reg_type(val);
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else if (SolverName == "hpmpc")
-    {
-
-    }
-    else
-    {
-        return -1;
-    }
-
-    FreeWorkspace();
-    CreateWorkspace();
-
-    return 0;
-}
-
-
-// TODO(dimitris): can those be common to superclass?
-int Solver::SetOption(std::string field, bool val)
-{
-    int NumNodes = DummyQpIn.N;
-
-    if (SolverName == "tdunes")
-    {
-        if (field == "clipping")
-        {
-            for (int ii = 0; ii < NumNodes; ii++)
-            {
-                if (val == true)
-                {
-                    TdunesOpts.qp_solver[ii] = TREEQP_CLIPPING_SOLVER;
-                }
-                else
-                {
-                    TdunesOpts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
-                }
-            }
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else if (SolverName == "hpmpc")
-    {
-
+        HpmpcOpts.maxIter = val;
     }
     else
     {
@@ -456,74 +396,11 @@ int Solver::SetOption(std::string field, bool val)
 
 
 
-int Solver::SetOption(std::string field, int val)
+int HpmpcSolver::SetOption(std::string field, double val)
 {
-    if (SolverName == "tdunes")
+    if (field == "alpha_min")
     {
-        if (field == "maxIter")
-        {
-            TdunesOpts.maxIter = val;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else if (SolverName == "hpmpc")
-    {
-        if (field == "maxIter")
-        {
-            HpmpcOpts.maxIter = val;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else
-    {
-        return -1;
-    }
-
-    FreeWorkspace();
-    CreateWorkspace();
-
-    return 0;
-}
-
-
-
-int Solver::SetOption(std::string field, double val)
-{
-    if (SolverName == "tdunes")
-    {
-        if (field == "stationarityTolerance")
-        {
-            TdunesOpts.stationarityTolerance = val;
-        }
-        else if (field == "regValue")
-        {
-            TdunesOpts.regValue = val;
-        }
-        else if (field == "regTol")
-        {
-            TdunesOpts.regTol = val;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else if (SolverName == "hpmpc")
-    {
-        if (field == "alpha_min")
-        {
-            HpmpcOpts.alpha_min = val;
-        }
-        else
-        {
-            return -1;
-        }
+        HpmpcOpts.alpha_min = val;
     }
     else
     {

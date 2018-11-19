@@ -38,6 +38,7 @@
 #include "treeqp/src/dual_newton_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 
+
 // Abstract solver base class.
 class QpSolver
 {
@@ -52,13 +53,13 @@ public:
     void FreeWorkspace();
 
     // destroy and re-create solver based on current options
-    int SetOption(std::string field, std::string val);
+    virtual int SetOption(std::string field, std::string val) = 0;
 
-    int SetOption(std::string field, bool val);
+    virtual int SetOption(std::string field, bool val) = 0;
 
-    int SetOption(std::string field, int val);
+    virtual int SetOption(std::string field, int val) = 0;
 
-    int SetOption(std::string field, double val);
+    virtual int SetOption(std::string field, double val) = 0;
 
     // common destructor for all solvers
     ~QpSolver();
@@ -83,11 +84,19 @@ public:
 
     TdunesSolver(struct TreeQp *Qp);
 
-    int Solve(struct TreeQp *Qp) override;
-
     void CreateOptions() override;
 
     void CreateWorkspace() override;
+
+    int SetOption(std::string field, std::string val) override;
+
+    int SetOption(std::string field, bool val) override;
+
+    int SetOption(std::string field, int val) override;
+
+    int SetOption(std::string field, double val) override;
+
+    int Solve(struct TreeQp *Qp) override;
 
 private:
 
@@ -105,12 +114,20 @@ public:
 
     HpmpcSolver(struct TreeQp *Qp);
 
-    int Solve(struct TreeQp *Qp) override;
-
     void CreateOptions() override;
 
     void CreateWorkspace() override;
 
+    int SetOption(std::string field, std::string val) override;
+
+    int SetOption(std::string field, bool val) override;
+
+    int SetOption(std::string field, int val) override;
+
+    int SetOption(std::string field, double val) override;
+
+    int Solve(struct TreeQp *Qp) override;
+
 private:
 
     treeqp_hpmpc_opts_t HpmpcOpts;
@@ -118,56 +135,6 @@ private:
     treeqp_hpmpc_workspace HpmpcWork;
 };
 
-
-
-struct Solver
-{
-public:
-
-    // TODO(dimitris): inheritance instead of solver name
-    Solver(std::string SolverName, struct TreeQp *Qp);
-
-    ~Solver();
-
-    // solve QP
-    // TODO: MOVE TO TreeQp
-    int Solve(struct TreeQp *Qp);
-
-    // destroy and re-create solver based on current options
-    int SetOption(std::string field, std::string val);
-
-    int SetOption(std::string field, bool val);
-
-    int SetOption(std::string field, int val);
-
-    int SetOption(std::string field, double val);
-
-private:
-
-    std::string SolverName;
-
-    // dummy QP to store dimensions of created solver (these dimensions cannot be changed)
-    tree_qp_in DummyQpIn;
-    void *DummyQpInMem;
-
-    // pointers to allocated memory for options and workspace
-    void *OptsMem;
-    void *WorkMem;
-
-    // TODO(dimitris): use inheritance
-    treeqp_tdunes_opts_t TdunesOpts;
-    treeqp_tdunes_workspace TdunesWork;
-
-    treeqp_hpmpc_opts_t HpmpcOpts;
-    treeqp_hpmpc_workspace HpmpcWork;
-
-    int CreateOptions();
-
-    int CreateWorkspace();
-
-    void FreeWorkspace();
-
-};
 
 
 struct TreeQp
