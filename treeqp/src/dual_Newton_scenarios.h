@@ -62,6 +62,8 @@ typedef struct treeqp_sdunes_opts_t_
     int lineSearchMaxIter;          // maximum number of line search iterations per Newton iteration
     double lineSearchGamma;         // gamma parameter in line search
     double lineSearchBeta;          // beta parameter in line search
+    double lineSearchTol;           // tolerance in exit condition of line search
+
 } treeqp_sdunes_opts_t;
 
 

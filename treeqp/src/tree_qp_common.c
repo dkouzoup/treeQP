@@ -411,9 +411,6 @@ void tree_qp_in_eliminate_x0(tree_qp_in * const qp_in)
         return;
     }
 
-    // NOTE(dimitris): put it further down for now
-    // qp_in->nx[0] = 0;
-
     struct node *tree = qp_in->tree;
 
     struct blasfeo_dmat *sA;

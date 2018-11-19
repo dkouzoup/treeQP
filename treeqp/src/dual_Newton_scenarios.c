@@ -88,6 +88,7 @@ void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts)
     opts->lineSearchMaxIter = 50;
     opts->lineSearchGamma = 0.1;
     opts->lineSearchBeta = 0.6;
+    opts->lineSearchTol = 1e-6;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
     opts->regTol   = 1.0e-6;
@@ -1431,7 +1432,7 @@ int line_search(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
         fval = evaluate_dual_function(Ns, Nh, qp_in, work);
 
         // check condition
-        if (fval <= fval0 + opts->lineSearchGamma*tau*dotProduct) {
+        if (fval <= fval0 + opts->lineSearchGamma*tau*dotProduct + opts->lineSearchTol) {
             // printf("Condition satisfied\n");
             break;
         } else {

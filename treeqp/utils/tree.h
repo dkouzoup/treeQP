@@ -59,6 +59,8 @@ int get_number_of_parent_nodes(int Nn, const struct node *tree);
 
 int get_robust_horizon(int Nn, const struct node *tree);
 
+int get_prediction_horizon(int Nn, const struct node *tree);
+
 int number_of_nodes_from_nkids(const int *nkids);
 
 // TODO(dimitris): use this to eliminate Nn from input arguments in several (non time critical) functions

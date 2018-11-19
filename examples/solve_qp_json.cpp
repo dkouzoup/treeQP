@@ -30,7 +30,7 @@
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
-// TODO(dimitris): only #if defined (USE_HPMPC)
+#include "treeqp/src/dual_Newton_scenarios.h"
 #include "treeqp/src/hpmpc_tree.h"
 
 #include "treeqp/utils/types.h"
@@ -70,25 +70,36 @@ regType_t convert_reg_type(const std::string& str)
 
 
 
-std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
+std::vector<double> readVector(json const& js, size_t N)
 {
-    std::vector<double> v(M * N);
+    std::vector<double> v(N);
 
-    for (size_t i = 0; i < M; ++i)
-        for (size_t j = 0; j < N; ++j)
-            v[i + j * M] = js.at(i).at(j);
-
+    if (N == 1)
+    {
+        v[0] = js;
+    }
+    else
+    {
+        for (size_t i = 0; i < N; ++i)
+            v[i] = js.at(i);
+    }
     return v;
 }
 
 
 
-std::vector<double> readVector(json const& js, size_t N)
+std::vector<double> readColMajorMatrix(json const& js, size_t M, size_t N)
 {
-    std::vector<double> v(N);
+    std::vector<double> v(M * N);
 
-    for (size_t i = 0; i < N; ++i)
-        v[i] = js.at(i);
+    if (M == 1)
+        return readVector(js, N);
+    if (N == 1)
+        return readVector(js, M);
+
+    for (size_t i = 0; i < M; ++i)
+        for (size_t j = 0; j < N; ++j)
+            v[i + j * M] = js.at(i).at(j);
 
     return v;
 }
@@ -151,18 +162,58 @@ json qpSolutionToJson(tree_qp_out const& qp_out, std::vector<int> const& nx,
 
 
 
+void sdunes_update_multipliers(double *lam_scen, double *mu_scen, treeqp_sdunes_workspace *work)
+{
+    int ind_mu = 0;
+    int ind_lam = 0;
+
+    int nu = work->su[0][0].m;
+    int nx = work->sx[0][0].m;
+    int Ns = work->Ns;
+    int Nh = work->Nh;
+
+    for (int ii = 0; ii < Ns; ii++)
+    {
+        for (int kk = 0; kk < Nh; kk++)
+        {
+            blasfeo_unpack_dvec(nx, &work->smu[ii][kk], 0, &mu_scen[ind_mu]);
+            ind_mu += nx;
+        }
+        if (ii < Ns-1)
+        {
+            blasfeo_unpack_dvec(work->slambda[ii].m, &work->slambda[ii], 0, &lam_scen[ind_lam]);
+            ind_lam += work->slambda[ii].m;
+        }
+    }
+}
+
+
+
+void tdunes_update_multipliers(double *lam_tree, tree_qp_out *qp_out)
+{
+    int num_nodes = qp_out->info.Nn;
+    int idx = 0;
+
+    for (int ii = 0; ii < num_nodes-1; ii++)
+    {
+        tree_qp_out_get_edge_lam(&lam_tree[idx], qp_out, ii);
+        idx += qp_out->lam[ii].m;
+    }
+}
+
+
+
 int main(int argc, char * argv[])
 {
-    // json file with qp_in in form of nodes and edges
-    json j_in;
+    json j_in, j_out;
 
     // optional json file to overwrite constraint on x0 and initialization of lam0
     bool overwrite = false;
-    json j_x0;
+    json j_init;
 
     if (argc > 2)
     {
-        std::ifstream(argv[2]) >> j_x0;
+        std::ifstream(argv[2]) >> j_init;
         overwrite = true;
     }
 
@@ -173,8 +224,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-        // Otherwise, read from the stdin.
-        std::cin >> j_in;
+        throw std::invalid_argument("no input files");
     }
 
     auto const& nodes = j_in.at("nodes");
@@ -255,7 +305,7 @@ int main(int argc, char * argv[])
     {
         if (nx.at(0) > 0)
         {
-            std::vector<double> const x0 = readVector(j_x0.at("x0"), nx.at(0));
+            std::vector<double> const x0 = readVector(j_init.at("x0"), nx.at(0));
 
             tree_qp_in_set_node_xmin(x0.data(), &qp_in, 0);
             tree_qp_in_set_node_xmax(x0.data(), &qp_in, 0);
@@ -275,25 +325,12 @@ int main(int argc, char * argv[])
     void *qp_out_memory = malloc(qp_out_size);
     tree_qp_out_create(num_nodes, nx.data(), nu.data(), nc.data(), &qp_out, qp_out_memory);
 
-#if 0
-    // eliminate x0 variable
-    tree_qp_in_eliminate_x0(&qp_in);
-    tree_qp_out_eliminate_x0(&qp_out);
-#endif
-
-    // read common options from json file
-    int maxit;
+    // read solver name from json file
     std::string solver;
 
     if (j_in.count("options"))
     {
-        auto const& options = j_in.at("options");
-
-        // solver
-        solver = options["solver"];
-
-        // common options
-        maxit = options["maxit"];
+        solver = j_in.at("options").at("solver");
     }
     else
     {
@@ -307,16 +344,28 @@ int main(int argc, char * argv[])
     void *solver_memory;
 
     treeqp_tdunes_workspace tdunes_work;
+    treeqp_sdunes_workspace sdunes_work;
     treeqp_hpmpc_workspace hpmpc_work;
 
+    // eliminate x0
+    std::vector<double> x0_bkp(qp_in.nx[0]);
+    tree_qp_in_get_node_xmin(x0_bkp.data(), &qp_in, 0);
+    tree_qp_in_eliminate_x0(&qp_in);
+    // tree_qp_out_eliminate_x0(&qp_out);
+
     // set up QP solver and solve QP
-    if (solver.compare("tdunes") == 0)
+    if (solver == "tdunes")
     {
         treeqp_tdunes_opts_t tdunes_opts;
         int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(num_nodes);
-        void *opts_memory = malloc(tdunes_opts_size);
+        opts_memory = malloc(tdunes_opts_size);
         treeqp_tdunes_opts_create(num_nodes, &tdunes_opts, opts_memory);
         treeqp_tdunes_opts_set_default(num_nodes, &tdunes_opts);
+
+        for (int ii = 0; ii < num_nodes; ii++)
+        {
+            tdunes_opts.qp_solver[ii] = TREEQP_QPOASES_SOLVER;
+        }
 
         // read solver-specific options from json file
         if (j_in.count("options"))
@@ -349,34 +398,22 @@ int main(int argc, char * argv[])
             tdunes_opts.regValue = options["regValue"];
         }
 
-        // read initialization if available
-        int indx = 0;
-        double *lambda_warm = (double *)calloc(total_number_of_dynamic_constraints(&qp_in), sizeof(double));
-
-
-        if (overwrite && j_x0.count("edges"))
-        {
-            // read lam0 from j_x0 instead of j_in
-            edges = j_x0.at("edges");
-        }
-
-        for (auto const& edge : edges)
-        {
-            if (edge.count("lam0"))
-            {
-                auto const& lam = edge.at("lam0");
-                std::copy(lam.begin(), lam.end(), lambda_warm + indx);
-            }
-            indx += edge.at("lam0").size();
-        }
-
         int tdunes_solver_size = treeqp_tdunes_calculate_size(&qp_in, &tdunes_opts);
         solver_memory = malloc(tdunes_solver_size);
         treeqp_tdunes_create(&qp_in, &tdunes_opts, &tdunes_work, solver_memory);
 
+        int dim_lam = total_number_of_dynamic_constraints(&qp_in);
+        std::vector<double> lam0_tree(dim_lam, 0.0);
+
+        // TODO(dimitris): check that size in json is the same as calc. here
+        if (overwrite)
+        {
+            lam0_tree = readVector(j_init.at("lam0_tree"), dim_lam);
+        }
+
         for (int ii = 0; ii < NREP; ii++) // TODO(dimitris): NREP in options instead
         {
-            treeqp_tdunes_set_dual_initialization(lambda_warm, &tdunes_work);
+            treeqp_tdunes_set_dual_initialization(lam0_tree.data(), &tdunes_work);
 
             status = treeqp_tdunes_solve(&qp_in, &qp_out, &tdunes_opts, &tdunes_work);
 
@@ -394,12 +431,85 @@ int main(int argc, char * argv[])
             prev_status = status;
         }
         // min_time = tdunes_work.timings.min_total_time;
+        tdunes_update_multipliers(lam0_tree.data(), &qp_out);
+        j_out["init"]["lam0_tree"] = lam0_tree;
     }
-    else if (solver.compare("hpmpc") == 0)
+    else if (solver == "sdunes")
+    {
+        treeqp_sdunes_opts_t sdunes_opts;
+        int sdunes_opts_size = treeqp_sdunes_opts_calculate_size(num_nodes);
+        opts_memory = malloc(sdunes_opts_size);
+        treeqp_sdunes_opts_create(num_nodes, &sdunes_opts, opts_memory);
+        treeqp_sdunes_opts_set_default(num_nodes, &sdunes_opts);
+
+        // read solver-specific options from json file
+        if (j_in.count("options"))
+        {
+            // TODO(dimitris): throw error if warmstart = 1 and init json is not provided
+
+            auto const& options = j_in.at("options");
+
+            sdunes_opts.maxIter = options["maxit"];
+            sdunes_opts.stationarityTolerance = options["stationarityTolerance"];
+
+            sdunes_opts.lineSearchMaxIter = options["lineSearchMaxIter"];
+            sdunes_opts.lineSearchBeta = options["lineSearchBeta"];
+            sdunes_opts.lineSearchGamma = options["lineSearchGamma"];
+
+            sdunes_opts.checkLastActiveSet = options["checkLastActiveSet"];
+
+            sdunes_opts.regType = convert_reg_type(options["regType"]);
+            sdunes_opts.regTol = options["regTol"];
+            sdunes_opts.regValue = options["regValue"];
+        }
+
+        int sdunes_solver_size = treeqp_sdunes_calculate_size(&qp_in, &sdunes_opts);
+        solver_memory = malloc(sdunes_solver_size);
+        treeqp_sdunes_create(&qp_in, &sdunes_opts, &sdunes_work, solver_memory);
+
+        int dim_lam = treeqp_sdunes_calculate_dual_dimension(sdunes_work.Nr, sdunes_work.md, sdunes_work.su[0][0].m);
+        int dim_mu  = sdunes_work.Ns*sdunes_work.Nh*sdunes_work.sx[0][0].m;
+
+        std::vector<double> lam0_scen(dim_lam, 0.0);
+        std::vector<double> mu0_scen(dim_mu, 0.0);
+
+        // TODO(dimitris): check that size in json is the same as calc. here
+        if (overwrite)
+        {
+            lam0_scen = readVector(j_init.at("lam0_scen"), dim_lam);
+            mu0_scen  = readVector(j_init.at("mu0_scen"), dim_mu);
+        }
+
+        for (int ii = 0; ii < NREP; ii++)
+        {
+            treeqp_sdunes_set_dual_initialization(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
+
+            status = treeqp_sdunes_solve(&qp_in, &qp_out, &sdunes_opts, &sdunes_work);
+
+            // timers_print(&sdunes_work.timings);
+
+            if (ii == 0)
+            {
+                min_time = qp_out.info.total_time;
+                num_iter = qp_out.info.iter;
+            }
+            else
+            {
+                min_time = MIN(min_time, qp_out.info.total_time);
+                assert(status == prev_status);
+                assert(num_iter == qp_out.info.iter);
+            }
+            prev_status = status;
+        }
+        sdunes_update_multipliers(lam0_scen.data(), mu0_scen.data(), &sdunes_work);
+        j_out["init"]["lam0_scen"] = lam0_scen;
+        j_out["init"]["mu0_scen"] = mu0_scen;
+    }
+    else if (solver == "hpmpc")
     {
         treeqp_hpmpc_opts_t hpmpc_opts;
         int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(num_nodes);
-        void *opts_memory = malloc(hpmpc_opts_size);
+        opts_memory = malloc(hpmpc_opts_size);
         treeqp_hpmpc_opts_create(num_nodes, &hpmpc_opts, opts_memory);
         treeqp_hpmpc_opts_set_default(num_nodes, &hpmpc_opts);
 
@@ -407,8 +517,46 @@ int main(int argc, char * argv[])
         solver_memory = malloc(hpmpc_solver_size);
         treeqp_hpmpc_create(&qp_in, &hpmpc_opts, &hpmpc_work, solver_memory);
 
-        // TODO: options, NREP, etc
-        status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+        // read solver-specific options from json file
+        if (j_in.count("options"))
+        {
+            auto const& options = j_in.at("options");
+
+            hpmpc_opts.maxIter = options.at("maxit");
+
+            // TODO(dimitris): do this check also in tdunes/sdunes
+            if (options.count("mu0"))
+            {
+                hpmpc_opts.mu0 = options["mu0"];
+            }
+            if (options.count("mu_tol"))
+            {
+                hpmpc_opts.mu_tol = options["mu_tol"];
+            }
+            if (options.count("alpha_min"))
+            {
+                hpmpc_opts.alpha_min = options["alpha_min"];
+            }
+        }
+
+        for (int ii = 0; ii < NREP; ii++)
+        {
+            status = treeqp_hpmpc_solve(&qp_in, &qp_out, &hpmpc_opts, &hpmpc_work);
+
+            if (ii == 0)
+            {
+                // NOTE(dimitris): do not take into account interface overhead for HPMPC
+                min_time = qp_out.info.solver_time;
+                num_iter = qp_out.info.iter;
+            }
+            else
+            {
+                min_time = MIN(min_time, qp_out.info.solver_time);
+                assert(status == prev_status);
+                assert(num_iter == qp_out.info.iter);
+            }
+            prev_status = status;
+        }
     }
     else
     {
@@ -416,13 +564,21 @@ int main(int argc, char * argv[])
     }
 
     // write output to json file
-    json j_out;
     j_out["solution"] = qpSolutionToJson(qp_out, nx, nu, nc);
-    if (solver.compare("tdunes") == 0)
-    {
-        j_out["info"]["solver"] = "tdunes";
-        j_out["info"]["cpu_time"] = min_time;
 
+    // restore x0
+    j_out["solution"]["nodes"][0]["x"] = x0_bkp;
+
+    double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
+
+    j_out["info"]["solver"] = solver;
+    j_out["info"]["cpu_time"] = min_time;
+    j_out["info"]["status"] = status;
+    j_out["info"]["num_iter"] = qp_out.info.iter;
+    j_out["info"]["kkt_tol"] = kkt_err;
+
+    if (solver == "tdunes")
+    {
         #if PROFILE > 1
         std::vector<double> buf(num_iter);
         for (int jj = 0; jj < num_iter; jj++) buf[jj] = tdunes_work.timings.ls_iters[jj];
@@ -443,19 +599,6 @@ int main(int argc, char * argv[])
             j_out["info"]["cpu_times_line_search"] = buf;
         #endif
     }
-    else if (solver.compare("hpmpc") == 0)
-    {
-        j_out["info"]["solver"] = "hpmpc";
-        // NOTE(dimitris): do not take into account interface overhead for HPMPC
-        j_out["info"]["cputime"] = qp_out.info.solver_time;
-    }
-
-    j_out["info"]["status"] = status;
-    j_out["info"]["num_iter"] = qp_out.info.iter;
-
-    double const kkt_err = tree_qp_out_max_KKT_res(&qp_in, &qp_out);
-    j_out["info"]["kkt_tol"] = kkt_err;
-
 
     free(solver_memory);
     free(opts_memory);

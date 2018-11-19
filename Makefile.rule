@@ -130,7 +130,7 @@ CFLAGS += -I$(BLASFEO_PATH)/include
 CFLAGS += -I$(HPIPM_PATH)/include
 
 # Distinguish between CXX and purely C flags
-CXXFLAGS:=$(CFLAGS)
+CXXFLAGS:=$(CFLAGS) -std=c++11
 CFLAGS+= -std=c99
 
 # Lib dirs

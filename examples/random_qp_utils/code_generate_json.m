@@ -38,9 +38,6 @@ for ii = 2:N
     treeqp.edges{ii-1}.from = agents(ii).dad-1;
     treeqp.edges{ii-1}.to = ii-1;
     
-    if opts.warmstart
-        treeqp.edges{ii-1}.lam0 = agents(ii).lambda;
-    end
 end
 
 if nargin > 2
