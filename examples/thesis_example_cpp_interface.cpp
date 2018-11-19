@@ -103,18 +103,22 @@ int main(int argc, char ** argv)
 
 
     // set up solver and adapt options
+    // TODO(dimitris): use appropriate creator instead of passing string
+    Solver TDUNES("tdunes", &QP);
 
-    QP.SolverName("tdunes");
-    QP.SetOption("clipping", true);
-    QP.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
+    TDUNES.SetOption(QP.GetQpInPtr(), "clipping", true);
+    TDUNES.Solve(&QP);
+
+    // QP.SetOption("clipping", true);
+    // QP.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
 
     // changed your mind? used another solver
-    QP.SolverName("hpmpc");
-    QP.SetOption("maxIter", 20);
+    // QP.SolverName("hpmpc");
+    // QP.SetOption("maxIter", 20);
 
     // solve QP and print solution
 
-    QP.Solve();
+    // QP.Solve();
 
     // TODO(dimitris): fix valgrind errors in printing when I use hpmpc
     QP.PrintOutput();

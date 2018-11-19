@@ -56,38 +56,23 @@ static regType_t string_to_reg_type(const std::string& str)
 
 
 
-Solver::Solver()
+Solver::Solver(std::string SolverName, struct TreeQp *Qp)
 {
-    OptsCreated = false;
-    WorkCreated = false;
+    int status;
+
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+
+    status = CreateOptions(QpIn->N, SolverName);
+
+    status = CreateWorkspace(QpIn);
 }
+
 
 
 Solver::~Solver()
 {
-    if (OptsCreated == true)
-    {
-        free(OptsMem);
-    }
-    if (WorkCreated == true)
-    {
-        free(WorkMem);
-    }
-}
-
-
-
-int Solver::Create(std::string SolverName, tree_qp_in *QpIn)
-{
-    int status;
-
-    status = CreateOptions(QpIn->N, SolverName);
-    if (status == -1) return status;
-
-    status = CreateWorkspace(QpIn);
-    if (status == -1) return status;
-
-    return 0;
+    free(OptsMem);
+    free(WorkMem);
 }
 
 
@@ -95,13 +80,6 @@ int Solver::Create(std::string SolverName, tree_qp_in *QpIn)
 int Solver::CreateOptions(int N, std::string SolverName)
 {
     NumNodes = N;
-
-    // free memory of previous solver (if applicable)
-    if (OptsCreated == true)
-    {
-        free(OptsMem);
-        OptsCreated = false;
-    }
 
     // create default options of selected solver
     int size;
@@ -127,7 +105,6 @@ int Solver::CreateOptions(int N, std::string SolverName)
 
     this->SolverName = SolverName;
 
-    OptsCreated = true;
     return 0;
 }
 
@@ -135,16 +112,6 @@ int Solver::CreateOptions(int N, std::string SolverName)
 
 int Solver::CreateWorkspace(tree_qp_in *QpIn)
 {
-    if (OptsCreated == false)
-    {
-        return -1;
-    }
-    if (WorkCreated == true)
-    {
-        free(WorkMem);
-        WorkCreated = false;
-    }
-
     int size;
 
     if (SolverName == "tdunes")
@@ -164,15 +131,24 @@ int Solver::CreateWorkspace(tree_qp_in *QpIn)
         return -1;
     }
 
-    WorkCreated = true;
     return 0;
 }
 
 
 
-int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
+void Solver::FreeWorkspace()
+{
+    free(WorkMem);
+}
+
+
+
+int Solver::Solve(struct TreeQp *Qp)
 {
     int status = -1;
+
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    tree_qp_out *QpOut = Qp->GetQpOutPtr();
 
     if (SolverName == "tdunes")
     {
@@ -187,7 +163,7 @@ int Solver::Solve(tree_qp_in *QpIn, tree_qp_out *QpOut)
 
 
 
-int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, std::string val)
+int Solver::SetOption(tree_qp_in *QpIn, std::string field, std::string val)
 {
     if (SolverName == "tdunes")
     {
@@ -209,6 +185,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, std::string val)
         return -1;
     }
 
+    FreeWorkspace();
     CreateWorkspace(QpIn);
 
     return 0;
@@ -216,7 +193,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, std::string val)
 
 
 
-int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
+int Solver::SetOption(tree_qp_in *QpIn, std::string field, bool val)
 {
     if (SolverName == "tdunes")
     {
@@ -248,6 +225,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
         return -1;
     }
 
+    FreeWorkspace();
     CreateWorkspace(QpIn);
 
     return 0;
@@ -255,7 +233,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, bool val)
 
 
 
-int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
+int Solver::SetOption(tree_qp_in *QpIn, std::string field, int val)
 {
     if (SolverName == "tdunes")
     {
@@ -284,6 +262,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
         return -1;
     }
 
+    FreeWorkspace();
     CreateWorkspace(QpIn);
 
     return 0;
@@ -291,7 +270,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, int val)
 
 
 
-int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, double val)
+int Solver::SetOption(tree_qp_in *QpIn, std::string field, double val)
 {
     if (SolverName == "tdunes")
     {
@@ -328,6 +307,7 @@ int Solver::ChangeOption(tree_qp_in *QpIn, std::string field, double val)
         return -1;
     }
 
+    FreeWorkspace();
     CreateWorkspace(QpIn);
 
     return 0;
@@ -372,14 +352,7 @@ TreeQp::~TreeQp()
 
 
 
-void TreeQp::SolverName(std::string SolverName)
-{
-    int status = QpSolver.Create(SolverName, &QpIn);
-}
-
-
 // TODO(dimitris): proper error handling
-
 void TreeQp::SetVector(std::string FieldName, std::vector<double> v, int indx)
 {
     if (FieldName == "q")
@@ -447,41 +420,6 @@ void TreeQp::SetMatrixColMajor(std::string FieldName, std::vector<double> v, int
 
 
 
-void TreeQp::SetOption(std::string field, std::string val)
-{
-    QpSolver.ChangeOption(&QpIn, field, val);
-}
-
-
-
-void TreeQp::SetOption(std::string field, bool val)
-{
-    QpSolver.ChangeOption(&QpIn, field, val);
-}
-
-
-
-void TreeQp::SetOption(std::string field, int val)
-{
-    QpSolver.ChangeOption(&QpIn, field, val);
-}
-
-
-
-void TreeQp::SetOption(std::string field, double val)
-{
-    QpSolver.ChangeOption(&QpIn, field, val);
-}
-
-
-
-void TreeQp::Solve()
-{
-    QpSolver.Solve(&QpIn, &QpOut);
-}
-
-
-
 void TreeQp::PrintInput()
 {
     tree_qp_in_print(&QpIn);
@@ -499,4 +437,18 @@ void TreeQp::PrintOutput()
 void TreeQp::PrintOutput(int NumNodes)
 {
     tree_qp_out_print(NumNodes, &QpOut);
+}
+
+
+
+tree_qp_in *TreeQp::GetQpInPtr()
+{
+    return &QpIn;
+}
+
+
+
+tree_qp_out *TreeQp::GetQpOutPtr()
+{
+    return &QpOut;
 }

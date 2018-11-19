@@ -42,35 +42,32 @@ struct Solver
 {
 public:
 
-    Solver();
+    // TODO(dimitris): inheritance instead of solver name
+    Solver(std::string SolverName, struct TreeQp *Qp);
 
     ~Solver();
 
-    // create solver with default options
-    int Create(std::string SolverName, tree_qp_in *QpIn);
-
     // solve QP
-    int Solve(tree_qp_in *QpIn, tree_qp_out *QpOut);
+    int Solve(struct TreeQp *Qp);
 
     // destroy and re-create solver based on current options
-    int ChangeOption(tree_qp_in *QpIn, std::string field, std::string val);
+    int SetOption(tree_qp_in *QpIn, std::string field, std::string val);
 
-    int ChangeOption(tree_qp_in *QpIn, std::string field, bool val);
+    int SetOption(tree_qp_in *QpIn, std::string field, bool val);
 
-    int ChangeOption(tree_qp_in *QpIn, std::string field, int val);
+    int SetOption(tree_qp_in *QpIn, std::string field, int val);
 
-    int ChangeOption(tree_qp_in *QpIn, std::string field, double val);
+    int SetOption(tree_qp_in *QpIn, std::string field, double val);
 
 private:
 
     int NumNodes;
     std::string SolverName;
 
-    bool OptsCreated;
-    bool WorkCreated;
     void *OptsMem;
     void *WorkMem;
 
+    // TODO(dimitris): use inheritance
     treeqp_tdunes_opts_t TdunesOpts;
     treeqp_tdunes_workspace TdunesWork;
 
@@ -80,6 +77,8 @@ private:
     int CreateOptions(int N, std::string SolverName);
 
     int CreateWorkspace(tree_qp_in *QpIn);
+
+    void FreeWorkspace();
 
 };
 
@@ -99,27 +98,17 @@ public:
 
     void SetMatrixColMajor(std::string FieldName, std::vector<double> v, int lda, int indx);
 
-    // choose solver and create solver instance with default options
-    void SolverName(std::string SolverName);
-
-    // change an option, destroy and re-create solver based on current options
-    void SetOption(std::string field, std::string val);
-
-    void SetOption(std::string field, bool val);
-
-    void SetOption(std::string field, int val);
-
-    void SetOption(std::string field, double val);
-
-    // solve QP
-    void Solve();
-
     // utils
     void PrintInput();
 
     void PrintOutput();
 
     void PrintOutput(int NumNodes);
+
+    // TODO(dimitris): other way?
+    tree_qp_in *GetQpInPtr();
+
+    tree_qp_out *GetQpOutPtr();
 
 private:
 
@@ -130,8 +119,6 @@ private:
 
     tree_qp_out QpOut;
     void *QpOutMem;
-
-    Solver QpSolver;
 };
 
 #endif  /* TREEQP_CPP_INTERFACE_HPP_ */
