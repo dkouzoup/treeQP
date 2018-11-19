@@ -139,6 +139,10 @@ private:
 
 struct TreeQp
 {
+    friend TdunesSolver;
+
+    friend HpmpcSolver;
+
 public:
 
     TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk);
@@ -158,11 +162,6 @@ public:
     void PrintOutput();
 
     void PrintOutput(int NumNodes);
-
-    // TODO(dimitris): other way?
-    tree_qp_in *GetQpInPtr();
-
-    tree_qp_out *GetQpOutPtr();
 
 private:
 

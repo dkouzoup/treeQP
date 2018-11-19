@@ -92,6 +92,19 @@ static void create_qp_in(tree_qp_in *QpIn, void **QpInMem, int NumNodes, const i
 
 
 
+static void create_qp_in(tree_qp_in *QpIn, void **QpInMem, tree_qp_in *QpInOld)
+{
+    int *nk = (int *) malloc(QpInOld->N*sizeof(int));
+    for (int ii = 0; ii < QpInOld->N; ii++)
+    {
+        nk[ii] = QpInOld->tree[ii].nkids;
+    }
+    create_qp_in(QpIn, QpInMem, QpInOld->N, QpInOld->nx, QpInOld->nu, QpInOld->nc, nk);
+    free(nk);
+}
+
+
+
 static void create_qp_out(tree_qp_out *QpOut, void **QpOutMem,
     std::vector<int> nx, std::vector<int> nu, std::vector<int> nc)
 {
@@ -132,17 +145,10 @@ void QpSolver::FreeWorkspace()
 
 TdunesSolver::TdunesSolver(struct TreeQp *Qp)
 {
-    // TODO: use friend instead
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    tree_qp_in *QpIn = &Qp->QpIn;
 
     // create dummy qp_in to store dimensions
-    // TODO: move to function (or write create_qp_in based on struct TreeQp)
-    int *nk = (int *) malloc(QpIn->N*sizeof(int));
-    for (int ii = 0; ii < QpIn->N; ii++)
-    {
-        nk[ii] = QpIn->tree[ii].nkids;
-    }
-    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
+    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn);
 
     CreateOptions();
 
@@ -274,8 +280,8 @@ int TdunesSolver::Solve(struct TreeQp *Qp)
 {
     int status = -1;
 
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
-    tree_qp_out *QpOut = Qp->GetQpOutPtr();
+    tree_qp_in *QpIn = &Qp->QpIn;
+    tree_qp_out *QpOut = &Qp->QpOut;
 
     status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
 
@@ -287,15 +293,10 @@ int TdunesSolver::Solve(struct TreeQp *Qp)
 
 HpmpcSolver::HpmpcSolver(struct TreeQp *Qp)
 {
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    tree_qp_in *QpIn = &Qp->QpIn;
 
     // create dummy qp_in to store dimensions
-    int *nk = (int *) malloc(QpIn->N*sizeof(int));
-    for (int ii = 0; ii < QpIn->N; ii++)
-    {
-        nk[ii] = QpIn->tree[ii].nkids;
-    }
-    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
+    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn);
 
     // copy constraints (needed to infer number of bounds in hpmpc)
     for (int ii = 0; ii < QpIn->N; ii++)
@@ -309,8 +310,6 @@ HpmpcSolver::HpmpcSolver(struct TreeQp *Qp)
     CreateOptions();
 
     CreateWorkspace();
-
-    free(nk);
 }
 
 
@@ -341,8 +340,8 @@ int HpmpcSolver::Solve(struct TreeQp *Qp)
 {
     int status = -1;
 
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
-    tree_qp_out *QpOut = Qp->GetQpOutPtr();
+    tree_qp_in *QpIn = &Qp->QpIn;
+    tree_qp_out *QpOut = &Qp->QpOut;
 
     status = treeqp_hpmpc_solve(QpIn, QpOut, &HpmpcOpts, &HpmpcWork);
 
@@ -522,18 +521,4 @@ void TreeQp::PrintOutput()
 void TreeQp::PrintOutput(int NumNodes)
 {
     tree_qp_out_print(NumNodes, &QpOut);
-}
-
-
-
-tree_qp_in *TreeQp::GetQpInPtr()
-{
-    return &QpIn;
-}
-
-
-
-tree_qp_out *TreeQp::GetQpOutPtr()
-{
-    return &QpOut;
 }
