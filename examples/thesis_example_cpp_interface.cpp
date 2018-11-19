@@ -104,9 +104,10 @@ int main(int argc, char ** argv)
 
     // set up solver and adapt options
     // TODO(dimitris): use appropriate creator instead of passing string
-    Solver TDUNES("tdunes", &QP);
 
-    TDUNES.SetOption(QP.GetQpInPtr(), "clipping", true);
+    Solver TDUNES("tdunes", nx, nu, nc, nk);
+
+    TDUNES.SetOption(QP.GetQpInPtr(), "clipping", false);
     TDUNES.Solve(&QP);
 
     // QP.SetOption("clipping", true);
