@@ -105,18 +105,16 @@ int main(int argc, char ** argv)
     // set up solvers and adapt options
     // TODO(dimitris): use appropriate creator instead of passing string
 
-    // Solver TDUNES("tdunes", nx, nu, nc, nk);
-    Solver HPMPC("hpmpc", nx, nu, nc, nk);
+    Solver TDUNES("tdunes", &QP);
+    Solver HPMPC("hpmpc", &QP);
 
     // TDUNES.SetOption("clipping", false);
     // TDUNES.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
 
-    HPMPC.SetOption("maxIter", 20);
+    // HPMPC.SetOption("maxIter", 20);
 
     // solve QP and print solution
-    // TDUNES.Solve(&QP);
-
-    QP.PrintInput();
+    TDUNES.Solve(&QP);
 
     HPMPC.Solve(&QP);
 

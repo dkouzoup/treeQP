@@ -30,6 +30,10 @@
 #include <string>
 #include <iostream>
 
+#include <blasfeo_target.h>
+#include <blasfeo_common.h>
+#include <blasfeo_d_aux.h>
+
 #include "treeqp/utils/print.h"
 
 
@@ -56,7 +60,7 @@ static regType_t string_to_reg_type(const std::string& str)
 
 
 
-static void create_qp_in(tree_qp_in *QpIn, void *QpInMem,
+static void create_qp_in(tree_qp_in *QpIn, void **QpInMem,
     std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
     int *nc_ptr;
@@ -72,13 +76,23 @@ static void create_qp_in(tree_qp_in *QpIn, void *QpInMem,
     int NumNodes = nx.size();
 
     int in_size = tree_qp_in_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data());
-    QpInMem = malloc(in_size);
-    tree_qp_in_create(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data(), QpIn, QpInMem);
+    *QpInMem = malloc(in_size);
+    tree_qp_in_create(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data(), QpIn, *QpInMem);
 }
 
 
 
-static void create_qp_out(tree_qp_out *QpOut, void *QpOutMem,
+static void create_qp_in(tree_qp_in *QpIn, void **QpInMem, int NumNodes, const int * nx,
+    const int * nu, const int * nc, const int * nk)
+{
+    int in_size = tree_qp_in_calculate_size(NumNodes, nx, nu, nc, nk);
+    *QpInMem = malloc(in_size);
+    tree_qp_in_create(NumNodes, nx, nu, nc, nk, QpIn, *QpInMem);
+}
+
+
+
+static void create_qp_out(tree_qp_out *QpOut, void **QpOutMem,
     std::vector<int> nx, std::vector<int> nu, std::vector<int> nc)
 {
     int *nc_ptr;
@@ -94,26 +108,44 @@ static void create_qp_out(tree_qp_out *QpOut, void *QpOutMem,
     int NumNodes = nx.size();
 
     int out_size = tree_qp_out_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr);
-    QpOutMem = malloc(out_size);
-    tree_qp_out_create(NumNodes, nx.data(), nu.data(), nc_ptr, QpOut, QpOutMem);
+    *QpOutMem = malloc(out_size);
+    tree_qp_out_create(NumNodes, nx.data(), nu.data(), nc_ptr, QpOut, *QpOutMem);
 }
 
 
 
 // TODO: CheckDims fun that throws error if QP of solve has different dims
-Solver::Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
+Solver::Solver(std::string SolverName, struct TreeQp *Qp)
 {
     int status;
 
     // TODO(dimitris): replace with inheritance
     this->SolverName = SolverName;
 
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+
     // create dummy qp_in to store dimensions
-    create_qp_in(&DummyQpIn, DummyQpInMem, nx, nu, nc, nk);
+    int *nk = (int *) malloc(QpIn->N*sizeof(int));
+    for (int ii = 0; ii < QpIn->N; ii++)
+    {
+        nk[ii] = QpIn->tree[ii].nkids;
+    }
+    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
+
+    // copy constraints (needed to infer number of bounds in hpmpc)
+    for (int ii = 0; ii < QpIn->N; ii++)
+    {
+        blasfeo_dveccp(QpIn->xmin[ii].m, &QpIn->xmin[ii], 0, &DummyQpIn.xmin[ii], 0);
+        blasfeo_dveccp(QpIn->xmax[ii].m, &QpIn->xmax[ii], 0, &DummyQpIn.xmax[ii], 0);
+        blasfeo_dveccp(QpIn->umin[ii].m, &QpIn->umin[ii], 0, &DummyQpIn.umin[ii], 0);
+        blasfeo_dveccp(QpIn->umax[ii].m, &QpIn->umax[ii], 0, &DummyQpIn.umax[ii], 0);
+    }
 
     status = CreateOptions();
 
     status = CreateWorkspace();
+
+    free(nk);
 }
 
 
@@ -371,10 +403,10 @@ TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, st
     NumNodes = nx.size();
 
     // create qp_in
-    create_qp_in(&QpIn, QpInMem, nx, nu, nc, nk);
+    create_qp_in(&QpIn, &QpInMem, nx, nu, nc, nk);
 
     // create qp_out
-    create_qp_out(&QpOut, QpOutMem, nx, nu, nc);
+    create_qp_out(&QpOut, &QpOutMem, nx, nu, nc);
 }
 
 

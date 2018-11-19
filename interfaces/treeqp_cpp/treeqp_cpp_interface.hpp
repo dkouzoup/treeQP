@@ -43,12 +43,12 @@ struct Solver
 public:
 
     // TODO(dimitris): inheritance instead of solver name
-    // TODO(dimitris): add constructor without nc
-    Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk);
+    Solver(std::string SolverName, struct TreeQp *Qp);
 
     ~Solver();
 
     // solve QP
+    // TODO: MOVE TO TreeQp
     int Solve(struct TreeQp *Qp);
 
     // destroy and re-create solver based on current options
@@ -65,7 +65,7 @@ private:
     // int NumNodes;
     std::string SolverName;
 
-    // dummy QP to store dimensions of created solver
+    // dummy QP to store dimensions of created solver (these dimensions cannot be changed)
     tree_qp_in DummyQpIn;
     void *DummyQpInMem;
 
