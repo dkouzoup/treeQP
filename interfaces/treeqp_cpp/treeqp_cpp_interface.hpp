@@ -35,7 +35,7 @@
 #include <string>
 
 #include "treeqp/src/tree_qp_common.h"
-#include "treeqp/src/dual_newton_tree.h"
+#include "treeqp/src/dual_Newton_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 
 
