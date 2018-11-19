@@ -105,12 +105,15 @@ Solver::Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu,
 {
     int status;
 
+    // TODO(dimitris): replace with inheritance
+    this->SolverName = SolverName;
+
     // create dummy qp_in to store dimensions
     create_qp_in(&DummyQpIn, DummyQpInMem, nx, nu, nc, nk);
 
-    status = CreateOptions(SolverName);
+    status = CreateOptions();
 
-    status = CreateWorkspace(&DummyQpIn);
+    status = CreateWorkspace();
 }
 
 
@@ -124,7 +127,7 @@ Solver::~Solver()
 
 
 
-int Solver::CreateOptions(std::string SolverName)
+int Solver::CreateOptions()
 {
     int NumNodes = DummyQpIn.N;
 
@@ -150,28 +153,26 @@ int Solver::CreateOptions(std::string SolverName)
         return -1;
     }
 
-    this->SolverName = SolverName;
-
     return 0;
 }
 
 
 
-int Solver::CreateWorkspace(tree_qp_in *QpIn)
+int Solver::CreateWorkspace()
 {
     int size;
 
     if (SolverName == "tdunes")
     {
-        size = treeqp_tdunes_calculate_size(QpIn, &TdunesOpts);
+        size = treeqp_tdunes_calculate_size(&DummyQpIn, &TdunesOpts);
         WorkMem = malloc(size);
-        treeqp_tdunes_create(QpIn, &TdunesOpts, &TdunesWork, WorkMem);
+        treeqp_tdunes_create(&DummyQpIn, &TdunesOpts, &TdunesWork, WorkMem);
     }
     else if (SolverName == "hpmpc")
     {
-        size = treeqp_hpmpc_calculate_size(QpIn, &HpmpcOpts);
+        size = treeqp_hpmpc_calculate_size(&DummyQpIn, &HpmpcOpts);
         WorkMem = malloc(size);
-        treeqp_hpmpc_create(QpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
+        treeqp_hpmpc_create(&DummyQpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
     }
     else
     {
@@ -209,8 +210,8 @@ int Solver::Solve(struct TreeQp *Qp)
 }
 
 
-// TODO!!!!! REMOVE QP_IN FROM INPUTS!!
-int Solver::SetOption(tree_qp_in *QpIn, std::string field, std::string val)
+
+int Solver::SetOption(std::string field, std::string val)
 {
     if (SolverName == "tdunes")
     {
@@ -233,14 +234,14 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, std::string val)
     }
 
     FreeWorkspace();
-    CreateWorkspace(QpIn);
+    CreateWorkspace();
 
     return 0;
 }
 
 
-
-int Solver::SetOption(tree_qp_in *QpIn, std::string field, bool val)
+// TODO(dimitris): can those be common to superclass?
+int Solver::SetOption(std::string field, bool val)
 {
     int NumNodes = DummyQpIn.N;
 
@@ -275,14 +276,14 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, bool val)
     }
 
     FreeWorkspace();
-    CreateWorkspace(QpIn);
+    CreateWorkspace();
 
     return 0;
 }
 
 
 
-int Solver::SetOption(tree_qp_in *QpIn, std::string field, int val)
+int Solver::SetOption(std::string field, int val)
 {
     if (SolverName == "tdunes")
     {
@@ -312,14 +313,14 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, int val)
     }
 
     FreeWorkspace();
-    CreateWorkspace(QpIn);
+    CreateWorkspace();
 
     return 0;
 }
 
 
 
-int Solver::SetOption(tree_qp_in *QpIn, std::string field, double val)
+int Solver::SetOption(std::string field, double val)
 {
     if (SolverName == "tdunes")
     {
@@ -357,7 +358,7 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, double val)
     }
 
     FreeWorkspace();
-    CreateWorkspace(QpIn);
+    CreateWorkspace();
 
     return 0;
 }

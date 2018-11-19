@@ -43,6 +43,7 @@ struct Solver
 public:
 
     // TODO(dimitris): inheritance instead of solver name
+    // TODO(dimitris): add constructor without nc
     Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk);
 
     ~Solver();
@@ -51,13 +52,13 @@ public:
     int Solve(struct TreeQp *Qp);
 
     // destroy and re-create solver based on current options
-    int SetOption(tree_qp_in *QpIn, std::string field, std::string val);
+    int SetOption(std::string field, std::string val);
 
-    int SetOption(tree_qp_in *QpIn, std::string field, bool val);
+    int SetOption(std::string field, bool val);
 
-    int SetOption(tree_qp_in *QpIn, std::string field, int val);
+    int SetOption(std::string field, int val);
 
-    int SetOption(tree_qp_in *QpIn, std::string field, double val);
+    int SetOption(std::string field, double val);
 
 private:
 
@@ -78,9 +79,9 @@ private:
     treeqp_hpmpc_opts_t HpmpcOpts;
     treeqp_hpmpc_workspace HpmpcWork;
 
-    int CreateOptions(std::string SolverName);
+    int CreateOptions();
 
-    int CreateWorkspace(tree_qp_in *QpIn);
+    int CreateWorkspace();
 
     void FreeWorkspace();
 
