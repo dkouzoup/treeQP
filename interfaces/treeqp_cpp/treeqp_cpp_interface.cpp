@@ -136,7 +136,7 @@ TdunesSolver::TdunesSolver(struct TreeQp *Qp)
     tree_qp_in *QpIn = Qp->GetQpInPtr();
 
     // create dummy qp_in to store dimensions
-    // TODO: move to function
+    // TODO: move to function (or write create_qp_in based on struct TreeQp)
     int *nk = (int *) malloc(QpIn->N*sizeof(int));
     for (int ii = 0; ii < QpIn->N; ii++)
     {
@@ -182,6 +182,72 @@ int TdunesSolver::Solve(struct TreeQp *Qp)
     tree_qp_out *QpOut = Qp->GetQpOutPtr();
 
     status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
+
+    return status;
+}
+
+
+
+HpmpcSolver::HpmpcSolver(struct TreeQp *Qp)
+{
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+
+    // create dummy qp_in to store dimensions
+    int *nk = (int *) malloc(QpIn->N*sizeof(int));
+    for (int ii = 0; ii < QpIn->N; ii++)
+    {
+        nk[ii] = QpIn->tree[ii].nkids;
+    }
+    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
+
+    // copy constraints (needed to infer number of bounds in hpmpc)
+    for (int ii = 0; ii < QpIn->N; ii++)
+    {
+        blasfeo_dveccp(QpIn->xmin[ii].m, &QpIn->xmin[ii], 0, &DummyQpIn.xmin[ii], 0);
+        blasfeo_dveccp(QpIn->xmax[ii].m, &QpIn->xmax[ii], 0, &DummyQpIn.xmax[ii], 0);
+        blasfeo_dveccp(QpIn->umin[ii].m, &QpIn->umin[ii], 0, &DummyQpIn.umin[ii], 0);
+        blasfeo_dveccp(QpIn->umax[ii].m, &QpIn->umax[ii], 0, &DummyQpIn.umax[ii], 0);
+    }
+
+    CreateOptions();
+
+    CreateWorkspace();
+
+    free(nk);
+}
+
+
+
+void HpmpcSolver::CreateOptions()
+{
+    int NumNodes = DummyQpIn.N;
+
+    // create default options
+    int size = treeqp_hpmpc_opts_calculate_size(NumNodes);
+    OptsMem = malloc(size);
+    treeqp_hpmpc_opts_create(NumNodes, &HpmpcOpts, OptsMem);
+    treeqp_hpmpc_opts_set_default(NumNodes, &HpmpcOpts);
+}
+
+
+
+void HpmpcSolver::CreateWorkspace()
+{
+    int size = treeqp_hpmpc_calculate_size(&DummyQpIn, &HpmpcOpts);
+    WorkMem = malloc(size);
+    treeqp_hpmpc_create(&DummyQpIn, &HpmpcOpts, &HpmpcWork, WorkMem);
+}
+
+
+
+int HpmpcSolver::Solve(struct TreeQp *Qp)
+{
+    int status = -1;
+
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    tree_qp_out *QpOut = Qp->GetQpOutPtr();
+
+    status = treeqp_hpmpc_solve(QpIn, QpOut, &HpmpcOpts, &HpmpcWork);
 
     return status;
 }

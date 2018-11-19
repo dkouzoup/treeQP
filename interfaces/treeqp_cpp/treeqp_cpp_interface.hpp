@@ -51,14 +51,14 @@ public:
 
     void FreeWorkspace();
 
-    // // destroy and re-create solver based on current options
-    // int SetOption(std::string field, std::string val);
+    // destroy and re-create solver based on current options
+    int SetOption(std::string field, std::string val);
 
-    // int SetOption(std::string field, bool val);
+    int SetOption(std::string field, bool val);
 
-    // int SetOption(std::string field, int val);
+    int SetOption(std::string field, int val);
 
-    // int SetOption(std::string field, double val);
+    int SetOption(std::string field, double val);
 
     // common destructor for all solvers
     ~QpSolver();
