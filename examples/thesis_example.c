@@ -140,7 +140,11 @@ int main() {
 
     #endif
 
+    #if PROFILE > 0
+    #ifndef USE_HPMPC
     timers_print(&work.timings);
+    #endif
+    #endif
 
     tree_qp_out_print(6, &qp_out);
 

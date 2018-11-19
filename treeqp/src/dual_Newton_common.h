@@ -39,6 +39,7 @@ extern "C" {
 
 // regularization options
 typedef enum {
+    TREEQP_UNKNOWN_REGULARIZATION,
     TREEQP_NO_REGULARIZATION = 0,  // never regularize (solver may fail)
     TREEQP_ALWAYS_LEVENBERG_MARQUARDT,  // always use LM regularization (regValue in tree_options)
     TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT,  // regularize when diag. elements too small

@@ -30,6 +30,7 @@
 
 #include "treeqp/src/tree_qp_common.h"
 #include "treeqp/src/dual_Newton_tree.h"
+#include "treeqp/src/hpipm_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 #include "treeqp/utils/types.h"
 #include "treeqp/utils/tree.h"
@@ -63,6 +64,7 @@
 #endif
 
 // #define USE_HPMPC
+// #define USE_HPIPM
 
 int main()
 {
@@ -118,7 +120,7 @@ int main()
 #endif
 
     // set up QP solver
-#ifndef USE_HPMPC
+#if !defined(USE_HPMPC) && !defined(USE_HPIPM)
 
     treeqp_tdunes_opts_t opts;
     int tdunes_opts_size = treeqp_tdunes_opts_calculate_size(Nn);
@@ -141,8 +143,9 @@ int main()
     int treeqp_size = treeqp_tdunes_calculate_size(&qp_in, &opts);
     void *qp_solver_memory = malloc(treeqp_size);
     treeqp_tdunes_create(&qp_in, &opts, &work, qp_solver_memory);
+#endif
 
-#else
+#if defined(USE_HPMPC)
     treeqp_hpmpc_opts_t opts;
     int hpmpc_opts_size = treeqp_hpmpc_opts_calculate_size(Nn);
     void *opts_memory = malloc(hpmpc_opts_size);
@@ -156,17 +159,37 @@ int main()
     treeqp_hpmpc_create(&qp_in, &opts, &work, qp_solver_memory);
 #endif  // USE_HPMPC
 
+#if defined(USE_HPIPM)
+    treeqp_hpipm_opts_t opts;
+    int hpipm_opts_size = treeqp_hpipm_opts_calculate_size(Nn);
+    void *opts_memory = malloc(hpipm_opts_size);
+    treeqp_hpipm_opts_create(Nn, &opts, opts_memory);
+    treeqp_hpipm_opts_set_default(Nn, &opts);
+
+    treeqp_hpipm_workspace work;
+
+    int treeqp_size = treeqp_hpipm_calculate_size(&qp_in, &opts);
+    void *qp_solver_memory = malloc(treeqp_size);
+    treeqp_hpipm_create(&qp_in, &opts, &work, qp_solver_memory);
+#endif  // USE_HPIPM
+
     // solve QP
     int status;
-#ifndef USE_HPMPC
+#if !defined(USE_HPMPC) && !defined(USE_HPIPM)
     status = treeqp_tdunes_solve(&qp_in, &qp_out, &opts, &work);
-#else
+#endif
+#if defined(USE_HPMPC)
     status = treeqp_hpmpc_solve(&qp_in, &qp_out, &opts, &work);
+#endif
+#if defined(USE_HPIPM)
+    status = treeqp_hpipm_solve(&qp_in, &qp_out, &opts, &work);
 #endif
 
 #ifndef DATA
 #if PROFILE > 0 && PRINT_LEVEL > 0
+#if !defined(USE_HPMPC) && !defined(USE_HPIPM)
     timers_print(&work.timings);
+#endif
 #endif
     tree_qp_out_print(Nn, &qp_out);
     blasfeo_print_target();
@@ -202,10 +225,14 @@ int main()
         // printf("error = %e\n\n", err);
     }
 
-#ifndef USE_HPMPC
+#if !defined(USE_HPMPC) && !defined(USE_HPIPM)
     printf("SOLVER:\ttdunes\n");
-#else
+#endif
+#if defined(USE_HPMPC)
     printf("SOLVER:\thpmpc\n");
+#endif
+#if defined(USE_HPIPM)
+    printf("SOLVER:\thpipm\n");
 #endif
 
     printf("ITERS:\t%d\n", qp_out.info.iter);

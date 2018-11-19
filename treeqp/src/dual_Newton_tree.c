@@ -112,6 +112,7 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t * opts)
     opts->lineSearchMaxIter = 50;
     opts->lineSearchGamma = 0.1;
     opts->lineSearchBeta = 0.6;
+    opts->lineSearchTol = 1e-6;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
     opts->regTol   = 1.0e-6;
@@ -965,7 +966,7 @@ static return_t line_search(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t 
         // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
-        if (fval < fval0 + opts->lineSearchGamma*tau*dot_product)
+        if (fval <= fval0 + opts->lineSearchGamma*tau*dot_product + opts->lineSearchTol)
         {
             // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
@@ -1086,10 +1087,12 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
     int idxFactorStart;  // TODO(dimitris): move to workspace
     int lsIter;
 
-    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+    treeqp_timer solver_tmr, interface_tmr, total_tmr, iter_tmr, op_tmr;
 
     #if PROFILE > 0
     treeqp_profiling_t *timings = &work->timings;
+    assert(timings->num_iter == opts->maxIter &&
+        "Number of iterations cannot be changed after initializing solver (when PROFILE > 0)");
     #endif
 
     treeqp_tic(&total_tmr);
@@ -1144,22 +1147,22 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
         // solve stage QPs, update active sets, calculate elimination matrices
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         status = solve_stage_problems(qp_in, work);
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // calculate gradient and Hessian of the dual problem
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         status = build_dual_problem(qp_in, &idxFactorStart, opts, work);
         #if PROFILE > 2
-        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
         if (status == TREEQP_OPTIMAL_SOLUTION_FOUND)
         {
@@ -1171,24 +1174,24 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
         // factorize Newton matrix and calculate step direction
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         calculate_delta_lambda(qp_in, idxFactorStart, work, opts);
         #if PROFILE > 2
-        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // line-search
         // NOTE: line-search overwrites xas, uas (used as workspace)
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         status = line_search(qp_in, opts, work);
         if (status != TREEQP_OK) return status;
 
         #if PROFILE > 2
-        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         #if PRINT_LEVEL > 1
@@ -1213,7 +1216,7 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
         if (kk > 0)
         {
             blasfeo_dveccp(nx[kk], &work->slambda[tree[kk].dad], work->idxpos[kk],
-                &qp_out->lam[kk], 0);
+                &qp_out->lam[kk-1], 0);
         }
 
         work->stage_qp_ptrs[kk].export_mu(qp_out, kk, work);
@@ -1610,6 +1613,7 @@ void treeqp_tdunes_create(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t *o
 
     #if PROFILE > 0
     timers_create(opts->maxIter, &work->timings, c_ptr);
+    c_ptr += timers_calculate_size(opts->maxIter);
     timers_initialize(&work->timings);
     #endif
 
@@ -1627,7 +1631,8 @@ void treeqp_tdunes_set_dual_initialization(const double *lambda, treeqp_tdunes_w
 {
     int indx = 0;
 
-    for (int ii = 0; ii < work->Np; ii++) {
+    for (int ii = 0; ii < work->Np; ii++)
+    {
         blasfeo_pack_dvec(work->slambda[ii].m, (double *)&lambda[indx], &work->slambda[ii], 0);
         indx += work->slambda[ii].m;
     }

@@ -88,6 +88,7 @@ void treeqp_sdunes_opts_set_default(int Nn, treeqp_sdunes_opts_t *opts)
     opts->lineSearchMaxIter = 50;
     opts->lineSearchGamma = 0.1;
     opts->lineSearchBeta = 0.6;
+    opts->lineSearchTol = 1e-6;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
     opts->regTol   = 1.0e-6;
@@ -1431,7 +1432,7 @@ int line_search(int Ns, int Nh, tree_qp_in *qp_in, treeqp_sdunes_opts_t *opts,
         fval = evaluate_dual_function(Ns, Nh, qp_in, work);
 
         // check condition
-        if (fval <= fval0 + opts->lineSearchGamma*tau*dotProduct) {
+        if (fval <= fval0 + opts->lineSearchGamma*tau*dotProduct + opts->lineSearchTol) {
             // printf("Condition satisfied\n");
             break;
         } else {
@@ -1870,7 +1871,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
     struct blasfeo_dvec *sqnonScaled = (struct blasfeo_dvec*)qp_in->q;
     struct blasfeo_dvec *srnonScaled = (struct blasfeo_dvec*)qp_in->r;
 
-    treeqp_timer solver_tmr, interface_tmr, total_tmr;
+    treeqp_timer solver_tmr, interface_tmr, total_tmr, iter_tmr, op_tmr;
 
     #if PROFILE > 0
     treeqp_profiling_t *timings = &work->timings;
@@ -1935,16 +1936,16 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         // - calculate Zbar
         // - calculate LambdaD and LambdaL
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         solve_stage_problems(Ns, Nh, NewtonIter, qp_in, work, opts);
         #if PROFILE > 2
-        timings->stage_qps_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->stage_qps_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- calculate dual gradient
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
         // TODO(dimitris): benchmark in linux, see if I can avoid some ifs
         calculate_residuals(Ns, Nh, qp_in, work);
@@ -1969,11 +1970,11 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         // NOTE(dimitris): inaccurate since part of dual Hessian is calculated while solving
         // the stage QPs
         #if PROFILE > 2
-        timings->build_dual_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->build_dual_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         // --- factorize Newton system
@@ -1989,18 +1990,18 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
         calculate_delta_mu(Ns, Nh, Nr, work);
 
         #if PROFILE > 2
-        timings->newton_direction_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->newton_direction_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- line search
         #if PROFILE > 2
-        treeqp_tic(&tmr);
+        treeqp_tic(&op_tmr);
         #endif
 
         lsIter = line_search(Ns, Nh, qp_in, opts, work);
 
         #if PROFILE > 2
-        timings->line_search_times[NewtonIter] = treeqp_toc(&tmr);
+        timings->line_search_times[NewtonIter] = treeqp_toc(&op_tmr);
         #endif
 
         // --- reset data for next iteration
@@ -2025,7 +2026,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
 
     // ------ copy solution to qp_out
 
-    for (int ii = 0; ii < qp_in->N; ii++) {
+    for (int ii = 0; ii < qp_in->N-1; ii++) {
         blasfeo_dvecse(nx, 0.0, &qp_out->lam[ii], 0);
     }
 
@@ -2034,7 +2035,7 @@ return_t treeqp_sdunes_solve(tree_qp_in *qp_in, tree_qp_out *qp_out,
             idx = work->nodeIdx[ii][kk+1];
             idxm1 = work->nodeIdx[ii][kk];
             idxp1 = work->nodeIdx[ii][kk+2];
-            blasfeo_daxpy(nx, 1.0, &work->smu[ii][kk], 0, &qp_out->lam[idx], 0, &qp_out->lam[idx], 0);
+            blasfeo_daxpy(nx, 1.0, &work->smu[ii][kk], 0, &qp_out->lam[idx-1], 0, &qp_out->lam[idx-1], 0);
             if (work->boundsRemoved[ii][kk+1] == 0) {
                 // printf("saving node (%d, %d) to node %d\n", ii, kk+1, work->nodeIdx[ii][kk+1]);
                 blasfeo_dveccp(nx, &work->sx[ii][kk], 0, &qp_out->x[idx], 0);

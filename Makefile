@@ -62,6 +62,15 @@ treeqp_static: $(DEPS)
 	@echo " libtreeqp.a static library build complete."
 	@echo
 
+treeqp_cpp_interface: treeqp_static
+	( cd interfaces/treeqp_cpp; $(MAKE) obj TOP=$(TOP) )
+	ar rcs libtreeqp_cpp_interface.a interfaces/treeqp_cpp/treeqp_cpp_interface.o
+	mkdir -p ../../lib
+	mv libtreeqp_cpp_interface.a lib
+	@echo
+	@echo " libtreeqp_cpp_interface.a static library build complete."
+	@echo
+
 blasfeo_static:
 	( cd $(BLASFEO_PATH); $(MAKE) static_library CC=$(CC) LA=$(BLASFEO_VERSION) TARGET=$(BLASFEO_TARGET) )
 	#mkdir -p include/blasfeo
@@ -102,6 +111,12 @@ spring_mass_debug_example: treeqp_static
 fault_tolerance_example: treeqp_static # code-generate data in python first first
 	( cd examples; $(MAKE) fault_tolerance_example TOP=$(TOP) )
 
+solve_qp_json: treeqp_static
+	( cd examples; $(MAKE) solve_qp_json TOP=$(TOP) )
+
+thesis_example_cpp_interface: treeqp_cpp_interface
+	( cd examples; $(MAKE) thesis_example_cpp_interface TOP=$(TOP) )
+
 run_fault_tolerance_example: fault_tolerance_example
 	./examples/fault_tolerance.out
 
@@ -123,16 +138,22 @@ run_examples: examples
 run_unit_tests: unit_tests
 	./examples/unit_test_0_tdunes.out
 	./examples/unit_test_0_hpmpc.out
+	./examples/unit_test_0_hpipm.out
 	./examples/unit_test_1_tdunes.out
 	./examples/unit_test_1_hpmpc.out
+	./examples/unit_test_1_hpipm.out
 	./examples/unit_test_2_tdunes.out
 	./examples/unit_test_2_hpmpc.out
+	./examples/unit_test_2_hpipm.out
 	./examples/unit_test_3_tdunes.out
 	./examples/unit_test_3_hpmpc.out
+	./examples/unit_test_3_hpipm.out
 	./examples/unit_test_4_tdunes.out
 	./examples/unit_test_4_hpmpc.out
+	./examples/unit_test_4_hpipm.out
 	./examples/unit_test_5_tdunes.out
 	./examples/unit_test_5_hpmpc.out
+	./examples/unit_test_5_hpipm.out
 	@echo
 	@echo " All unit tests were executed succesfully!"
 	@echo
@@ -141,7 +162,9 @@ clean:
 	( cd treeqp/src; $(MAKE) clean )
 	( cd treeqp/utils; $(MAKE) clean )
 	( cd examples; $(MAKE) clean )
+	( cd interfaces/treeqp_cpp; $(MAKE) clean )
 	rm -f lib/libtreeqp.a
+	rm -f lib/libtreeqp_cpp_interface.a
 
 ifeq ($(SKIP_BLASFEO_COMPILATION), ON)
 

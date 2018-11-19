@@ -24,56 +24,97 @@
 *                                                                                                  *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <vector>
+#include <iostream>
 
-#ifndef TREEQP_UTILS_TREE_H_
-#define TREEQP_UTILS_TREE_H_
+#include "interfaces/treeqp_cpp/treeqp_cpp_interface.hpp"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "treeqp/utils/types.h"
-
-// TODO(dimitris): make headers independent of order (now HPIPM header must come first)
-#ifndef TREE_MPC
-#ifndef HPIPM_TREE_H_
-
-struct node
+int main(int argc, char ** argv)
 {
-    int *kids;   // 64 bits
-    int idx;     // 32 bits
-    int dad;     // 32 bits
-    int nkids;   // 32 bits
-    int stage;   // 32 bits
-    int real;    // 32 bits
-    int idxkid;  // 32 bits
-    // total       256 bits
-};
+    // set up dimensions and create QP instance
 
-#endif
-#endif
+    std::vector<int> const nk = {2, 2, 1, 0, 0, 0};
+    std::vector<int> const nx = {2, 2, 2, 2, 2, 2};
+    std::vector<int> const nu = {1, 1, 1, 0, 0, 0};
+    std::vector<int> const nc;
 
-int calculate_number_of_nodes(int md, int Nr, int Nh);
+    TreeQp QP(nx, nu, nc, nk);
 
-int get_number_of_parent_nodes(int Nn, const struct node *tree);
 
-int get_robust_horizon(int Nn, const struct node *tree);
+    // set up dynamics (NOTE: column major for matrices)
 
-int get_prediction_horizon(int Nn, const struct node *tree);
+    std::vector<double>  A1 = {1.1, 3.3, 2.2, 4.4};
+    std::vector<double>  A2 = {5.5, 7.7, 6.6, 8.8};
+    std::vector<double>  B1 = {1.0, 2.0};
+    std::vector<double>  B2 = {3.0, 4.0};
+    std::vector<double>  b1 = {0.0, 0.0};
+    std::vector<double>  b2 = {1.0, 1.0};
 
-int number_of_nodes_from_nkids(const int *nkids);
+    for (int ii = 0; ii < 5; ii++)
+    {
+        if (ii == 0 || ii == 2)
+        {
+            QP.SetMatrixColMajor("A", A1, ii);
+            QP.SetMatrixColMajor("B", B1, ii);
+            QP.SetVector("b", b1, ii);
+        }
+        else
+        {
+            QP.SetMatrixColMajor("A", A2, ii);
+            QP.SetMatrixColMajor("B", B2, ii);
+            QP.SetVector("b", b2, ii);
+        }
+    }
 
-// TODO(dimitris): use this to eliminate Nn from input arguments in several (non time critical) functions
-int number_of_nodes_from_tree(const struct node *tree);
 
-int tree_calculate_size(const int *nk);
+    // set up objective
 
-return_t tree_create(const int *nk, struct node *tree, void *ptr);
+    std::vector<double> Q = {2.0, 0.0, 0.0, 2.0};
+    std::vector<double> R = {1.0};
+    std::vector<double> S = {0.0, 0.0};
+    std::vector<double> q = {0.0, 0.0};
+    std::vector<double> r = {0.0};
 
-void setup_multistage_tree(int md, int Nr, int Nh, int *nk);
+    int N = nk.size();
 
-#ifdef __cplusplus
-}  /* extern "C" */
-#endif
+    for (int ii = 0; ii < N; ii++)
+    {
+        QP.SetMatrixColMajor("Q", Q, ii);
+        QP.SetMatrixColMajor("R", R, ii);
+        QP.SetMatrixColMajor("S", S, ii);
+        QP.SetVector("q", q, ii);
+        QP.SetVector("r", r, ii);
+    }
 
-#endif  /* TREEQP_UTILS_TREE_H_ */
+    // set up constraints
+
+    std::vector<double> x0 = {2.1, 2.1};
+    std::vector<double> umin = {-1};
+    std::vector<double> umax = {1};
+
+    QP.SetVector("xmin", x0, 0);
+    QP.SetVector("xmax", x0, 0);
+
+    for (int ii = 0; ii < 3; ii++)
+    {
+        QP.SetVector("umin", umin, ii);
+        QP.SetVector("umax", umax, ii);
+    }
+
+    // set up solvers and adapt options
+    TdunesSolver TDUNES(&QP);
+    HpmpcSolver HPMPC(&QP);
+
+    TDUNES.SetOption("clipping", false);
+    TDUNES.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
+    HPMPC.SetOption("maxIter", 20);
+
+    // solve QP and print solution
+    TDUNES.Solve(&QP);
+    HPMPC.Solve(&QP);
+
+    // TODO(dimitris): fix valgrind errors in printing when I use hpmpc
+    QP.PrintOutput();
+
+    return 0;
+}

@@ -1,4 +1,4 @@
-function code_generate_tree( agents, fname, CLIPPING )
+function code_generate_tree(fname, agents, CLIPPING )
 
 % CODE_GENERATE_TREE Write tree data in a c file to be processed by treeQP
 
