@@ -43,7 +43,7 @@ struct Solver
 public:
 
     // TODO(dimitris): inheritance instead of solver name
-    Solver(std::string SolverName, struct TreeQp *Qp);
+    Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk);
 
     ~Solver();
 
@@ -61,8 +61,12 @@ public:
 
 private:
 
-    int NumNodes;
+    // int NumNodes;
     std::string SolverName;
+
+    // dummy QP to store dimensions of created solver
+    tree_qp_in DummyQpIn;
+    void *DummyQpInMem;
 
     void *OptsMem;
     void *WorkMem;
@@ -74,7 +78,7 @@ private:
     treeqp_hpmpc_opts_t HpmpcOpts;
     treeqp_hpmpc_workspace HpmpcWork;
 
-    int CreateOptions(int N, std::string SolverName);
+    int CreateOptions(std::string SolverName);
 
     int CreateWorkspace(tree_qp_in *QpIn);
 

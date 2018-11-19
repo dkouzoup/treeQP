@@ -56,15 +56,61 @@ static regType_t string_to_reg_type(const std::string& str)
 
 
 
-Solver::Solver(std::string SolverName, struct TreeQp *Qp)
+static void create_qp_in(tree_qp_in *QpIn, void *QpInMem,
+    std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
+{
+    int *nc_ptr;
+    if (nc.empty())
+    {
+        nc_ptr = NULL;
+    }
+    else
+    {
+        nc_ptr = nc.data();
+    }
+
+    int NumNodes = nx.size();
+
+    int in_size = tree_qp_in_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data());
+    QpInMem = malloc(in_size);
+    tree_qp_in_create(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data(), QpIn, QpInMem);
+}
+
+
+
+static void create_qp_out(tree_qp_out *QpOut, void *QpOutMem,
+    std::vector<int> nx, std::vector<int> nu, std::vector<int> nc)
+{
+    int *nc_ptr;
+    if (nc.empty())
+    {
+        nc_ptr = NULL;
+    }
+    else
+    {
+        nc_ptr = nc.data();
+    }
+
+    int NumNodes = nx.size();
+
+    int out_size = tree_qp_out_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr);
+    QpOutMem = malloc(out_size);
+    tree_qp_out_create(NumNodes, nx.data(), nu.data(), nc_ptr, QpOut, QpOutMem);
+}
+
+
+
+// TODO: CheckDims fun that throws error if QP of solve has different dims
+Solver::Solver(std::string SolverName, std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
     int status;
 
-    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    // create dummy qp_in to store dimensions
+    create_qp_in(&DummyQpIn, DummyQpInMem, nx, nu, nc, nk);
 
-    status = CreateOptions(QpIn->N, SolverName);
+    status = CreateOptions(SolverName);
 
-    status = CreateWorkspace(QpIn);
+    status = CreateWorkspace(&DummyQpIn);
 }
 
 
@@ -73,13 +119,14 @@ Solver::~Solver()
 {
     free(OptsMem);
     free(WorkMem);
+    free(DummyQpInMem);
 }
 
 
 
-int Solver::CreateOptions(int N, std::string SolverName)
+int Solver::CreateOptions(std::string SolverName)
 {
-    NumNodes = N;
+    int NumNodes = DummyQpIn.N;
 
     // create default options of selected solver
     int size;
@@ -162,7 +209,7 @@ int Solver::Solve(struct TreeQp *Qp)
 }
 
 
-
+// TODO!!!!! REMOVE QP_IN FROM INPUTS!!
 int Solver::SetOption(tree_qp_in *QpIn, std::string field, std::string val)
 {
     if (SolverName == "tdunes")
@@ -195,6 +242,8 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, std::string val)
 
 int Solver::SetOption(tree_qp_in *QpIn, std::string field, bool val)
 {
+    int NumNodes = DummyQpIn.N;
+
     if (SolverName == "tdunes")
     {
         if (field == "clipping")
@@ -318,28 +367,13 @@ int Solver::SetOption(tree_qp_in *QpIn, std::string field, double val)
 // TODO(dimitris): throw error if vectors are not of the same size
 TreeQp::TreeQp(std::vector<int> nx, std::vector<int> nu, std::vector<int> nc, std::vector<int> nk)
 {
-    int *nc_ptr;
-    if (nc.empty())
-    {
-        nc_ptr = NULL;
-    }
-    else
-    {
-        nc_ptr = nc.data();
-    }
-
     NumNodes = nx.size();
 
     // create qp_in
-    int in_size = tree_qp_in_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data());
-    QpInMem = malloc(in_size);
-    tree_qp_in_create(NumNodes, nx.data(), nu.data(), nc_ptr, nk.data(), &QpIn, QpInMem);
+    create_qp_in(&QpIn, QpInMem, nx, nu, nc, nk);
 
     // create qp_out
-    int out_size = tree_qp_out_calculate_size(NumNodes, nx.data(), nu.data(), nc_ptr);
-    QpOutMem = malloc(out_size);
-    tree_qp_out_create(NumNodes, nx.data(), nu.data(), nc_ptr, &QpOut, QpOutMem);
-
+    create_qp_out(&QpOut, QpOutMem, nx, nu, nc);
 }
 
 
