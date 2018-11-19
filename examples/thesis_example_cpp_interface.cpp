@@ -108,15 +108,17 @@ int main(int argc, char ** argv)
     Solver TDUNES("tdunes", &QP);
     Solver HPMPC("hpmpc", &QP);
 
+    TdunesSolver TDUNES_NEW(&QP);
+
     // TDUNES.SetOption("clipping", false);
     // TDUNES.SetOption("regType", "TREEQP_ALWAYS_LEVENBERG_MARQUARDT");
 
     // HPMPC.SetOption("maxIter", 20);
 
     // solve QP and print solution
-    TDUNES.Solve(&QP);
+    TDUNES_NEW.Solve(&QP);
 
-    HPMPC.Solve(&QP);
+    // HPMPC.Solve(&QP);
 
     // TODO(dimitris): fix valgrind errors in printing when I use hpmpc
     QP.PrintOutput();

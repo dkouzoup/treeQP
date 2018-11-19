@@ -114,7 +114,82 @@ static void create_qp_out(tree_qp_out *QpOut, void **QpOutMem,
 
 
 
+QpSolver::~QpSolver()
+{
+    free(OptsMem);
+    free(WorkMem);
+    free(DummyQpInMem);
+}
+
+
+
+void QpSolver::FreeWorkspace()
+{
+    free(WorkMem);
+}
+
+
+
+TdunesSolver::TdunesSolver(struct TreeQp *Qp)
+{
+    // TODO: use friend instead
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+
+    // create dummy qp_in to store dimensions
+    // TODO: move to function
+    int *nk = (int *) malloc(QpIn->N*sizeof(int));
+    for (int ii = 0; ii < QpIn->N; ii++)
+    {
+        nk[ii] = QpIn->tree[ii].nkids;
+    }
+    create_qp_in(&DummyQpIn, &DummyQpInMem, QpIn->N, QpIn->nx, QpIn->nu, QpIn->nc, nk);
+
+    CreateOptions();
+
+    CreateWorkspace();
+}
+
+
+
+void TdunesSolver::CreateOptions()
+{
+    int NumNodes = DummyQpIn.N;
+
+    // create default options
+    int size = treeqp_tdunes_opts_calculate_size(NumNodes);
+    OptsMem = malloc(size);
+    treeqp_tdunes_opts_create(NumNodes, &TdunesOpts, OptsMem);
+    treeqp_tdunes_opts_set_default(NumNodes, &TdunesOpts);
+}
+
+
+
+void TdunesSolver::CreateWorkspace()
+{
+    // create default options
+    int size = treeqp_tdunes_calculate_size(&DummyQpIn, &TdunesOpts);
+    WorkMem = malloc(size);
+    treeqp_tdunes_create(&DummyQpIn, &TdunesOpts, &TdunesWork, WorkMem);
+}
+
+
+
+int TdunesSolver::Solve(struct TreeQp *Qp)
+{
+    int status = -1;
+
+    tree_qp_in *QpIn = Qp->GetQpInPtr();
+    tree_qp_out *QpOut = Qp->GetQpOutPtr();
+
+    status = treeqp_tdunes_solve(QpIn, QpOut, &TdunesOpts, &TdunesWork);
+
+    return status;
+}
+
+
+
 // TODO: CheckDims fun that throws error if QP of solve has different dims
+
 Solver::Solver(std::string SolverName, struct TreeQp *Qp)
 {
     int status;

@@ -38,6 +38,88 @@
 #include "treeqp/src/dual_newton_tree.h"
 #include "treeqp/src/hpmpc_tree.h"
 
+// Abstract solver base class.
+class QpSolver
+{
+public:
+
+    virtual int Solve(struct TreeQp *Qp) = 0;
+
+    virtual void CreateOptions() = 0;
+
+    virtual void CreateWorkspace() = 0;
+
+    void FreeWorkspace();
+
+    // // destroy and re-create solver based on current options
+    // int SetOption(std::string field, std::string val);
+
+    // int SetOption(std::string field, bool val);
+
+    // int SetOption(std::string field, int val);
+
+    // int SetOption(std::string field, double val);
+
+    // common destructor for all solvers
+    ~QpSolver();
+
+protected:
+
+    // dummy QP to store dimensions of created solver (these dimensions cannot be changed)
+    tree_qp_in DummyQpIn;
+    void *DummyQpInMem;
+
+    // pointers to allocated memory for options and workspace
+    void *OptsMem;
+    void *WorkMem;
+};
+
+
+
+class TdunesSolver
+:    public QpSolver
+{
+public:
+
+    TdunesSolver(struct TreeQp *Qp);
+
+    int Solve(struct TreeQp *Qp) override;
+
+    void CreateOptions() override;
+
+    void CreateWorkspace() override;
+
+private:
+
+    treeqp_tdunes_opts_t TdunesOpts;
+
+    treeqp_tdunes_workspace TdunesWork;
+};
+
+
+
+class HpmpcSolver
+:    public QpSolver
+{
+public:
+
+    HpmpcSolver(struct TreeQp *Qp);
+
+    int Solve(struct TreeQp *Qp) override;
+
+    void CreateOptions() override;
+
+    void CreateWorkspace() override;
+
+private:
+
+    treeqp_hpmpc_opts_t HpmpcOpts;
+
+    treeqp_hpmpc_workspace HpmpcWork;
+};
+
+
+
 struct Solver
 {
 public:
@@ -62,13 +144,13 @@ public:
 
 private:
 
-    // int NumNodes;
     std::string SolverName;
 
     // dummy QP to store dimensions of created solver (these dimensions cannot be changed)
     tree_qp_in DummyQpIn;
     void *DummyQpInMem;
 
+    // pointers to allocated memory for options and workspace
     void *OptsMem;
     void *WorkMem;
 
