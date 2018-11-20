@@ -251,6 +251,8 @@ static return_t solve_stage_problems(const tree_qp_in *qp_in, treeqp_tdunes_work
     struct blasfeo_dvec *su = (struct blasfeo_dvec *) work->su;
     #endif
 
+    return_t loop_status = TREEQP_OK;
+
     #ifdef PARALLEL
     #pragma omp parallel for private(idxkid, idxdad, idxpos)
     #endif
@@ -298,8 +300,10 @@ static return_t solve_stage_problems(const tree_qp_in *qp_in, treeqp_tdunes_work
         //                  - TODO(dimitris): what else?
 
         status = work->stage_qp_ptrs[kk].solve_extended(qp_in, kk, work);
-        if (status != TREEQP_OK) return status;
+        if (status != TREEQP_OK) loop_status = status;
     }
+
+    if (loop_status != TREEQP_OK) return loop_status;
 
     #ifdef SAVE_DATA
     for (int kk = 0; kk < Nn; kk++)
@@ -846,6 +850,8 @@ static return_t evaluate_dual_function(const tree_qp_in *qp_in, treeqp_tdunes_wo
 
     struct node *tree = qp_in->tree;
 
+    return_t loop_status = TREEQP_OK;
+
     #ifdef PARALLEL
     #pragma omp parallel for private(idxkid, idxpos, idxdad)
     #endif
@@ -898,11 +904,13 @@ static return_t evaluate_dual_function(const tree_qp_in *qp_in, treeqp_tdunes_wo
 
         // --- solve QP
         status = work->stage_qp_ptrs[kk].solve(qp_in, kk, work);
-        if (status != TREEQP_OK) return status;
+        if (status != TREEQP_OK) loop_status = status;
 
         // --- calculate dual function term
         work->stage_qp_ptrs[kk].eval_dual_term(qp_in, kk, work);
     }
+
+    if (loop_status != TREEQP_OK) return loop_status;
 
     for (int kk = 0; kk < Nn; kk++) *fval += fvals[kk];
 
