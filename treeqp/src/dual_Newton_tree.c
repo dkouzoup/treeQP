@@ -112,7 +112,7 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t * opts)
     opts->lineSearchMaxIter = 50;
     opts->lineSearchGamma = 0.1;
     opts->lineSearchBeta = 0.6;
-    opts->lineSearchTol = 1e-6;
+    opts->lineSearchRestartTrigger = -1;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
     opts->regTol   = 1.0e-6;
@@ -966,15 +966,20 @@ static return_t line_search(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t 
             blasfeo_daxpy(sDeltalambda[kk].m, tau-tauPrev, &sDeltalambda[kk], 0, &slambda[kk], 0,
                 &slambda[kk], 0);
         }
-
         // evaluate dual function
         status = evaluate_dual_function(qp_in, work, &fval);
         if (status != TREEQP_OK) return status;
 
+        if (work->lineSearchRestartCounter == opts->lineSearchRestartTrigger)
+        {
+            printf("PERFORMING FULL STEP TO RESTART\n");
+            break;  // perform a full step when stuck
+        }
+
         // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
-        if (fval <= fval0 + opts->lineSearchGamma*tau*dot_product + opts->lineSearchTol)
+        if (fval <= fval0 + opts->lineSearchGamma*tau*dot_product)
         {
             // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
@@ -985,6 +990,15 @@ static return_t line_search(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t 
             tau = opts->lineSearchBeta*tauPrev;
         }
     }
+    if (lsIter >= opts->lineSearchMaxIter)
+    {
+        work->lineSearchRestartCounter++;
+    }
+    else
+    {
+        work->lineSearchRestartCounter = 0;
+    }
+
     #ifdef SAVE_DATA
     for (int kk = 0; kk < Np; kk++) {
         blasfeo_unpack_dvec( slambda[kk].m, &slambda[kk], 0, &lambda[indlam]);
@@ -1119,6 +1133,8 @@ return_t treeqp_tdunes_solve(const tree_qp_in *qp_in, tree_qp_out *qp_out,
 
     // ------ initialization
     treeqp_tic(&interface_tmr);
+
+    work->lineSearchRestartCounter = 0;
 
     status = treeqp_tdunes_validate_opts(opts);
     if (status != TREEQP_OK) return status;

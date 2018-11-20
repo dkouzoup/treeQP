@@ -66,23 +66,23 @@ typedef struct stage_qp_fcn_ptrs_
 
 typedef struct treeqp_tdunes_opts_t_
 {
-    int maxIter;                    // maximum number of dual Newton iterations
+    int maxIter;                      // maximum number of dual Newton iterations
 
-    stage_qp_t *qp_solver;          // stage QP solver stage-wise (TREEQP_CLIPPING_SOLVER or TREEQP_QPOASES_SOLVER)
+    stage_qp_t *qp_solver;            // stage QP solver stage-wise (TREEQP_CLIPPING_SOLVER or TREEQP_QPOASES_SOLVER)
 
-    int checkLastActiveSet;         // save computations per iteration by monitoring active set changes
+    int checkLastActiveSet;           // save computations per iteration by monitoring active set changes
 
-    double stationarityTolerance;   // tolerance for termination condition on dual gradient
-    termination_t termCondition;    // norm of termination condition (TREEQP_SUMSQUAREDERRORS, TREEQP_TWONORM, TREEQP_INFNORM)
+    double stationarityTolerance;     // tolerance for termination condition on dual gradient
+    termination_t termCondition;      // norm of termination condition (TREEQP_SUMSQUAREDERRORS, TREEQP_TWONORM, TREEQP_INFNORM)
 
-    regType_t regType;              // regularization strategy (TREEQP_NO_REGULARIZATION, TREEQP_ALWAYS_LEVENBERG_MARQUARDT, TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
-    double regTol;                  // tolerance for adding regularization (in TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT only)
-    double regValue;                // value of regularization on diagonal (in TREEQP_ALWAYS_LEVENBERG_MARQUARDT and TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    regType_t regType;                // regularization strategy (TREEQP_NO_REGULARIZATION, TREEQP_ALWAYS_LEVENBERG_MARQUARDT, TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
+    double regTol;                    // tolerance for adding regularization (in TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT only)
+    double regValue;                  // value of regularization on diagonal (in TREEQP_ALWAYS_LEVENBERG_MARQUARDT and TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT)
 
-    int lineSearchMaxIter;          // maximum number of line search iterations per Newton iteration
-    double lineSearchGamma;         // gamma parameter in line search
-    double lineSearchBeta;          // beta parameter in line search
-    double lineSearchTol;           // tolerance in exit condition of line search
+    int lineSearchMaxIter;            // maximum number of line search iterations per Newton iteration
+    double lineSearchGamma;           // gamma parameter in line search
+    double lineSearchBeta;            // beta parameter in line search
+    double lineSearchRestartTrigger;  // if > 0, performs a full step when algorithm reached lineSearchMaxIter that many times in a row
 
 } treeqp_tdunes_opts_t;
 
@@ -94,6 +94,7 @@ typedef struct treeqp_tdunes_workspace_
     int Np;
 
     int lsIter;
+    int lineSearchRestartCounter;
 
     int *npar;  // 1 x Nh: number of parallel factorizations per stage
     int *idxpos;  // 1 x Nn: position of node inside vector lambda (0 for first child in branch)
