@@ -1,6 +1,9 @@
 
 script:
   - make deep_clean
+  - export OMP_NUM_THREADS=4 && make run_examples OPENMP=ON
+  - export OMP_NUM_THREADS=4 && make run_unit_tests OPENMP=ON
+  - make deep_clean
   - make run_examples BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=X64_INTEL_SANDY_BRIDGE
   - make run_unit_tests BLASFEO_VERSION=HIGH_PERFORMANCE BLASFEO_TARGET=X64_INTEL_SANDY_BRIDGE
   - make deep_clean
