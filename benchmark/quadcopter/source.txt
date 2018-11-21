@@ -1,0 +1,5 @@
+
+
+"Nonlinear Model Predictive Control of a Human-sized Quadrotor", by A. Zanelli, G. Horn, G. Frison, M. Diehl
+
+* model implementation in matlab: courtesy of A. Zanelli
