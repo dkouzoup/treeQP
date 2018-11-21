@@ -1,0 +1,3 @@
+
+
+"Fast Model Predictive Control Using Online Optimization", by Y. Wang and S. Boyd

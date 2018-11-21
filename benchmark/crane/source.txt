@@ -1,0 +1,5 @@
+
+
+ACADO Toolkit, Code Generation Tool: a Guiding Example
+
+http://acado.sourceforge.net/doc/html/db/daf/cgt_getting_started.html
