@@ -1,7 +1,6 @@
 function [H, h, Aeq, beq, lb, ub] = setup_quadprog(agents, Nr, Nh, md)
 
-%UNTITLED5 Summary of this function goes here
-%   Detailed explanation goes here
+% SETUP_QUADPROG Transform QP in quadprog format
 
 
 [nx, nu]   = size(agents(2).dyn.B);

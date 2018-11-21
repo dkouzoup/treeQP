@@ -1,7 +1,7 @@
 function [ trajectories ] = build_trajectories_from_trees(agents, Nh, Nr )
 
 % BUILD_TRAJECTORIES_FROM_TREES Read current scenario data and form
-%   state and input trajectories
+%                               state and input trajectories
 
 md = length(agents(1).child);
 Nscenarios = md^Nr;

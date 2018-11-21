@@ -126,11 +126,6 @@ TREEQP_ROOT = [pwd '/../'];
 
 treeqp_compile(solver_opts, sim_opts.NRUNS, TREEQP_ROOT);
 
-% TODO: check if still works
-if md == 1
-    save_dimensions_nominal_qpdunes(Nh, solver_opts.maxIter, dynamics, weights, constraints, []);
-end
-
 %% Closed-loop simulation
 
 % initialize logging

@@ -1,7 +1,7 @@
 function [trajectories, nASx, nASu] = number_of_active_constraints(benchmark, trajectories, TOL )
 
 % NUMBER_OF_ACTIVE_CONSTRAINTS Calculate number of active state and control
-%   constraints at optimal solution
+%                              constraints at optimal solution
     
 if nargin < 3
     TOL = 1e-10;

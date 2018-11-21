@@ -1,6 +1,6 @@
 function [ trajectories, lam_quadprog, diagn, t_quadprog ] = solve_trees_quadprog( agents, Nh, Nr, opts)
 
-% SOLVE_TREES_QUADPROG Solve the tree-structured problem with quadprog
+% SOLVE_TREES_QUADPROG Solve the tree-sparse QP with quadprog
 
 md     = length(agents(1).child); % TODO Check that this is correct also in marginal choices of md, Nr etc
 Nnodes = length(agents);

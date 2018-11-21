@@ -1,6 +1,6 @@
 function perf(T,logplot)
 
-%PERF    Performace profiles
+% PERF Performace profiles
 %
 % PERF(T,logplot)-- produces a performace profile as described in
 %   Benchmarking optimization software with performance profiles,

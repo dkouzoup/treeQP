@@ -1,7 +1,7 @@
 function [ agents ] = setup_tree(dynamics, weights, constraints, Nr, Nh, md )
 
 % SETUP_TREE Create an array of structures with one element per tree
-%   node.
+%            node
 
 if ~isfield(weights,'q')
     weights.q = [];

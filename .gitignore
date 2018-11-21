@@ -24,3 +24,5 @@ include/*
 tmp/
 correct.txt
 wrong.txt
+qp.json
+qp_*.json
