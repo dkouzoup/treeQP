@@ -393,10 +393,6 @@ end
 
 %% Performance plot
 
-myColorOrder = get(gca, 'ColorOrder');
-myColorOrder(1,:) = 0;
-set(gca, 'ColorOrder', myColorOrder, 'NextPlot', 'replacechildren');
-
 figure
 % unconstrained
 if ~DROP_AS_PLOT
