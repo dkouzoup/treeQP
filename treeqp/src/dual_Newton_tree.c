@@ -112,6 +112,7 @@ void treeqp_tdunes_opts_set_default(int Nn, treeqp_tdunes_opts_t * opts)
     opts->lineSearchMaxIter = 50;
     opts->lineSearchGamma = 0.1;
     opts->lineSearchBeta = 0.6;
+    opts->lineSearchTol = 1e-6;
     opts->lineSearchRestartTrigger = -1;
 
     opts->regType  = TREEQP_ON_THE_FLY_LEVENBERG_MARQUARDT;
@@ -972,14 +973,14 @@ static return_t line_search(const tree_qp_in *qp_in, const treeqp_tdunes_opts_t 
 
         if (work->lineSearchRestartCounter == opts->lineSearchRestartTrigger)
         {
-            printf("PERFORMING FULL STEP TO RESTART\n");
+            // printf("PERFORMING FULL STEP TO RESTART\n");
             break;  // perform a full step when stuck
         }
 
         // printf("LS iteration #%d (fval = %f <? %f )\n", lsIter, fval, fval0 + opts->lineSearchGamma*tau*dot_product);
 
         // check condition
-        if (fval <= fval0 + opts->lineSearchGamma*tau*dot_product)
+        if (fval <= fval0 + opts->lineSearchGamma*tau*dot_product + opts->lineSearchTol)
         {
             // printf("Condition satisfied at iteration %d\n", lsIter);
             break;
