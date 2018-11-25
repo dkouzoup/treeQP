@@ -162,7 +162,7 @@ void setup_nb_idxb(tree_qp_in *qp_in, int *nb, int **idxb)
 
 
 
-int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
+int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t const *opts)
 {
     int bytes = 0;
     int idxp;
@@ -216,7 +216,7 @@ int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts)
 
 
 
-void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
+void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t const *opts,
     treeqp_hpmpc_workspace *work, void *ptr)
 {
     int idxp;
@@ -313,7 +313,7 @@ void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts,
 
 
 
-return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t *opts,
+return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t const *opts,
     treeqp_hpmpc_workspace *work)
 {
     struct node *tree = qp_in->tree;

@@ -100,11 +100,11 @@ void setup_nb_idxb(tree_qp_in *qp_in, int *nb, int **idxb);
 
 
 
-int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts);
+int treeqp_hpmpc_calculate_size(tree_qp_in *qp_in, treeqp_hpmpc_opts_t const *opts);
 
-void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work, void *ptr);
+void treeqp_hpmpc_create(tree_qp_in *qp_in, treeqp_hpmpc_opts_t const *opts, treeqp_hpmpc_workspace *work, void *ptr);
 
-return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t *opts, treeqp_hpmpc_workspace *work);
+return_t treeqp_hpmpc_solve(tree_qp_in *qp_in, tree_qp_out *qp_out, treeqp_hpmpc_opts_t const *opts, treeqp_hpmpc_workspace *work);
 
 
 
